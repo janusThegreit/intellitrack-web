@@ -1,0 +1,9 @@
+<svg width="420" height="300" viewBox="0 0 420 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="420" height="300" fill="white"/>
+  <path d="M210 28L116 205H170L210 123L250 205H304L210 28Z" fill="#151515"/>
+  <path d="M164 205L210 107L256 205H224L210 164L196 205H164Z" fill="white"/>
+  <path d="M88 155C148 96 270 83 337 130C273 104 171 122 88 185C94 173 99 164 88 155Z" fill="#151515"/>
+  <text x="210" y="243" text-anchor="middle" fill="#151515" font-family="Arial, sans-serif" font-size="38" font-weight="800" letter-spacing="1">ALIBATON</text>
+  <text x="210" y="270" text-anchor="middle" fill="#444444" font-family="Arial, sans-serif" font-size="13" font-weight="500" letter-spacing="4">CONSTRUCTION</text>
+  <text x="210" y="289" text-anchor="middle" fill="#444444" font-family="Arial, sans-serif" font-size="13" font-weight="500" letter-spacing="4">INCORPORATED</text>
+</svg>

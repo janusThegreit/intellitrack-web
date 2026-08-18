@@ -1,0 +1,13 @@
+import React, { useEffect, useState } from 'react';
+import { Head } from '@inertiajs/react';
+import AppLayout from '../../Layouts/AppLayout';
+import Table, { TableColumn } from '../../Components/Table';
+import { Card } from '../../Components/Card';
+
+interface User { id: number; name: string; email: string; role: string; is_active: boolean; last_login_at?: string; }
+const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+const Users = () => { const [users, setUsers] = useState<User[]>([]); const [error, setError] = useState(''); const load = () => fetch('/api/users', { headers: { Accept: 'application/json' } }).then(response => response.ok ? response.json() : Promise.reject()).then(data => { setUsers(data.data ?? []); setError(''); }).catch(() => setError('Users could not be loaded.'));
+  useEffect(() => { load(); }, []); const update = (user: User, payload: Record<string, unknown>, endpoint: string, method: 'PATCH' | 'PUT') => fetch(endpoint, { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '' }, body: JSON.stringify(payload) }).then(load);
+  const columns: TableColumn<User>[] = [{ key: 'name', label: 'User', render: (name, user) => <div><p className="font-medium">{name}</p><p className="text-xs text-neutral-500">{user.email}</p></div> }, { key: 'role', label: 'Role', render: (role, user) => <select value={role} onChange={event => update(user, { role: event.target.value }, `/api/users/${user.id}/role`, 'PUT')} className="border border-neutral-300 bg-white px-2 py-1 text-sm"><option value="administrator">Administrator</option><option value="sales_manager">Sales Manager</option><option value="sales_business_development">Sales Business Development</option></select> }, { key: 'is_active', label: 'Account', render: (active, user) => <button onClick={() => update(user, { is_active: !active }, `/api/users/${user.id}/status`, 'PATCH')} className={`px-2 py-1 text-xs font-medium ${active ? 'bg-success-50 text-success-700' : 'bg-neutral-100 text-neutral-600'}`}>{active ? 'Active' : 'Inactive'}</button> }];
+  return <><Head title="User Management" /><AppLayout title="User Management"><div className="space-y-4">{error && <p className="border border-error-200 bg-error-50 p-3 text-sm text-error-700">{error}</p>}<Card noPadding><Table columns={columns} data={users} emptyMessage="No user accounts found." /></Card></div></AppLayout></>;
+}; export default Users;

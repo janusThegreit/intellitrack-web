@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["resources/js/*"],
+      "@components/*": ["resources/js/Components/*"],
+      "@pages/*": ["resources/js/Pages/*"],
+      "@layouts/*": ["resources/js/Layouts/*"],
+      "@utils/*": ["resources/js/Utils/*"],
+      "@types/*": ["resources/js/Types/*"],
+      "@hooks/*": ["resources/js/Hooks/*"]
+    }
+  },
+  "include": ["resources/js"],
+  "exclude": ["node_modules"]
+}

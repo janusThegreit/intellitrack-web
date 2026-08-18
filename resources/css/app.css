@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-primary: #2563eb;
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+}
+
+html,
+body,
+#app {
+    background-color: #f1f5f9;
+}
+
+/* Smooth transitions only for color changes, not layout */
+button, a, input, select, textarea {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0ms !important; }
+}
+
