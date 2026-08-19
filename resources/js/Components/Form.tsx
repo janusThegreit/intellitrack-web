@@ -21,7 +21,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-neutral-900 mb-2 dark:text-neutral-200">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
@@ -35,12 +35,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           className={clsx(
-            'w-full px-4 py-2 border border-neutral-300 rounded-lg text-base',
-            'placeholder-neutral-400 text-neutral-900 dark:text-neutral-100',
+            'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm',
+            'text-slate-900 placeholder:text-slate-400',
             'transition-all duration-200',
-            'focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100',
-            'disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed dark:disabled:bg-white/5 dark:disabled:text-neutral-500',
-            error && 'border-error-500 focus:border-error-500 focus:ring-error-100',
+            'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
+            'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
+            error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
             startIcon && 'pl-10',
             endIcon && 'pr-10',
             className
@@ -54,10 +54,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
       {error && (
-        <p className="text-sm text-error-600 mt-1">{error}</p>
+        <p className="mt-1 text-xs text-red-600">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{helperText}</p>
+        <p className="mt-1 text-xs text-slate-500">{helperText}</p>
       )}
     </div>
   )
@@ -81,7 +81,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-neutral-900 mb-2 dark:text-neutral-200">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
@@ -89,12 +89,11 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         className={clsx(
-          'w-full px-4 py-2 border border-neutral-300 rounded-lg text-base',
-          'text-neutral-900 bg-white dark:bg-[#1d1d1d] dark:text-neutral-100',
+          'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900',
           'transition-all duration-200',
-          'focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100',
-          'disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed',
-          error && 'border-error-500 focus:border-error-500 focus:ring-error-100',
+          'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
+          'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
+          error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
           className
         )}
         {...props}
@@ -106,7 +105,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         ))}
       </select>
       {error && (
-        <p className="text-sm text-error-600 mt-1">{error}</p>
+        <p className="mt-1 text-xs text-red-600">{error}</p>
       )}
     </div>
   )
@@ -128,7 +127,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-neutral-900 mb-2 dark:text-neutral-200">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
@@ -136,18 +135,17 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
       <textarea
         ref={ref}
         className={clsx(
-          'w-full px-4 py-2 border border-neutral-300 rounded-lg text-base',
-          'placeholder-neutral-400 text-neutral-900 dark:text-neutral-100',
+          'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400',
           'transition-all duration-200 resize-none',
-          'focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100',
-          'disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed',
-          error && 'border-error-500 focus:border-error-500 focus:ring-error-100',
+          'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
+          'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
+          error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
           className
         )}
         {...props}
       />
       {error && (
-        <p className="text-sm text-error-600 mt-1">{error}</p>
+        <p className="mt-1 text-xs text-red-600">{error}</p>
       )}
     </div>
   )

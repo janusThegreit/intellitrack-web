@@ -21,6 +21,14 @@ html,
 body,
 #app {
     background-color: #f1f5f9;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
 /* Smooth transitions only for color changes, not layout */
@@ -32,5 +40,14 @@ button, a, input, select, textarea {
 
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0ms !important; }
+}
+
+@media (max-width: 640px) {
+    input,
+    select,
+    textarea,
+    button {
+        max-width: 100%;
+    }
 }
 

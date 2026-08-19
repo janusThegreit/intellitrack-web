@@ -25,24 +25,24 @@ const Stat = ({
   color = 'primary',
 }: StatProps) => {
   const colorClasses = {
-    primary: 'bg-primary-50 text-primary-600 dark:bg-[#203354] dark:text-[#8cb9ff]',
-    success: 'bg-success-50 text-success-600 dark:bg-[#163c2b] dark:text-[#8be2af]',
-    warning: 'bg-warning-50 text-warning-600 dark:bg-[#4a3a0d] dark:text-[#ffd95a]',
-    error: 'bg-error-50 text-error-600 dark:bg-[#4b2022] dark:text-[#ffa4a8]',
-    neutral: 'bg-neutral-50 text-neutral-600 dark:bg-[#2b2b2b] dark:text-neutral-300',
+    primary: 'bg-blue-50 text-blue-600',
+    success: 'bg-emerald-50 text-emerald-600',
+    warning: 'bg-amber-50 text-amber-600',
+    error: 'bg-red-50 text-red-600',
+    neutral: 'bg-slate-100 text-slate-600',
   };
 
   return (
-    <div className="border border-neutral-200 bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[#1b1b1b]">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
+          <p className="mb-2 text-sm text-slate-500">{title}</p>
           {loading ? (
-            <div className="h-8 bg-neutral-200 rounded animate-pulse w-24" />
+            <div className="h-8 w-24 animate-pulse rounded bg-slate-200" />
           ) : (
             <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">{value}</p>
-              {unit && <p className="text-sm text-neutral-500 dark:text-neutral-400">{unit}</p>}
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+              {unit && <p className="text-sm text-slate-500">{unit}</p>}
             </div>
           )}
 
@@ -61,13 +61,13 @@ const Stat = ({
                 {change.type === 'increase' && '+'}
                 {change.value}%
               </span>
-              <span className="text-xs text-neutral-500">vs last month</span>
+              <span className="text-xs text-slate-500">vs last month</span>
             </div>
           )}
         </div>
 
         {icon && (
-          <div className={clsx('p-2.5', colorClasses[color])}>
+          <div className={clsx('rounded-xl p-2.5', colorClasses[color])}>
             {icon}
           </div>
         )}

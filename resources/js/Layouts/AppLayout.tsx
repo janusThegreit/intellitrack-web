@@ -109,6 +109,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath = '/', userRole = 'sales_manager' }: SidebarProps) => {
+  const isCompact = isCollapsed && !isOpen;
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Auto-expand CRM if any child is active
     const path = typeof window !== 'undefined' ? window.location.pathname : '/';
@@ -144,21 +145,21 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
             onClick={() => toggleExpand(item.label)}
             className={clsx(
               'flex w-full items-center rounded-lg transition-colors duration-150',
-              isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
+              isCompact ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
               isActive
                 ? isCollapsed ? 'bg-[#2563eb] text-white' : 'bg-white/10 text-white'
                 : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
             )}
           >
             <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-white' : 'text-slate-400')}>{item.icon}</span>
-            {!isCollapsed && (
+            {!isCompact && (
               <>
                 <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
                 <ChevronDown className={clsx('h-3.5 w-3.5 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')} />
               </>
             )}
           </button>
-          {!isCollapsed && isExpanded && (
+          {!isCompact && isExpanded && (
             <div className="mt-0.5 ml-3 border-l border-white/10 pl-3">
               {item.children!.map((child) => (
                 <NavLink key={child.href} item={child} isChild />
@@ -172,10 +173,10 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
     return (
       <a
         href={item.href}
-        title={isCollapsed ? item.label : undefined}
+        title={isCompact ? item.label : undefined}
         className={clsx(
           'flex items-center rounded-lg transition-colors duration-150',
-          isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
+          isCompact ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
           isChild ? '!py-1.5 !pl-2 text-sm' : 'text-sm font-medium',
           isActive
             ? isCollapsed ? 'bg-[#2563eb] text-white shadow-md' : 'bg-white/10 text-white'
@@ -183,10 +184,10 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
         )}
       >
         <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-white' : 'text-slate-400')}>{item.icon}</span>
-        {!isCollapsed && (
+        {!isCompact && (
           <span className="flex-1">{item.label}</span>
         )}
-        {!isCollapsed && item.badge && (
+        {!isCompact && item.badge && (
           <span className="rounded-full bg-[#7c3aed] px-1.5 py-0.5 text-[10px] font-bold text-white">
             {item.badge}
           </span>
@@ -204,14 +205,14 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
       <aside
         className={clsx(
           'fixed lg:static flex h-screen flex-col bg-[#0f1623] text-white transition-all duration-300 z-40',
-          isCollapsed ? 'w-[72px]' : 'w-64',
+          isCompact ? 'w-[72px]' : 'w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         {/* Logo */}
-        <div className={clsx('flex items-center border-b border-white/8 py-4', isCollapsed ? 'justify-center px-4' : 'gap-3 px-5')}>
+        <div className={clsx('flex items-center border-b border-white/8 py-4', isCompact ? 'justify-center px-4' : 'gap-3 px-5')}>
           <IntelitrackIcon />
-          {!isCollapsed && (
+          {!isCompact && (
             <span className="text-base font-bold tracking-tight text-white">Intelitrack</span>
           )}
           <button
@@ -243,7 +244,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
             className="hidden w-full items-center justify-center rounded-md p-2 text-slate-500 hover:bg-white/8 hover:text-slate-200 lg:flex"
             aria-label={isCollapsed ? 'Expand menu' : 'Collapse menu'}
           >
-            <ChevronRight className={clsx('h-4 w-4 transition-transform duration-200', !isCollapsed && 'rotate-180')} />
+            <ChevronRight className={clsx('h-4 w-4 transition-transform duration-200', !isCompact && 'rotate-180')} />
           </button>
         </div>
       </aside>
@@ -340,19 +341,19 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
-      <div className="flex h-14 items-center gap-3 px-5">
+      <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:gap-3 sm:px-5">
         {/* Mobile menu */}
         <button onClick={onSidebarToggle} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden">
           <Menu className="h-5 w-5" />
         </button>
 
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-sm text-slate-500">
-          <span className="font-medium text-slate-700">Intelitrack</span>
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
+          <span className="hidden font-medium text-slate-700 sm:inline">Intelitrack</span>
           {title && (
             <>
               <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-slate-500">{title}</span>
+              <span className="max-w-[45vw] truncate text-slate-500 sm:max-w-none">{title}</span>
             </>
           )}
         </div>
@@ -369,11 +370,11 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
         </button>
 
         {/* Right actions */}
-        <div className="flex items-center gap-1 md:ml-3">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-3">
           {action}
 
           {/* Help */}
-          <button className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <button className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:flex">
             <HelpCircle className="h-4.5 w-4.5" />
           </button>
 
@@ -532,7 +533,7 @@ const AppLayout = ({ children, title, headerAction }: AppLayoutProps) => {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f1f5f9]">
+  <div className="flex h-[100dvh] min-w-0 overflow-hidden bg-[#f1f5f9]">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -551,7 +552,7 @@ const AppLayout = ({ children, title, headerAction }: AppLayoutProps) => {
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-5 lg:p-7">
+          <div className="min-w-0 p-4 sm:p-5 lg:p-7">
             {children}
           </div>
         </main>

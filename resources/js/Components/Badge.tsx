@@ -18,12 +18,12 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
     ...props 
   }, ref) => {
     const variants = {
-      primary: 'bg-primary-100 text-primary-800 dark:bg-[#203354] dark:text-[#a9c9ff]',
-      success: 'bg-success-100 text-success-800 dark:bg-[#163c2b] dark:text-[#9be6b8]',
-      warning: 'bg-warning-100 text-warning-800 dark:bg-[#4a3a0d] dark:text-[#ffe071]',
-      error: 'bg-error-100 text-error-800 dark:bg-[#4b2022] dark:text-[#ffb0b4]',
-      neutral: 'bg-neutral-100 text-neutral-800 dark:bg-[#303030] dark:text-neutral-200',
-      info: 'bg-primary-100 text-primary-800 dark:bg-[#203354] dark:text-[#a9c9ff]',
+      primary: 'bg-blue-50 text-blue-700',
+      success: 'bg-emerald-50 text-emerald-700',
+      warning: 'bg-amber-50 text-amber-700',
+      error: 'bg-red-50 text-red-700',
+      neutral: 'bg-slate-100 text-slate-700',
+      info: 'bg-blue-50 text-blue-700',
     };
 
     const sizes = {
@@ -45,7 +45,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={clsx(
-          'inline-flex items-center gap-2 rounded-full font-medium transition-colors',
+          'inline-flex items-center gap-1.5 rounded-full font-medium transition-colors',
           variants[variant],
           sizes[size],
           className

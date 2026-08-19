@@ -12,9 +12,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={clsx(
-        'bg-white rounded-xl border border-neutral-200 shadow-sm transition-all duration-200 dark:border-white/10 dark:bg-[#1b1b1b] dark:text-neutral-100',
-        highlight && 'border-primary-300 shadow-md hover:shadow-lg',
-        !noPadding && 'p-6',
+        'rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200',
+        highlight && 'border-blue-200 shadow-md hover:shadow-lg',
+        !noPadding && 'p-5',
         className
       )}
       {...props}
@@ -34,14 +34,14 @@ interface CardHeaderProps {
 }
 
 const CardHeader = ({ title, subtitle, action, children }: CardHeaderProps) => (
-  <div className="flex items-start justify-between mb-4 pb-4 border-b border-neutral-200 dark:border-white/10">
+  <div className="mb-4 flex items-start justify-between border-b border-slate-100 pb-4">
     <div className="flex-1">
       {children ? (
         children
       ) : (
         <>
-          {title && <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{title}</h3>}
-          {subtitle && <p className="text-sm text-neutral-500 mt-1 dark:text-neutral-400">{subtitle}</p>}
+          {title && <h3 className="text-base font-semibold text-slate-900">{title}</h3>}
+          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
         </>
       )}
     </div>
@@ -54,7 +54,7 @@ const CardBody = ({ children, className }: { children: React.ReactNode; classNam
 );
 
 const CardFooter = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={clsx('pt-4 border-t border-neutral-200 dark:border-white/10', className)}>{children}</div>
+  <div className={clsx('border-t border-slate-100 pt-4', className)}>{children}</div>
 );
 
 export { Card, CardHeader, CardBody, CardFooter };

@@ -18,20 +18,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     children,
     ...props 
   }, ref) => {
-    const baseStyles = 'font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseStyles = 'font-semibold rounded-lg transition-colors duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed';
     
     const variants = {
-      primary: 'bg-[#246bdb] text-white hover:bg-[#1858bc] active:bg-[#12448f] dark:bg-[#ffd000] dark:text-neutral-950 dark:hover:bg-[#ffe064] dark:active:bg-[#e7bb00]',
-      secondary: 'bg-neutral-200 text-neutral-900 hover:bg-neutral-300 active:bg-neutral-400',
-      danger: 'bg-error-600 text-white hover:bg-error-700 active:bg-error-800',
-      ghost: 'text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200',
-      outline: 'border border-neutral-300 text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100',
+      primary: 'bg-[#2563eb] text-white shadow-sm hover:bg-[#1d4ed8] active:bg-[#1e40af]',
+      secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300',
+      danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',
+      ghost: 'text-slate-600 hover:bg-slate-100 active:bg-slate-200',
+      outline: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100',
     };
 
     const sizes = {
       sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-base',
-      lg: 'px-6 py-3 text-lg',
+      md: 'px-4 py-2 text-sm',
+      lg: 'px-5 py-3 text-sm',
     };
 
     return (

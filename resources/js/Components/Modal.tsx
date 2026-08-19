@@ -39,15 +39,15 @@ const Modal = ({
       />
 
       {/* Modal */}
-      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col bg-white rounded-xl shadow-2xl dark:bg-[#1b1b1b]', sizes[size])} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-slate-200 bg-white shadow-2xl', sizes[size])} role="dialog" aria-modal="true" aria-label={title}>
         {/* Header */}
         {(title || closeButton) && (
-          <div className="flex shrink-0 items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10">
-            {title && <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">{title}</h2>}
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
+            {title && <h2 className="text-lg font-semibold text-slate-900">{title}</h2>}
             {closeButton && (
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
+                className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -56,13 +56,13 @@ const Modal = ({
         )}
 
         {/* Body */}
-        <div className="min-h-0 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 overflow-y-auto px-5 py-4">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="shrink-0 px-6 py-4 border-t border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-[#202020]">
+          <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-5 py-4">
             {footer}
           </div>
         )}
@@ -119,7 +119,7 @@ const ConfirmDialog = ({
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-neutral-200 rounded-lg hover:bg-neutral-300 disabled:opacity-50"
+            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
           >
             {cancelText}
           </button>
@@ -127,12 +127,12 @@ const ConfirmDialog = ({
             onClick={onConfirm}
             disabled={loading}
             className={clsx(
-              'px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50',
+              'rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50',
               confirmButtonVariant[variant] === 'danger'
-                ? 'bg-error-600 hover:bg-error-700'
+                ? 'bg-red-600 hover:bg-red-700'
                 : confirmButtonVariant[variant] === 'secondary'
-                ? 'bg-neutral-600 hover:bg-neutral-700'
-                : 'bg-primary-600 hover:bg-primary-700'
+                ? 'bg-slate-700 hover:bg-slate-800'
+                : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
             )}
           >
             {confirmText}

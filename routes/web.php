@@ -19,7 +19,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->middleware('can:view-core-dashboard')->name('dashboard');
     Route::get('/crm', fn () => Inertia::render('CRM/Index'))->middleware('can:view-crm')->name('crm');
     Route::get('/inquiries', fn () => Inertia::render('CRM/Index'))->middleware('can:view-crm')->name('inquiries');
-    Route::get('/sales-opportunities', fn () => Inertia::render('CRM/Index'))->middleware('can:view-crm')->name('sales-opportunities');
+    Route::get('/sales-opportunities', fn () => Inertia::render('CRM/Opportunities'))->middleware('can:view-crm')->name('sales-opportunities');
     Route::get('/crm/quotations', fn () => Inertia::render('CRM/Quotations'))->middleware('can:view-crm')->name('crm.quotations');
     Route::get('/quotations', fn () => Inertia::render('CRM/Quotations'))->middleware('can:view-crm')->name('quotations');
     Route::get('/clients', fn () => Inertia::render('Customers/Index'))->middleware('can:view-clients')->name('clients');
