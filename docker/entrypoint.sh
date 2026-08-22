@@ -6,8 +6,8 @@ if [ ! -f .env ]; then
 fi
 
 php artisan key:generate --force
+php artisan optimize:clear
 php artisan migrate --force
 php artisan storage:link || true
-php artisan config:clear
 
 exec php artisan serve --host=0.0.0.0 --port=8000
