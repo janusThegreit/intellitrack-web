@@ -28,6 +28,17 @@ jobs:
       run: |
         mkdir -p database
         touch database/database.sqlite
+        
+       - name: Setup Node
+  uses: actions/setup-node@v4
+  with:
+    node-version: 22
+
+- name: Install NPM Dependencies
+  run: npm install
+
+- name: Build Assets
+  run: npm run build
     - name: Execute tests (Unit and Feature tests) via PHPUnit/Pest
       env:
         DB_CONNECTION: sqlite
