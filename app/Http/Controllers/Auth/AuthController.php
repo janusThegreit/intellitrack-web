@@ -34,7 +34,13 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            $request->user()?->update(['last_login_at' => now()]);
+            
+            $user = $request->user();
+            $user?->update(['last_login_at' => now()]);
+
+            if ($user?->isAdministrator()) {
+                return redirect('/users');
+            }
 
             return redirect()->intended('dashboard');
         }

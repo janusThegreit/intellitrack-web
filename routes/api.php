@@ -27,6 +27,27 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('profile/password', [ProfileController::class, 'updatePassword']);
     Route::get('search', [GlobalSearchController::class, 'index']);
 
+    // System Settings
+    Route::get('system/maintenance', function (Illuminate\Http\Request $request) {
+        if ($request->user()->role !== 'administrator') {
+            abort(403, 'Unauthorized action.');
+        }
+        return response()->json([
+            'enabled' => \Illuminate\Support\Facades\Cache::get('system_maintenance_mode', false)
+        ]);
+    });
+    Route::post('system/maintenance', function (Illuminate\Http\Request $request) {
+        if ($request->user()->role !== 'administrator') {
+            abort(403, 'Unauthorized action.');
+        }
+        $isEnabled = $request->input('enabled', false);
+        \Illuminate\Support\Facades\Cache::put('system_maintenance_mode', $isEnabled);
+        return response()->json([
+            'message' => 'Maintenance mode ' . ($isEnabled ? 'enabled' : 'disabled') . '.',
+            'enabled' => $isEnabled
+        ]);
+    });
+
     // Customer Routes
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{customer}/archive', [CustomerController::class, 'archive']);
@@ -86,8 +107,11 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Role and access control
     Route::get('roles', [RoleController::class, 'index']);
-    Route::put('users/{user}/role', [RoleController::class, 'updateUserRole']);
     Route::get('users', [RoleController::class, 'users']);
+    Route::post('users', [RoleController::class, 'store']);
+    Route::put('users/{user}', [RoleController::class, 'update']);
+    Route::delete('users/{user}', [RoleController::class, 'destroy']);
+    Route::put('users/{user}/role', [RoleController::class, 'updateUserRole']);
     Route::patch('users/{user}/status', [RoleController::class, 'updateUserStatus']);
 
     // AI analytics decision-support data

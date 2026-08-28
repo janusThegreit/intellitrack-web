@@ -153,6 +153,8 @@ interface Customer {
     date?: string;
     user?: string;
   }[];
+
+  deleted_at?: string | null;
 }
 
 interface CustomersListProps {
@@ -273,16 +275,7 @@ const clientStatuses = [
   },
 ];
 
-const quotationStatuses = [
-  'Draft',
-  'For Approval',
-  'Revision Requested',
-  'Approved',
-  'Sent',
-  'Accepted',
-  'Rejected',
-  'Expired',
-  'Cancelled',
+const quotationStatuses = [ 'Draft', 'For Approval', 'Revision Requested', 'Approved', 'Sent', 'Accepted', 'Rejected', 'Expired', 'Cancelled',
 ];
 
 /*
@@ -319,27 +312,12 @@ const CustomersList = ({
     .filter(Boolean);
 
   const isSalesManager = userRoles.some(role =>
-    [
-      'sales manager',
-      'salesmanager',
-      'manager sales',
-      'sales management',
+    [ 'sales manager', 'salesmanager', 'manager sales', 'sales management',
     ].includes(role)
   );
 
   const isSalesBusinessDevelopment = userRoles.some(role =>
-    [
-      'sales business development',
-      'sales & business development',
-      'sales and business development',
-      'sales business development officer',
-      'sales business development staff',
-      'sales business development specialist',
-      'business development',
-      'business development officer',
-      'business development specialist',
-      'sales bdo',
-      'sbd',
+    [ 'sales business development', 'sales & business development', 'sales and business development', 'sales business development officer', 'sales business development staff', 'sales business development specialist', 'business development', 'business development officer', 'business development specialist', 'sales bdo', 'sbd',
     ].includes(role)
   );
 
@@ -390,8 +368,7 @@ const CustomersList = ({
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch(
-        `/api/customers?per_page=100${
+      const response = await fetch( `/api/customers?per_page=100${
           showArchived ? '&archived=1' : ''
         }`,
         {
@@ -410,8 +387,7 @@ const CustomersList = ({
       setRecords(data.data ?? []);
       setLoadError('');
     } catch {
-      setLoadError(
-        'Customer and client records could not be loaded.'
+      setLoadError( 'Customer and client records could not be loaded.'
       );
     }
   };
@@ -514,8 +490,7 @@ const CustomersList = ({
    */
 
   const getCsrfToken = () =>
-    document.querySelector<HTMLMetaElement>(
-      'meta[name="csrf-token"]'
+    document.querySelector<HTMLMetaElement>( 'meta[name="csrf-token"]'
     )?.content ?? '';
 
   /*
@@ -533,14 +508,11 @@ const CustomersList = ({
     setLoadError('');
 
     try {
-      const response = await fetch(
-        '/api/customers',
+      const response = await fetch( '/api/customers',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken(),
+          headers: { 'Content-Type': 'application/json',
+            Accept: 'application/json', 'X-CSRF-TOKEN': getCsrfToken(),
           },
           body: JSON.stringify({
             ...form,
@@ -561,8 +533,7 @@ const CustomersList = ({
 
       await loadCustomers();
     } catch {
-      setLoadError(
-        'Customer/client could not be saved. Please check the required fields.'
+      setLoadError( 'Customer/client could not be saved. Please check the required fields.'
       );
     } finally {
       setSaving(false);
@@ -586,14 +557,11 @@ const CustomersList = ({
     setLoadError('');
 
     try {
-      const response = await fetch(
-        `/api/customers/${editingCustomer.id}`,
+      const response = await fetch( `/api/customers/${editingCustomer.id}`,
         {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken(),
+          headers: { 'Content-Type': 'application/json',
+            Accept: 'application/json', 'X-CSRF-TOKEN': getCsrfToken(),
           },
           body: JSON.stringify({
             ...form,
@@ -614,8 +582,7 @@ const CustomersList = ({
 
       await loadCustomers();
     } catch {
-      setLoadError(
-        'Customer/client could not be updated.'
+      setLoadError( 'Customer/client could not be updated.'
       );
     } finally {
       setSaving(false);
@@ -692,21 +659,18 @@ const CustomersList = ({
       customer.name;
 
     if (
-      !window.confirm(
-        `Permanently remove ${name} from Customer and Client Management?`
+      !window.confirm( `Permanently remove ${name} from Customer and Client Management?`
       )
     ) {
       return;
     }
 
     try {
-      const response = await fetch(
-        `/api/customers/${customer.id}`,
+      const response = await fetch( `/api/customers/${customer.id}`,
         {
           method: 'DELETE',
           headers: {
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken(),
+            Accept: 'application/json', 'X-CSRF-TOKEN': getCsrfToken(),
           },
         }
       );
@@ -718,8 +682,7 @@ const CustomersList = ({
       setSelectedCustomer(null);
       await loadCustomers();
     } catch {
-      setLoadError(
-        'Customer/client could not be removed.'
+      setLoadError( 'Customer/client could not be removed.'
       );
     }
   };
@@ -738,21 +701,18 @@ const CustomersList = ({
       customer.name;
 
     if (
-      !window.confirm(
-        `Archive ${name}? It can be restored later.`
+      !window.confirm( `Archive ${name}? It can be restored later.`
       )
     ) {
       return;
     }
 
     try {
-      const response = await fetch(
-        `/api/customers/${customer.id}/archive`,
+      const response = await fetch( `/api/customers/${customer.id}/archive`,
         {
           method: 'POST',
           headers: {
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken(),
+            Accept: 'application/json', 'X-CSRF-TOKEN': getCsrfToken(),
           },
         }
       );
@@ -764,8 +724,7 @@ const CustomersList = ({
       setSelectedCustomer(null);
       await loadCustomers();
     } catch {
-      setLoadError(
-        'Customer/client could not be archived.'
+      setLoadError( 'Customer/client could not be archived.'
       );
     }
   };
@@ -780,13 +739,11 @@ const CustomersList = ({
     customer: Customer
   ) => {
     try {
-      const response = await fetch(
-        `/api/customers/${customer.id}/restore`,
+      const response = await fetch( `/api/customers/${customer.id}/restore`,
         {
           method: 'POST',
           headers: {
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken(),
+            Accept: 'application/json', 'X-CSRF-TOKEN': getCsrfToken(),
           },
         }
       );
@@ -798,8 +755,7 @@ const CustomersList = ({
       setSelectedCustomer(null);
       await loadCustomers();
     } catch {
-      setLoadError(
-        'Customer/client could not be restored.'
+      setLoadError( 'Customer/client could not be restored.'
       );
     }
   };
@@ -815,24 +771,18 @@ const CustomersList = ({
       customer => ({
         Customer:
           customer.company_name ||
-          customer.name,
-
-        'Contact Person':
+          customer.name, 'Contact Person':
           customer.contact_person || '',
 
         Position:
           customer.position || '',
 
         Email:
-          customer.email || '',
-
-        'Contact Number':
+          customer.email || '', 'Contact Number':
           customer.phone || '',
 
         Industry:
-          customer.industry || '',
-
-        'Customer Reference':
+          customer.industry || '', 'Customer Reference':
           customer.customer_reference || '',
 
         Status:
@@ -848,34 +798,24 @@ const CustomersList = ({
           customer.leads_count ?? 0,
 
         Opportunities:
-          customer.opportunities_count ?? 0,
-
-        'Related Job Orders':
-          customer.total_job_orders ?? 0,
-
-        'Last Activity':
+          customer.opportunities_count ?? 0, 'Related Job Orders':
+          customer.total_job_orders ?? 0, 'Last Activity':
           customer.last_activity ||
-          customer.last_order_date ||
-          '',
+          customer.last_order_date || '',
       })
     );
 
     const header = Object.keys(
       rows[0] ?? {
-        Customer: '',
-        'Contact Person': '',
+        Customer: '', 'Contact Person': '',
         Position: '',
-        Email: '',
-        'Contact Number': '',
-        Industry: '',
-        'Customer Reference': '',
+        Email: '', 'Contact Number': '',
+        Industry: '', 'Customer Reference': '',
         Status: '',
         Inquiries: '',
         Quotations: '',
         Leads: '',
-        Opportunities: '',
-        'Related Job Orders': '',
-        'Last Activity': '',
+        Opportunities: '', 'Related Job Orders': '', 'Last Activity': '',
       }
     );
 
@@ -908,8 +848,7 @@ const CustomersList = ({
       document.createElement('a');
 
     link.href = url;
-    link.download =
-      'customers-clients.csv';
+    link.download = 'customers-clients.csv';
 
     link.click();
 
@@ -943,11 +882,11 @@ const CustomersList = ({
 
         render: (value, row) => (
           <div>
-            <p className="font-medium text-neutral-900 dark:text-white">
+            <p className="font-medium text-white ">
               {value || row.name}
             </p>
 
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            <p className="text-sm text-content-secondary dark:text-zinc-600">
               CUS-{new Date().getFullYear()}-
               {String(row.id).padStart(3, '0')}
             </p>
@@ -963,11 +902,11 @@ const CustomersList = ({
 
         render: (value, row) => (
           <div>
-            <p className="font-medium text-neutral-900 dark:text-white">
+            <p className="font-medium text-white ">
               {value || '—'}
             </p>
 
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            <p className="text-sm text-content-secondary dark:text-zinc-600">
               {row.position || row.email}
             </p>
           </div>
@@ -981,7 +920,7 @@ const CustomersList = ({
         width: '12%',
 
         render: value => (
-          <span className="text-neutral-700 dark:text-neutral-200">
+          <span className="text-content-primary ">
             {value || '—'}
           </span>
         ),
@@ -994,7 +933,7 @@ const CustomersList = ({
         width: '9%',
 
         render: value => (
-          <span className="font-medium text-blue-600">
+          <span className="font-medium text-brand">
             {value ?? 0}
           </span>
         ),
@@ -1031,10 +970,9 @@ const CustomersList = ({
         width: '12%',
 
         render: (value, row) => (
-          <span className="text-sm text-neutral-600 dark:text-neutral-300">
+          <span className="text-sm text-content-secondary ">
             {value ||
-              row.last_order_date ||
-              '—'}
+              row.last_order_date || '—'}
           </span>
         ),
       },
@@ -1051,34 +989,61 @@ const CustomersList = ({
                 event.stopPropagation();
                 setSelectedCustomer(row);
               }}
-              className="p-1.5 text-neutral-400 transition-colors hover:text-primary-600"
+              className="p-1.5 text-zinc-600 transition-colors hover:text-primary-600"
               title="View customer/client"
             >
               <Eye className="h-4 w-4" />
             </button>
 
-            {isSalesBusinessDevelopment && (
-              <button
-                onClick={event => {
-                  event.stopPropagation();
-                  openEdit(row);
-                }}
-                className="p-1.5 text-neutral-400 transition-colors hover:text-primary-600"
-                title="Edit customer/client"
-              >
-                <Edit2 className="h-4 w-4" />
-              </button>
-            )}
+            {(isSalesBusinessDevelopment || isSalesManager) && (
+              <>
+                <button
+                  onClick={event => {
+                    event.stopPropagation();
+                    openEdit(row);
+                  }}
+                  className="p-1.5 text-zinc-600 transition-colors hover:text-primary-600"
+                  title="Edit customer/client"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
 
-            <button
-              onClick={event =>
-                event.stopPropagation()
-              }
-              className="p-1.5 text-neutral-400 transition-colors hover:text-neutral-700"
-              title="More"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+                {!row.deleted_at ? (
+                  <button
+                    onClick={event => {
+                      event.stopPropagation();
+                      archiveCustomer(row);
+                    }}
+                    className="p-1.5 text-zinc-600 transition-colors hover:text-yellow-600"
+                    title="Archive customer/client"
+                  >
+                    <Archive className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={event => {
+                      event.stopPropagation();
+                      restoreCustomer(row);
+                    }}
+                    className="p-1.5 text-zinc-600 transition-colors hover:text-green-600"
+                    title="Restore customer/client"
+                  >
+                    <ArchiveRestore className="h-4 w-4" />
+                  </button>
+                )}
+
+                <button
+                  onClick={event => {
+                    event.stopPropagation();
+                    deleteCustomer(row);
+                  }}
+                  className="p-1.5 text-zinc-600 transition-colors hover:text-red-600"
+                  title="Delete customer/client"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
         ),
       },
@@ -1094,14 +1059,12 @@ const CustomersList = ({
 
   const activeClients = records.filter(
     customer =>
-      customer.status?.toLowerCase() ===
-      'active'
+      customer.status?.toLowerCase() === 'active'
   ).length;
 
   const prospectClients = records.filter(
     customer =>
-      customer.status?.toLowerCase() ===
-      'prospect'
+      customer.status?.toLowerCase() === 'prospect'
   ).length;
 
   const totalInquiries = records.reduce(
@@ -1138,18 +1101,18 @@ const CustomersList = ({
       {/* CUSTOMER INFORMATION */}
 
       <div>
-        <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+        <h3 className="text-base font-semibold text-white ">
           Customer Information
         </h3>
 
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-content-secondary">
           Basic customer information used by
           Customer Relationship Management.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Customer Name
           <input
             required
@@ -1160,11 +1123,11 @@ const CustomersList = ({
                 name: event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Customer Reference
           <input
             value={form.customer_reference}
@@ -1176,11 +1139,11 @@ const CustomersList = ({
               })
             }
             placeholder="e.g. CUS-2026-001"
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Email Address
           <input
             required
@@ -1192,11 +1155,11 @@ const CustomersList = ({
                 email: event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Contact Number
           <input
             value={form.phone}
@@ -1207,26 +1170,26 @@ const CustomersList = ({
               })
             }
             placeholder="09XXXXXXXXX"
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
       </div>
 
       {/* CLIENT INFORMATION */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-        <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+        <h3 className="text-base font-semibold text-white ">
           Client / Company Information
         </h3>
 
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-content-secondary">
           Information maintained under Client
           Management.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Client / Company Name
           <input
             value={form.company_name}
@@ -1237,11 +1200,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Industry / Business Type
           <input
             value={form.industry}
@@ -1253,11 +1216,11 @@ const CustomersList = ({
               })
             }
             placeholder="e.g. Construction"
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Contact Person
           <input
             value={form.contact_person}
@@ -1268,11 +1231,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Position
           <input
             value={form.position}
@@ -1284,11 +1247,11 @@ const CustomersList = ({
               })
             }
             placeholder="e.g. Project Manager"
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Client Status
           <select
             value={form.status}
@@ -1299,7 +1262,7 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 bg-white p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default bg-surface-card p-2.5 text-sm"
           >
             {clientStatuses.map(status => (
               <option
@@ -1312,7 +1275,7 @@ const CustomersList = ({
           </select>
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Estimated Budget (PHP)
           <input
             type="number"
@@ -1326,11 +1289,11 @@ const CustomersList = ({
               })
             }
             placeholder="0.00"
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200 md:col-span-2">
+        <label className="text-sm font-medium text-content-primary  md:col-span-2">
           Company Address
           <input
             value={form.address}
@@ -1341,11 +1304,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           City
           <input
             value={form.city}
@@ -1355,11 +1318,11 @@ const CustomersList = ({
                 city: event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Province
           <input
             value={form.province}
@@ -1370,11 +1333,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Postal Code
           <input
             value={form.postal_code}
@@ -1385,19 +1348,19 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
       </div>
 
       {/* PROJECT INFORMATION */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-        <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+        <h3 className="text-base font-semibold text-white ">
           Project Information
         </h3>
 
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-content-secondary">
           Information that can be used by Sales,
           Job Orders, Rentals, and Project
           Management.
@@ -1405,7 +1368,7 @@ const CustomersList = ({
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Project Location
           <input
             value={form.project_location}
@@ -1416,11 +1379,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+        <label className="text-sm font-medium text-content-primary ">
           Estimated Project Budget
           <input
             type="number"
@@ -1433,11 +1396,11 @@ const CustomersList = ({
                   event.target.value,
               })
             }
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200 md:col-span-2">
+        <label className="text-sm font-medium text-content-primary  md:col-span-2">
           Project Information
           <textarea
             value={
@@ -1452,11 +1415,11 @@ const CustomersList = ({
             }
             rows={3}
             placeholder="Project name, scope, requirements, timeline, etc."
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200 md:col-span-2">
+        <label className="text-sm font-medium text-content-primary  md:col-span-2">
           Technical Requirements
           <textarea
             value={
@@ -1470,11 +1433,11 @@ const CustomersList = ({
               })
             }
             rows={3}
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
 
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200 md:col-span-2">
+        <label className="text-sm font-medium text-content-primary  md:col-span-2">
           Site Condition
           <textarea
             value={form.site_condition}
@@ -1486,20 +1449,20 @@ const CustomersList = ({
               })
             }
             rows={3}
-            className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+            className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
           />
         </label>
       </div>
 
       {/* REMARKS */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-        <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+        <h3 className="text-base font-semibold text-white ">
           Remarks
         </h3>
       </div>
 
-      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200">
+      <label className="block text-sm font-medium text-content-primary ">
         Remarks / Notes
         <textarea
           value={form.remarks}
@@ -1512,7 +1475,7 @@ const CustomersList = ({
           }
           rows={4}
           placeholder="Add customer or client remarks..."
-          className="mt-1 w-full border border-neutral-300 p-2.5 text-sm"
+          className="mt-1 w-full border border-border-default p-2.5 text-sm bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
         />
       </label>
     </form>
@@ -1534,13 +1497,13 @@ const CustomersList = ({
 
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-blue-600" />
+          <MessageSquare className="h-4 w-4 text-brand" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Inquiries
           </h4>
 
-          <span className="text-sm text-neutral-500">
+          <span className="text-sm text-content-secondary">
             ({customer.inquiries_count ?? 0})
           </span>
         </div>
@@ -1552,28 +1515,26 @@ const CustomersList = ({
               inquiry => (
                 <div
                   key={inquiry.id}
-                  className="rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                  className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <div className="flex justify-between gap-3">
                     <p className="font-medium">
-                      {inquiry.source ||
-                        'Inquiry'}
+                      {inquiry.source || 'Inquiry'}
                     </p>
 
-                    <span className="text-xs text-neutral-500">
-                      {inquiry.status ||
-                        'Pending'}
+                    <span className="text-xs text-content-secondary">
+                      {inquiry.status || 'Pending'}
                     </span>
                   </div>
 
                   {inquiry.details && (
-                    <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+                    <p className="mt-1 text-sm text-content-secondary ">
                       {inquiry.details}
                     </p>
                   )}
 
                   {inquiry.remarks && (
-                    <p className="mt-1 text-xs text-neutral-500">
+                    <p className="mt-1 text-xs text-content-secondary">
                       Remarks: {inquiry.remarks}
                     </p>
                   )}
@@ -1582,7 +1543,7 @@ const CustomersList = ({
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No inquiry records available.
           </p>
         )}
@@ -1590,15 +1551,15 @@ const CustomersList = ({
 
       {/* LEADS / OPPORTUNITIES */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
           <BriefcaseBusiness className="h-4 w-4 text-orange-600" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Leads / Opportunities
           </h4>
 
-          <span className="text-sm text-neutral-500">
+          <span className="text-sm text-content-secondary">
             {(customer.leads_count ?? 0) +
               (customer.opportunities_count ??
                 0)}
@@ -1616,16 +1577,14 @@ const CustomersList = ({
             ].map(item => (
               <div
                 key={item.id}
-                className="rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
               >
                 <p className="font-medium">
-                  {item.name ||
-                    'Lead / Opportunity'}
+                  {item.name || 'Lead / Opportunity'}
                 </p>
 
-                <p className="text-sm text-neutral-500">
-                  {item.status ||
-                    'No status'}
+                <p className="text-sm text-content-secondary">
+                  {item.status || 'No status'}
                 </p>
 
                 {item.estimated_value !=
@@ -1640,7 +1599,7 @@ const CustomersList = ({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No leads or opportunities available.
           </p>
         )}
@@ -1648,15 +1607,15 @@ const CustomersList = ({
 
       {/* QUOTATIONS */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
           <FileText className="h-4 w-4 text-purple-600" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Quotations
           </h4>
 
-          <span className="text-sm text-neutral-500">
+          <span className="text-sm text-content-secondary">
             ({customer.quotations_count ?? 0})
           </span>
         </div>
@@ -1668,25 +1627,23 @@ const CustomersList = ({
               quotation => (
                 <div
                   key={quotation.id}
-                  className="rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                  className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">
-                        {quotation.quotation_number ||
-                          `Quotation #${quotation.id}`}
+                        {quotation.quotation_number || `Quotation #${quotation.id}`}
                       </p>
 
                       {quotation.title && (
-                        <p className="text-sm text-neutral-500">
+                        <p className="text-sm text-content-secondary">
                           {quotation.title}
                         </p>
                       )}
                     </div>
 
-                    <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
-                      {quotation.status ||
-                        'Draft'}
+                    <span className="rounded-full bg-zinc-800 px-2 py-1 text-xs text-content-primary">
+                      {quotation.status || 'Draft'}
                     </span>
                   </div>
 
@@ -1703,7 +1660,7 @@ const CustomersList = ({
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No quotation records available.
           </p>
         )}
@@ -1711,11 +1668,11 @@ const CustomersList = ({
 
       {/* JOB ORDERS */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
           <FolderKanban className="h-4 w-4 text-green-600" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Related Job Orders
           </h4>
         </div>
@@ -1728,23 +1685,21 @@ const CustomersList = ({
               item => (
                 <div
                   key={item.id}
-                  className="flex justify-between rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                  className="flex justify-between rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <span>
-                    {item.reference ||
-                      `Job Order #${item.id}`}
+                    {item.reference || `Job Order #${item.id}`}
                   </span>
 
-                  <span className="text-sm text-neutral-500">
-                    {item.status ||
-                      '—'}
+                  <span className="text-sm text-content-secondary">
+                    {item.status || '—'}
                   </span>
                 </div>
               )
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No related Job Orders available.
           </p>
         )}
@@ -1752,11 +1707,11 @@ const CustomersList = ({
 
       {/* RENTALS */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
           <Truck className="h-4 w-4 text-indigo-600" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Related Rentals
           </h4>
         </div>
@@ -1769,23 +1724,21 @@ const CustomersList = ({
               item => (
                 <div
                   key={item.id}
-                  className="flex justify-between rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                  className="flex justify-between rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <span>
-                    {item.reference ||
-                      `Rental #${item.id}`}
+                    {item.reference || `Rental #${item.id}`}
                   </span>
 
-                  <span className="text-sm text-neutral-500">
-                    {item.status ||
-                      '—'}
+                  <span className="text-sm text-content-secondary">
+                    {item.status || '—'}
                   </span>
                 </div>
               )
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No rental requests available.
           </p>
         )}
@@ -1793,11 +1746,11 @@ const CustomersList = ({
 
       {/* PROJECTS */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
           <FolderKanban className="h-4 w-4 text-cyan-600" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Related Projects
           </h4>
         </div>
@@ -1810,23 +1763,21 @@ const CustomersList = ({
               item => (
                 <div
                   key={item.id}
-                  className="flex justify-between rounded-lg border border-neutral-200 p-3 dark:border-white/10"
+                  className="flex justify-between rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <span>
-                    {item.reference ||
-                      `Project #${item.id}`}
+                    {item.reference || `Project #${item.id}`}
                   </span>
 
-                  <span className="text-sm text-neutral-500">
-                    {item.status ||
-                      '—'}
+                  <span className="text-sm text-content-secondary">
+                    {item.status || '—'}
                   </span>
                 </div>
               )
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No related projects available.
           </p>
         )}
@@ -1834,11 +1785,11 @@ const CustomersList = ({
 
       {/* INTERACTION HISTORY */}
 
-      <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
+      <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
         <div className="mb-3 flex items-center gap-2">
-          <History className="h-4 w-4 text-neutral-600" />
+          <History className="h-4 w-4 text-content-secondary" />
 
-          <h4 className="font-semibold text-neutral-900 dark:text-white">
+          <h4 className="font-semibold text-white ">
             Interaction History
           </h4>
         </div>
@@ -1851,21 +1802,18 @@ const CustomersList = ({
               interaction => (
                 <div
                   key={interaction.id}
-                  className="border-l-2 border-neutral-300 pl-3"
+                  className="border-l-2 border-border-default pl-3 bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md"
                 >
                   <p className="font-medium">
-                    {interaction.type ||
-                      'Interaction'}
+                    {interaction.type || 'Interaction'}
                   </p>
 
-                  <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                    {interaction.description ||
-                      'No description'}
+                  <p className="text-sm text-content-secondary ">
+                    {interaction.description || 'No description'}
                   </p>
 
-                  <p className="mt-1 text-xs text-neutral-500">
-                    {interaction.date ||
-                      'No date'}
+                  <p className="mt-1 text-xs text-content-secondary">
+                    {interaction.date || 'No date'}
                     {interaction.user
                       ? ` · ${interaction.user}`
                       : ''}
@@ -1875,7 +1823,7 @@ const CustomersList = ({
             )}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-content-secondary">
             No interaction history available.
           </p>
         )}
@@ -1893,7 +1841,7 @@ const CustomersList = ({
     <>
       <Head title="Customer & Client Management" />
 
-      <AppLayout
+      <AppLayout dark={true}
         title="Customer & Client Management"
         headerAction={
           isSalesBusinessDevelopment ? (
@@ -1924,11 +1872,11 @@ const CustomersList = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardBody>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <p className="text-xs font-medium text-content-secondary dark:text-zinc-600">
                   Total Customers
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
+                <p className="mt-1 text-2xl font-bold text-white ">
                   {totalCustomers}
                 </p>
               </CardBody>
@@ -1936,7 +1884,7 @@ const CustomersList = ({
 
             <Card>
               <CardBody>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <p className="text-xs font-medium text-content-secondary dark:text-zinc-600">
                   Active Clients
                 </p>
 
@@ -1948,7 +1896,7 @@ const CustomersList = ({
 
             <Card>
               <CardBody>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <p className="text-xs font-medium text-content-secondary dark:text-zinc-600">
                   Prospects
                 </p>
 
@@ -1960,16 +1908,16 @@ const CustomersList = ({
 
             <Card>
               <CardBody>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <p className="text-xs font-medium text-content-secondary dark:text-zinc-600">
                   CRM Activities
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
+                <p className="mt-1 text-2xl font-bold text-white ">
                   {totalInquiries +
                     totalQuotations}
                 </p>
 
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-content-secondary">
                   {totalInquiries} inquiries ·{' '}
                   {totalQuotations} quotations
                 </p>
@@ -1997,15 +1945,15 @@ const CustomersList = ({
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center rounded-lg border border-neutral-200 bg-white p-1">
+                <div className="flex flex-wrap items-center rounded-lg border border-border-subtle bg-surface-card p-1">
                   <button
                     onClick={() =>
                       setStatusFilter('all')
                     }
                     className={`rounded-md px-4 py-2 text-sm font-medium ${
                       statusFilter === 'all'
-                        ? 'bg-[#0b1733] text-white'
-                        : 'text-neutral-600 hover:bg-neutral-50'
+                        ? 'bg-brand text-black'
+                        : 'text-content-secondary hover:bg-[#121213]'
                     }`}
                   >
                     All
@@ -2023,8 +1971,8 @@ const CustomersList = ({
                         className={`rounded-md px-3 py-2 text-sm font-medium ${
                           statusFilter ===
                           status.value
-                            ? 'bg-[#0b1733] text-white'
-                            : 'text-neutral-600 hover:bg-neutral-50'
+                            ? 'bg-brand text-black'
+                            : 'text-content-secondary hover:bg-[#121213]'
                         }`}
                       >
                         {status.label}
@@ -2038,7 +1986,7 @@ const CustomersList = ({
                     setStatusFilter('all');
                     setSearchQuery('');
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-card px-4 py-2 text-sm font-medium text-content-secondary hover:bg-[#121213]"
                 >
                   <Filter className="h-4 w-4" />
                   Clear Filters
@@ -2046,7 +1994,7 @@ const CustomersList = ({
 
                 <button
                   onClick={exportCustomers}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-card px-4 py-2 text-sm font-medium text-content-secondary hover:bg-[#121213]"
                 >
                   <Download className="h-4 w-4" />
                   Export
@@ -2054,7 +2002,7 @@ const CustomersList = ({
               </div>
 
               <div className="mt-3 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                <label className="flex items-center gap-2 text-sm text-content-secondary ">
                   <input
                     type="checkbox"
                     checked={showArchived}
@@ -2069,7 +2017,7 @@ const CustomersList = ({
                   Show archived
                 </label>
 
-                <span className="text-sm text-neutral-500">
+                <span className="text-sm text-content-secondary">
                   {filteredCustomers.length}{' '}
                   records
                 </span>
@@ -2134,8 +2082,7 @@ const CustomersList = ({
               </div>
             }
           >
-            {customerForm(
-              'create-customer-form',
+            {customerForm( 'create-customer-form',
               createCustomer
             )}
           </Modal>
@@ -2151,8 +2098,7 @@ const CustomersList = ({
             }
             title={
               selectedCustomer?.company_name ||
-              selectedCustomer?.name ||
-              'Customer Details'
+              selectedCustomer?.name || 'Customer Details'
             }
             size="xl"
             footer={
@@ -2214,7 +2160,7 @@ const CustomersList = ({
 
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-neutral-900 dark:text-white">
+                      <h3 className="font-semibold text-white ">
                         {selectedCustomer.company_name ||
                           selectedCustomer.name}
                       </h3>
@@ -2226,10 +2172,9 @@ const CustomersList = ({
                       />
                     </div>
 
-                    <p className="mt-1 text-sm text-neutral-500">
+                    <p className="mt-1 text-sm text-content-secondary">
                       Customer Reference:{' '}
-                      {selectedCustomer.customer_reference ||
-                        `CUS-${new Date().getFullYear()}-${String(
+                      {selectedCustomer.customer_reference || `CUS-${new Date().getFullYear()}-${String(
                           selectedCustomer.id
                         ).padStart(3, '0')}`}
                     </p>
@@ -2238,64 +2183,59 @@ const CustomersList = ({
 
                 {/* BASIC INFORMATION */}
 
-                <div className="grid grid-cols-1 gap-4 border-y border-neutral-200 py-5 dark:border-white/10 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 border-y border-border-subtle py-5 border-border-default sm:grid-cols-2 lg:grid-cols-3 bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Contact Person
                     </p>
 
                     <p className="mt-1 font-medium">
-                      {selectedCustomer.contact_person ||
-                        '—'}
+                      {selectedCustomer.contact_person || '—'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Position
                     </p>
 
                     <p className="mt-1 font-medium">
-                      {selectedCustomer.position ||
-                        '—'}
+                      {selectedCustomer.position || '—'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Industry / Business Type
                     </p>
 
                     <p className="mt-1 font-medium">
-                      {selectedCustomer.industry ||
-                        '—'}
+                      {selectedCustomer.industry || '—'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Contact Number
                     </p>
 
                     <p className="mt-1 font-medium">
-                      {selectedCustomer.phone ||
-                        '—'}
+                      {selectedCustomer.phone || '—'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Email Address
                     </p>
 
                     <p className="mt-1 font-medium">
-                      {selectedCustomer.email ||
-                        '—'}
+                      {selectedCustomer.email || '—'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Client Status
                     </p>
 
@@ -2311,7 +2251,7 @@ const CustomersList = ({
 
                 {/* ADDRESS */}
 
-                <div className="flex gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                <div className="flex gap-2 text-sm text-content-secondary ">
                   <MapPin className="h-4 w-4 shrink-0" />
 
                   <span>
@@ -2322,8 +2262,7 @@ const CustomersList = ({
                       selectedCustomer.postal_code,
                     ]
                       .filter(Boolean)
-                      .join(', ') ||
-                      'No company address recorded'}
+                      .join(', ') || 'No company address recorded'}
                   </span>
                 </div>
 
@@ -2333,15 +2272,15 @@ const CustomersList = ({
                   selectedCustomer.project_location ||
                   selectedCustomer.technical_requirements ||
                   selectedCustomer.site_condition) && (
-                  <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white">
+                  <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <h4 className="font-semibold text-white ">
                       Project Information
                     </h4>
 
                     <div className="mt-3 space-y-3 text-sm">
                       {selectedCustomer.project_information && (
                         <div>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-content-secondary">
                             Project
                           </p>
 
@@ -2355,7 +2294,7 @@ const CustomersList = ({
 
                       {selectedCustomer.project_location && (
                         <div>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-content-secondary">
                             Project Location
                           </p>
 
@@ -2369,7 +2308,7 @@ const CustomersList = ({
 
                       {selectedCustomer.technical_requirements && (
                         <div>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-content-secondary">
                             Technical Requirements
                           </p>
 
@@ -2383,7 +2322,7 @@ const CustomersList = ({
 
                       {selectedCustomer.site_condition && (
                         <div>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-content-secondary">
                             Site Condition
                           </p>
 
@@ -2401,19 +2340,19 @@ const CustomersList = ({
                 {/* CRM SUMMARY */}
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded-lg border border-neutral-200 p-3 dark:border-white/10">
-                    <p className="text-xs text-neutral-500">
+                  <div className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <p className="text-xs text-content-secondary">
                       Inquiries
                     </p>
 
-                    <p className="mt-1 text-xl font-bold text-blue-600">
+                    <p className="mt-1 text-xl font-bold text-brand">
                       {selectedCustomer.inquiries_count ??
                         0}
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-neutral-200 p-3 dark:border-white/10">
-                    <p className="text-xs text-neutral-500">
+                  <div className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <p className="text-xs text-content-secondary">
                       Leads
                     </p>
 
@@ -2423,8 +2362,8 @@ const CustomersList = ({
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-neutral-200 p-3 dark:border-white/10">
-                    <p className="text-xs text-neutral-500">
+                  <div className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <p className="text-xs text-content-secondary">
                       Opportunities
                     </p>
 
@@ -2434,8 +2373,8 @@ const CustomersList = ({
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-neutral-200 p-3 dark:border-white/10">
-                    <p className="text-xs text-neutral-500">
+                  <div className="rounded-lg border border-border-subtle p-3 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <p className="text-xs text-content-secondary">
                       Quotations
                     </p>
 
@@ -2450,7 +2389,7 @@ const CustomersList = ({
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Total Spending
                     </p>
 
@@ -2463,7 +2402,7 @@ const CustomersList = ({
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Job Orders
                     </p>
 
@@ -2474,14 +2413,13 @@ const CustomersList = ({
                   </div>
 
                   <div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-content-secondary">
                       Last Activity
                     </p>
 
                     <p className="mt-1 font-semibold">
                       {selectedCustomer.last_activity ||
-                        selectedCustomer.last_order_date ||
-                        '—'}
+                        selectedCustomer.last_order_date || '—'}
                     </p>
                   </div>
                 </div>
@@ -2490,12 +2428,12 @@ const CustomersList = ({
 
                 {(selectedCustomer.remarks ||
                   selectedCustomer.notes) && (
-                  <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white">
+                  <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                    <h4 className="font-semibold text-white ">
                       Remarks
                     </h4>
 
-                    <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
+                    <p className="mt-2 text-sm text-content-secondary ">
                       {selectedCustomer.remarks ||
                         selectedCustomer.notes}
                     </p>
@@ -2504,8 +2442,8 @@ const CustomersList = ({
 
                 {/* RELATED CRM AND TRANSACTIONS */}
 
-                <div className="border-t border-neutral-200 pt-5 dark:border-white/10">
-                  <h3 className="mb-4 text-base font-semibold text-neutral-900 dark:text-white">
+                <div className="border-t border-border-subtle pt-5 border-border-default bg-surface-input text-white focus:border-brand focus:ring-1 focus:ring-brand outline-none rounded-md">
+                  <h3 className="mb-4 text-base font-semibold text-white ">
                     CRM & Related Transactions
                   </h3>
 
@@ -2551,8 +2489,7 @@ const CustomersList = ({
               </div>
             }
           >
-            {customerForm(
-              'edit-customer-form',
+            {customerForm( 'edit-customer-form',
               updateCustomer
             )}
           </Modal>

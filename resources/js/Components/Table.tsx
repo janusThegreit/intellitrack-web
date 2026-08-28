@@ -47,7 +47,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
   }, ref) => {
     const handleSort = (column: any) => {
       if (!column.sortable || !onSort) return;
-      
+
       const newOrder = sortBy === column.key && sortOrder === 'asc' ? 'desc' : 'asc';
       onSort(column.key, newOrder);
     };
@@ -62,17 +62,16 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     };
 
     return (
-      <div ref={ref} className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div ref={ref} className="overflow-x-auto rounded-xl border border-border-default bg-surface-card">
         <table className="w-full">
-          <thead className="border-b border-slate-100">
+          <thead className="border-b border-border-subtle">
             <tr>
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
                   onClick={() => handleSort(column)}
-                  className={clsx(
-                    'px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-400',
-                    column.sortable && 'cursor-pointer hover:bg-slate-50',
+                  className={clsx( 'px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-content-secondary',
+                    column.sortable && 'cursor-pointer hover:bg-surface-input',
                     column.className
                   )}
                   style={column.width ? { width: column.width } : undefined}
@@ -94,7 +93,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                      <span className="text-slate-500">Loading...</span>
+                    <span className="text-content-secondary">Loading...</span>
                   </div>
                 </td>
               </tr>
@@ -109,7 +108,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
             {!loading && !error && (data.length === 0 || empty) && (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-12 text-center">
-                  <p className="text-slate-500">{emptyMessage}</p>
+                  <p className="text-content-secondary">{emptyMessage}</p>
                 </td>
               </tr>
             )}
@@ -117,17 +116,15 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
               <tr
                 key={String(row[rowKey as keyof typeof row] || idx)}
                 onClick={() => onRowClick?.(row)}
-                className={clsx(
-                  'border-b border-slate-100 transition-colors',
-                  striped && idx % 2 === 0 && 'bg-slate-50/50',
-                  hoverable && 'cursor-pointer hover:bg-blue-50/40'
+                className={clsx( 'border-b border-border-subtle transition-colors',
+                  striped && idx % 2 === 0 && 'bg-surface-app',
+                  hoverable && 'cursor-pointer hover:bg-surface-input'
                 )}
               >
                 {columns.map((column) => (
                   <td
                     key={String(column.key)}
-                    className={clsx(
-                      'px-5 text-sm text-slate-700',
+                    className={clsx( 'px-5 text-sm text-content-secondary',
                       compact ? 'py-2.5' : 'py-4',
                       column.className
                     )}

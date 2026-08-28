@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/dashboard');
 });
 
 Route::middleware('guest')->group(function () {
@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports', fn () => Inertia::render('Reports/Index'))->middleware('can:view-core-dashboard')->name('reports');
     Route::get('/ai-analytics', fn () => Inertia::render('AiAnalytics/Index'))->middleware('can:view-reports')->name('ai-analytics');
     Route::get('/users', fn () => Inertia::render('Users/Index'))->middleware('can:manage-users')->name('users');
+    Route::get('/roles', fn () => Inertia::render('Roles/Index'))->middleware('can:manage-users')->name('roles');
+    Route::get('/logs', fn () => Inertia::render('Logs/Index'))->middleware('can:manage-users')->name('logs');
     Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

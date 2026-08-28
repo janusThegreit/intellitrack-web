@@ -54,7 +54,7 @@ const CustomerForm = ({ customer, isEditing = false }: CustomerFormProps) => {
   return (
     <>
       <Head title={isEditing ? 'Edit Customer' : 'New Customer'} />
-      <AppLayout title={isEditing ? 'Edit Customer' : 'Add New Customer'}>
+      <AppLayout dark={true} title={isEditing ? 'Edit Customer' : 'Add New Customer'}>
         <div className="max-w-4xl">
           <button
             onClick={() => window.history.back()}

@@ -22,7 +22,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       success: 'bg-emerald-50 text-emerald-700',
       warning: 'bg-amber-50 text-amber-700',
       error: 'bg-red-50 text-red-700',
-      neutral: 'bg-slate-100 text-slate-700',
+      neutral: 'bg-surface-input text-content-secondary',
       info: 'bg-blue-50 text-blue-700',
     };
 
@@ -44,8 +44,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
     return (
       <span
         ref={ref}
-        className={clsx(
-          'inline-flex items-center gap-1.5 rounded-full font-medium transition-colors',
+        className={clsx( 'inline-flex items-center gap-1.5 rounded-full font-medium transition-colors',
           variants[variant],
           sizes[size],
           className
@@ -68,46 +67,17 @@ interface StatusBadgeProps {
 
 const getStatusConfig = (status: string) => {
   const statusMap: Record<string, { variant: 'success' | 'warning' | 'error' | 'primary' | 'neutral'; label: string }> = {
-    // Customer statuses
-    'active': { variant: 'success', label: 'Active' },
-    'inactive': { variant: 'neutral', label: 'Inactive' },
-    'suspended': { variant: 'error', label: 'Suspended' },
+    // Customer statuses 'active': { variant: 'success', label: 'Active' }, 'inactive': { variant: 'neutral', label: 'Inactive' }, 'suspended': { variant: 'error', label: 'Suspended' },
     
-    // Job Order statuses
-    'pending': { variant: 'warning', label: 'Pending' },
-    'approved': { variant: 'primary', label: 'Approved' },
-    'in-progress': { variant: 'primary', label: 'In Progress' },
-    'completed': { variant: 'success', label: 'Completed' },
-    'cancelled': { variant: 'error', label: 'Cancelled' },
-    'on-hold': { variant: 'warning', label: 'On Hold' },
+    // Job Order statuses 'pending': { variant: 'warning', label: 'Pending' }, 'approved': { variant: 'primary', label: 'Approved' }, 'in-progress': { variant: 'primary', label: 'In Progress' }, 'completed': { variant: 'success', label: 'Completed' }, 'cancelled': { variant: 'error', label: 'Cancelled' }, 'on-hold': { variant: 'warning', label: 'On Hold' },
     
-    // Rental statuses
-    'available': { variant: 'success', label: 'Available' },
-    'rented': { variant: 'primary', label: 'Rented' },
-    'maintenance': { variant: 'warning', label: 'Maintenance' },
-    'retired': { variant: 'neutral', label: 'Retired' },
+    // Rental statuses 'available': { variant: 'success', label: 'Available' }, 'rented': { variant: 'primary', label: 'Rented' }, 'maintenance': { variant: 'warning', label: 'Maintenance' }, 'retired': { variant: 'neutral', label: 'Retired' },
     
-    // Project statuses
-    'planning': { variant: 'primary', label: 'Planning' },
-    'active': { variant: 'primary', label: 'Active' },
-    'on-hold': { variant: 'warning', label: 'On Hold' },
-    'completed': { variant: 'success', label: 'Completed' },
-    'cancelled': { variant: 'error', label: 'Cancelled' },
+    // Project statuses 'planning': { variant: 'primary', label: 'Planning' }, 'active': { variant: 'primary', label: 'Active' }, 'on-hold': { variant: 'warning', label: 'On Hold' }, 'completed': { variant: 'success', label: 'Completed' }, 'cancelled': { variant: 'error', label: 'Cancelled' },
     
-    // Invoice statuses
-    'draft': { variant: 'neutral', label: 'Draft' },
-    'sent': { variant: 'primary', label: 'Sent' },
-    'partially-paid': { variant: 'warning', label: 'Partially Paid' },
-    'paid': { variant: 'success', label: 'Paid' },
-    'overdue': { variant: 'error', label: 'Overdue' },
-    'cancelled': { variant: 'error', label: 'Cancelled' },
+    // Invoice statuses 'draft': { variant: 'neutral', label: 'Draft' }, 'sent': { variant: 'primary', label: 'Sent' }, 'partially-paid': { variant: 'warning', label: 'Partially Paid' }, 'paid': { variant: 'success', label: 'Paid' }, 'overdue': { variant: 'error', label: 'Overdue' }, 'cancelled': { variant: 'error', label: 'Cancelled' },
     
-    // Payment statuses
-    'pending': { variant: 'warning', label: 'Pending' },
-    'processing': { variant: 'primary', label: 'Processing' },
-    'completed': { variant: 'success', label: 'Completed' },
-    'failed': { variant: 'error', label: 'Failed' },
-    'refunded': { variant: 'neutral', label: 'Refunded' },
+    // Payment statuses 'pending': { variant: 'warning', label: 'Pending' }, 'processing': { variant: 'primary', label: 'Processing' }, 'completed': { variant: 'success', label: 'Completed' }, 'failed': { variant: 'error', label: 'Failed' }, 'refunded': { variant: 'neutral', label: 'Refunded' },
   };
 
   return statusMap[status.toLowerCase()] || { variant: 'neutral', label: status };

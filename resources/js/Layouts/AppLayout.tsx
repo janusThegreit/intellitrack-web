@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from '@inertiajs/react';
 import clsx from 'clsx';
 import {
   LayoutDashboard,
@@ -21,15 +22,23 @@ import {
   TrendingUp,
   FileStack,
   UserCircle,
+  Moon,
+  Sun,
+  Shield,
+  History,
 } from 'lucide-react';
 
 // Inline Intelitrack logo icon
-const IntelitrackIcon = () => (
-  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563eb] shadow-lg">
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 13L7 9L10 12L15 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="15" cy="5" r="2" fill="white"/>
-    </svg>
+const IntelitrackIcon = ({ isAdmin = false }: { isAdmin?: boolean }) => (
+  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ffcc00] shadow-lg">
+    {isAdmin ? (
+      <Truck className="h-5 w-5 text-black" />
+    ) : (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 13L7 9L10 12L15 5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="15" cy="5" r="2" fill="black"/>
+      </svg>
+    )}
   </div>
 );
 
@@ -47,6 +56,7 @@ const navItems: NavItem[] = [
     label: 'Dashboard',
     icon: <LayoutDashboard className="w-4 h-4" />,
     href: '/dashboard',
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'CRM',
@@ -58,43 +68,67 @@ const navItems: NavItem[] = [
       { label: 'Leads & Opportunities', icon: <TrendingUp className="w-3.5 h-3.5" />, href: '/sales-opportunities' },
       { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/quotations' },
     ],
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'Clients',
     icon: <Users className="w-4 h-4" />,
     href: '/clients',
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'Job Orders',
     icon: <FileText className="w-4 h-4" />,
     href: '/job-orders',
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'Rentals',
     icon: <Truck className="w-4 h-4" />,
     href: '/rental-requirements',
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'Projects',
     icon: <FolderKanban className="w-4 h-4" />,
     href: '/projects',
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'AI Analytics',
     icon: <Sparkles className="w-4 h-4" />,
     href: '/ai-analytics',
     badge: 'AI',
-    roles: ['administrator', 'sales_manager'],
+    roles: ['sales_manager'],
   },
   {
     label: 'Reports',
     icon: <BarChart3 className="w-4 h-4" />,
     href: '/reports',
+    roles: ['sales_manager'],
   },
   {
     label: 'User Management',
-    icon: <Settings className="w-4 h-4" />,
+    icon: <Users className="w-4 h-4" />,
     href: '/users',
+    roles: ['administrator'],
+  },
+  {
+    label: 'Roles & Permissions',
+    icon: <Shield className="w-4 h-4" />,
+    href: '/roles',
+    roles: ['administrator'],
+  },
+  {
+    label: 'System Logs',
+    icon: <History className="w-4 h-4" />,
+    href: '/logs',
+    roles: ['administrator'],
+  },
+  {
+    label: 'Settings',
+    icon: <Settings className="w-4 h-4" />,
+    href: '/settings',
     roles: ['administrator'],
   },
 ];
@@ -129,7 +163,6 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
   };
 
   const availableNavItems = navItems.filter((item) => !item.roles || item.roles.includes(userRole));
-
   const NavLink = ({ item, isChild = false }: { item: NavItem; isChild?: boolean }) => {
     const isActive = isChild
       ? currentPath.startsWith(item.href)
@@ -143,15 +176,14 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
           <button
             type="button"
             onClick={() => toggleExpand(item.label)}
-            className={clsx(
-              'flex w-full items-center rounded-lg transition-colors duration-150',
+            className={clsx( 'flex w-full items-center rounded-lg transition-colors duration-150',
               isCompact ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
               isActive
-                ? isCollapsed ? 'bg-[#2563eb] text-white' : 'bg-white/10 text-white'
-                : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
+                ? isCollapsed ? 'bg-brand text-black' : 'bg-[#ffcc00]/10 text-brand'
+                : 'text-content-secondary hover:bg-white/8 hover:text-slate-200'
             )}
           >
-            <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-white' : 'text-slate-400')}>{item.icon}</span>
+            <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-brand' : 'text-content-secondary')}>{item.icon}</span>
             {!isCompact && (
               <>
                 <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
@@ -171,19 +203,18 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
     }
 
     return (
-      <a
+      <Link
         href={item.href}
         title={isCompact ? item.label : undefined}
-        className={clsx(
-          'flex items-center rounded-lg transition-colors duration-150',
+        className={clsx( 'flex items-center rounded-lg transition-colors duration-150',
           isCompact ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
           isChild ? '!py-1.5 !pl-2 text-sm' : 'text-sm font-medium',
           isActive
-            ? isCollapsed ? 'bg-[#2563eb] text-white shadow-md' : 'bg-white/10 text-white'
-            : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
+            ? isCollapsed ? 'bg-brand text-brand-content shadow-md' : 'border-l-[3px] border-brand bg-zinc-900/50 text-brand'
+            : 'border-l-[3px] border-transparent text-content-secondary hover:bg-surface-input hover:text-content-primary'
         )}
       >
-        <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-white' : 'text-slate-400')}>{item.icon}</span>
+        <span className={clsx('shrink-0 flex items-center justify-center', isActive ? 'text-brand' : 'text-content-secondary')}>{item.icon}</span>
         {!isCompact && (
           <span className="flex-1">{item.label}</span>
         )}
@@ -192,7 +223,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
             {item.badge}
           </span>
         )}
-      </a>
+      </Link>
     );
   };
 
@@ -203,21 +234,25 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
       )}
 
       <aside
-        className={clsx(
-          'fixed lg:static flex h-screen flex-col bg-[#0f1623] text-white transition-all duration-300 z-40',
+        className={clsx( 'fixed lg:static flex h-screen flex-col bg-surface-app border-r border-border-subtle text-content-primary transition-all duration-300 z-40',
           isCompact ? 'w-[72px]' : 'w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         {/* Logo */}
-        <div className={clsx('flex items-center border-b border-white/8 py-4', isCompact ? 'justify-center px-4' : 'gap-3 px-5')}>
-          <IntelitrackIcon />
+        <div className={clsx('flex items-center border-b border-border-subtle py-4', isCompact ? 'justify-center px-4' : 'gap-3 px-5')}>
+          <IntelitrackIcon isAdmin={userRole === 'administrator'} />
           {!isCompact && (
-            <span className="text-base font-bold tracking-tight text-white">Intelitrack</span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold tracking-tight text-content-primary">IntelliTrack</span>
+              {userRole === 'administrator' && (
+                <span className="text-[10px] font-semibold text-content-secondary uppercase tracking-widest">Administration</span>
+              )}
+            </div>
           )}
           <button
             onClick={onClose}
-            className="ml-auto p-1 text-slate-400 hover:text-white lg:hidden"
+            className="ml-auto p-1 text-content-secondary hover:text-white lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -231,21 +266,38 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
         </nav>
 
         {/* Bottom: role + collapse */}
-        <div className="border-t border-white/8 px-3 py-3">
-          {!isCollapsed && (
-            <div className="mb-2 flex items-center gap-2 rounded-md px-2 py-1.5">
-              <div className="h-2 w-2 rounded-full border border-slate-400" />
-              <span className="text-xs text-slate-400">{formatRole(userRole)}</span>
-            </div>
+        <div className="border-t border-border-subtle px-3 py-3">
+          {userRole === 'administrator' ? (
+            <button
+              type="button"
+              onClick={async () => {
+                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+                await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' } });
+                window.location.href = '/login';
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-500/10"
+            >
+              <LogOut className="h-4 w-4" />
+              {!isCompact && <span>Logout</span>}
+            </button>
+          ) : (
+            <>
+              {!isCollapsed && (
+                <div className="mb-2 flex items-center gap-2 rounded-md px-2 py-1.5">
+                  <div className="h-2 w-2 rounded-full border border-slate-400" />
+                  <span className="text-xs text-content-secondary">{formatRole(userRole)}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden w-full items-center justify-center rounded-md p-2 text-content-secondary hover:bg-white/8 hover:text-slate-200 lg:flex"
+                aria-label={isCollapsed ? 'Expand menu' : 'Collapse menu'}
+              >
+                <ChevronRight className={clsx('h-4 w-4 transition-transform duration-200', !isCompact && 'rotate-180')} />
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="hidden w-full items-center justify-center rounded-md p-2 text-slate-500 hover:bg-white/8 hover:text-slate-200 lg:flex"
-            aria-label={isCollapsed ? 'Expand menu' : 'Collapse menu'}
-          >
-            <ChevronRight className={clsx('h-4 w-4 transition-transform duration-200', !isCompact && 'rotate-180')} />
-          </button>
         </div>
       </aside>
     </>
@@ -256,6 +308,8 @@ interface HeaderProps {
   title?: string;
   action?: React.ReactNode;
   userRole?: string;
+  dark?: boolean;
+  onToggleDark?: () => void;
 }
 
 const formatRole = (role: string) => ({
@@ -264,7 +318,7 @@ const formatRole = (role: string) => ({
   sales_business_development: 'Sales BD',
 }[role] ?? 'User');
 
-const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: HeaderProps) => {
+const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager', dark = false, onToggleDark }: HeaderProps) => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [profile, setProfile] = useState<{ name: string; nickname?: string; first_name?: string; avatar_url?: string; role?: string } | null>(null);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
@@ -340,20 +394,22 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
   const unreadCount = notifications.filter(n => !n.read_at).length;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
+    <header className={clsx("w-full", dark ? "bg-transparent text-white" : "bg-transparent text-content-primary")}>
       <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:gap-3 sm:px-5">
         {/* Mobile menu */}
-        <button onClick={onSidebarToggle} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden">
-          <Menu className="h-5 w-5" />
-        </button>
+        {userRole !== 'sales_manager' && (
+          <button onClick={onSidebarToggle} className={clsx("rounded-md p-1.5", dark ? "text-content-secondary hover:bg-border-subtle" : "text-content-secondary hover:bg-surface-input lg:hidden")}>
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Breadcrumb */}
-        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
-          <span className="hidden font-medium text-slate-700 sm:inline">Intelitrack</span>
+        <div className={clsx("flex min-w-0 items-center gap-1.5 text-sm", dark ? "text-content-secondary" : "text-content-secondary")}>
+          <span className={clsx("hidden font-medium sm:inline", dark ? "text-slate-200" : "text-content-secondary")}>IntelliTrack</span>
           {title && (
             <>
-              <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              <span className="max-w-[45vw] truncate text-slate-500 sm:max-w-none">{title}</span>
+              <ChevronRight className={clsx("h-3.5 w-3.5", dark ? "text-content-secondary" : "text-content-secondary")} />
+              <span className="max-w-[45vw] truncate sm:max-w-none">{title}</span>
             </>
           )}
         </div>
@@ -362,20 +418,23 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="ml-auto hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-300 hover:bg-slate-100 md:flex"
+          className={clsx("ml-auto hidden items-center gap-2 rounded-lg border px-3 py-1.5 text-sm md:flex", dark ? "border-border-subtle bg-zinc-900/50 text-content-secondary hover:border-zinc-700 hover:bg-border-subtle" : "border-border-default bg-surface-app text-content-secondary hover:border-slate-300 hover:bg-surface-input")}
         >
           <Search className="h-3.5 w-3.5" />
           <span>Search...</span>
-          <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">⌘K</span>
+          <span className={clsx("ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium", dark ? "bg-zinc-800 text-content-secondary" : "bg-slate-200 text-content-secondary")}>⌘K</span>
         </button>
 
         {/* Right actions */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-3">
           {action}
 
-          {/* Help */}
-          <button className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:flex">
-            <HelpCircle className="h-4.5 w-4.5" />
+          {/* Dark Mode Toggle */}
+          <button 
+            onClick={onToggleDark} 
+            className={clsx("h-8 w-8 items-center justify-center rounded-full flex", dark ? "text-content-secondary hover:bg-border-subtle hover:text-white" : "text-content-secondary hover:bg-surface-input hover:text-slate-600")}
+          >
+            {dark ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
           </button>
 
           {/* Notifications */}
@@ -383,7 +442,7 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
             <button
               type="button"
               onClick={() => { setNotificationMenuOpen(!notificationMenuOpen); if (!notificationMenuOpen) loadNotifications(); }}
-              className="relative flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="relative flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-input hover:text-slate-600"
               aria-label="Notifications"
             >
               <Bell className="h-4.5 w-4.5" />
@@ -394,23 +453,23 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
               )}
             </button>
             {notificationMenuOpen && (
-              <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-slate-200 bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-800">Notifications</p>
-                  <button type="button" onClick={markAllRead} className="text-xs font-medium text-[#2563eb]">Mark all read</button>
+              <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-border-default bg-surface-card shadow-xl">
+                <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+                  <p className="text-sm font-semibold text-content-primary">Notifications</p>
+                  <button type="button" onClick={markAllRead} className="text-xs font-medium text-brand">Mark all read</button>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length ? notifications.map(n => (
-                    <button key={n.id} type="button" onClick={() => void markRead(n.id)} className={`block w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50 ${n.read_at ? 'opacity-60' : ''}`}>
+                    <button key={n.id} type="button" onClick={() => void markRead(n.id)} className={`block w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-surface-input ${n.read_at ? 'opacity-60' : ''}`}>
                       <div className="flex items-start gap-2">
-                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? 'bg-slate-300' : n.type === 'urgent' ? 'bg-red-500' : 'bg-[#2563eb]'}`} />
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? 'bg-slate-300' : n.type === 'urgent' ? 'bg-red-500' : 'bg-brand'}`} />
                         <div>
-                          <p className="text-sm font-medium text-slate-800">{n.title}</p>
-                          <p className="mt-0.5 text-xs text-slate-500">{n.message}</p>
+                          <p className="text-sm font-medium text-content-primary">{n.title}</p>
+                          <p className="mt-0.5 text-xs text-content-secondary">{n.message}</p>
                         </div>
                       </div>
                     </button>
-                  )) : <p className="p-5 text-center text-sm text-slate-400">No notifications yet.</p>}
+                  )) : <p className="p-5 text-center text-sm text-content-secondary">No notifications yet.</p>}
                 </div>
               </div>
             )}
@@ -424,18 +483,18 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
               className="flex items-center gap-1.5 rounded-full"
               aria-expanded={accountMenuOpen}
             >
-              <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#2563eb] text-xs font-bold text-white">
+              <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand text-xs font-bold text-black">
                 {profile?.avatar_url ? <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" /> : initials}
               </span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+              <ChevronDown className="h-3.5 w-3.5 text-content-secondary" />
             </button>
             {accountMenuOpen && (
-              <div className="absolute right-0 top-10 z-50 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
-                <div className="border-b border-slate-100 px-3 py-2 mb-1">
-                  <p className="text-sm font-semibold text-slate-800">{accountName}</p>
-                  <p className="text-xs text-slate-400">{formatRole(profile?.role ?? userRole)}</p>
+              <div className="absolute right-0 top-10 z-50 w-44 rounded-xl border border-border-default bg-surface-card p-1 shadow-xl">
+                <div className="border-b border-border-subtle px-3 py-2 mb-1">
+                  <p className="text-sm font-semibold text-content-primary">{accountName}</p>
+                  <p className="text-xs text-content-secondary">{formatRole(profile?.role ?? userRole)}</p>
                 </div>
-                <a href="/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                <a href="/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-content-secondary hover:bg-surface-input">
                   <Settings className="h-3.5 w-3.5" />
                   Settings
                 </a>
@@ -452,9 +511,9 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
       {/* Search modal */}
       {searchOpen && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center bg-slate-950/20 p-4 pt-[12vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-              <Search className="h-4 w-4 text-slate-400" />
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border-default bg-surface-card shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3">
+              <Search className="h-4 w-4 text-content-secondary" />
               <input
                 autoFocus
                 value={searchTerm}
@@ -463,7 +522,7 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
                 placeholder="Search customers, quotations, job orders, rentals, projects..."
                 className="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400"
               />
-              <span className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-400">ESC</span>
+              <span className="rounded border border-border-default px-2 py-0.5 text-xs text-content-secondary">ESC</span>
             </div>
             <div className="max-h-[55vh] overflow-y-auto">
               {searchTerm.length < 2 ? (
@@ -471,15 +530,15 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
                   {recentSearches.length ? (
                     <>
                       <div className="flex items-center justify-between px-5 pt-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recent</p>
-                        <button type="button" onClick={clearRecentSearches} className="text-xs font-medium text-[#2563eb]">Clear</button>
+                        <h3 className="text-xs font-semibold text-content-primary">Recent Searches</h3>
+                        <button type="button" onClick={clearRecentSearches} className="text-xs font-medium text-brand">Clear</button>
                       </div>
                       <div className="mt-2">
                         {recentSearches.map((r, i) => (
-                          <a key={`${r.href}-${i}`} href={r.href} onClick={() => { rememberSearch(r); setSearchOpen(false); }} className="flex items-center justify-between border-b border-slate-50 px-5 py-3 hover:bg-slate-50">
+                          <a key={`${r.href}-${i}`} href={r.href} onClick={() => { rememberSearch(r); setSearchOpen(false); }} className="flex items-center justify-between border-b border-slate-50 px-5 py-3 hover:bg-surface-input">
                             <div>
-                              <p className="text-sm font-medium text-slate-800">{r.title}</p>
-                              <p className="text-xs text-slate-400">{r.type} · {r.subtitle}</p>
+                              <p className="text-sm font-medium text-content-primary">{r.title}</p>
+                              <p className="text-xs text-content-secondary">{r.type} · {r.subtitle}</p>
                             </div>
                             <span className="text-xs text-slate-300">Recent</span>
                           </a>
@@ -487,20 +546,20 @@ const Header = ({ onSidebarToggle, title, action, userRole = 'sales_manager' }: 
                       </div>
                     </>
                   ) : (
-                    <p className="p-6 text-center text-sm text-slate-400">Start typing to search...</p>
+                    <p className="p-6 text-center text-sm text-content-secondary">Start typing to search...</p>
                   )}
                 </div>
               ) : searchResults.length ? (
                 searchResults.map((r, i) => (
-                  <a key={`${r.href}-${i}`} href={r.href} onClick={() => { rememberSearch(r); setSearchOpen(false); }} className="flex items-center justify-between border-b border-slate-50 px-5 py-3 hover:bg-slate-50">
+                  <a key={`${r.href}-${i}`} href={r.href} onClick={() => { rememberSearch(r); setSearchOpen(false); }} className="flex items-center justify-between border-b border-slate-50 px-5 py-3 hover:bg-surface-input">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{r.title}</p>
-                      <p className="text-xs text-slate-400">{r.type} · {r.subtitle}</p>
+                      <p className="text-sm font-medium text-content-primary">{r.title}</p>
+                      <p className="text-xs text-content-secondary">{r.type} · {r.subtitle}</p>
                     </div>
                   </a>
                 ))
               ) : (
-                <p className="p-6 text-center text-sm text-slate-400">No results found.</p>
+                <p className="p-6 text-center text-sm text-content-secondary">No results found.</p>
               )}
             </div>
           </div>
@@ -514,15 +573,46 @@ interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
   headerAction?: React.ReactNode;
+  dark?: boolean;
+  showHeader?: boolean;
 }
 
-const AppLayout = ({ children, title, headerAction }: AppLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userRole, setUserRole] = useState('sales_manager');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('intelitrack-sidebar-v2') === 'collapsed');
+const AppLayout = ({ children, title, headerAction, dark = false, showHeader = true }: AppLayoutProps) => {
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const stored = localStorage.getItem('intelitrack-theme-dark');
+      if (stored !== null) return stored === 'true';
+      return dark;
+    } catch {
+      return dark;
+    }
+  });
 
   useEffect(() => {
-    localStorage.setItem('intelitrack-sidebar-v2', sidebarCollapsed ? 'collapsed' : 'expanded');
+    try {
+      localStorage.setItem('intelitrack-theme-dark', String(isDark));
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {}
+  }, [isDark]);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userRole, setUserRole] = useState('sales_manager');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('intelitrack-sidebar-v2') === 'collapsed';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('intelitrack-sidebar-v2', sidebarCollapsed ? 'collapsed' : 'expanded');
+    } catch {}
   }, [sidebarCollapsed]);
 
   useEffect(() => {
@@ -532,8 +622,12 @@ const AppLayout = ({ children, title, headerAction }: AppLayoutProps) => {
       .catch(() => setUserRole('sales_manager'));
   }, []);
 
+  const displayTitle = title === 'Dashboard' 
+    ? (userRole.includes('manager') ? 'Sales Manager Dashboard' : 'SBD Dashboard') 
+    : title;
+
   return (
-  <div className="flex h-[100dvh] min-w-0 overflow-hidden bg-[#f1f5f9]">
+  <div className={clsx("flex h-[100dvh] min-w-0 overflow-hidden", isDark ? "bg-surface-app" : "bg-[#f1f5f9]")}>
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -544,12 +638,18 @@ const AppLayout = ({ children, title, headerAction }: AppLayoutProps) => {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
-          title={title}
-          action={headerAction}
-          userRole={userRole}
-        />
+        {showHeader && (
+          <div className={clsx("sticky top-0 z-30 border-b", isDark ? "bg-surface-card border-border-subtle" : "bg-surface-card border-border-default")}>
+             <Header
+                onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
+                title={displayTitle}
+                action={headerAction}
+                userRole={userRole}
+                dark={isDark}
+                onToggleDark={() => setIsDark(!isDark)}
+              />
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto">
           <div className="min-w-0 p-4 sm:p-5 lg:p-7">

@@ -30,11 +30,11 @@ const TowerCranes = () => {
     <div className="space-y-6">
       <Card><CardBody><div className="flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1"><PackageSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search crane model or code" className="w-full border border-neutral-300 py-2.5 pl-10 pr-3 text-sm" /></div>
-        <label className="flex items-center gap-2 text-sm text-neutral-600"><Filter className="h-4 w-4" /><select value={category} onChange={event => setCategory(event.target.value)} className="border border-neutral-300 bg-white px-3 py-2.5"><option value="">All categories</option><option value="hammerhead">Hammerhead</option><option value="topless">Topless</option><option value="luffing">Luffing</option></select></label>
+        <label className="flex items-center gap-2 text-sm text-neutral-600"><Filter className="h-4 w-4" /><select value={category} onChange={event => setCategory(event.target.value)} className="border border-neutral-300 bg-surface-card px-3 py-2.5"><option value="">All categories</option><option value="hammerhead">Hammerhead</option><option value="topless">Topless</option><option value="luffing">Luffing</option></select></label>
       </div></CardBody></Card>
       {error && <p className="border border-error-200 bg-error-50 p-3 text-sm text-error-700">{error}</p>}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {cranes.map(crane => <article className="border border-neutral-200 bg-white" key={crane.id}>
+        {cranes.map(crane => <article className="border border-neutral-200 bg-surface-card" key={crane.id}>
           <div className="flex h-36 items-center justify-center bg-neutral-100 text-neutral-400">{crane.image_url ? <img src={crane.image_url} alt="" className="h-full w-full object-cover" /> : <PackageSearch className="h-10 w-10" />}</div>
           <div className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-[#9b7800]">{label(crane.crane_category)}</p><h2 className="mt-1 font-semibold text-neutral-950">{crane.crane_model || crane.name}</h2></div><span className="border border-neutral-200 px-2 py-1 text-xs">{label(crane.status)}</span></div>
           <p className="mt-3 min-h-10 text-sm text-neutral-600">{crane.description || 'No catalog description recorded.'}</p>

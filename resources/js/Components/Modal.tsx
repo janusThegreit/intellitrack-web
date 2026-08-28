@@ -39,15 +39,15 @@ const Modal = ({
       />
 
       {/* Modal */}
-      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-slate-200 bg-white shadow-2xl', sizes[size])} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-border-default bg-surface-card shadow-2xl', sizes[size])} role="dialog" aria-modal="true" aria-label={title}>
         {/* Header */}
         {(title || closeButton) && (
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
-            {title && <h2 className="text-lg font-semibold text-slate-900">{title}</h2>}
+          <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-4">
+            {title && <h2 className="text-lg font-semibold text-content-primary">{title}</h2>}
             {closeButton && (
               <button
                 onClick={onClose}
-                className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-1 text-content-secondary transition-colors hover:bg-surface-input hover:text-content-primary"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -62,7 +62,7 @@ const Modal = ({
 
         {/* Footer */}
         {footer && (
-          <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-5 py-4">
+          <div className="shrink-0 border-t border-border-subtle bg-surface-app px-5 py-4">
             {footer}
           </div>
         )}
@@ -119,20 +119,19 @@ const ConfirmDialog = ({
           <button
             onClick={onCancel}
             disabled={loading}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+            className="rounded-lg bg-surface-input px-4 py-2 text-sm font-medium text-content-secondary hover:bg-border-subtle disabled:opacity-50"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={clsx(
-              'rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50',
+            className={clsx( 'rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50',
               confirmButtonVariant[variant] === 'danger'
-                ? 'bg-red-600 hover:bg-red-700'
+                ? 'bg-red-600 hover:bg-red-700 text-white'
                 : confirmButtonVariant[variant] === 'secondary'
-                ? 'bg-slate-700 hover:bg-slate-800'
-                : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
+                  ? 'bg-surface-input hover:bg-border-subtle text-content-primary'
+                  : 'bg-brand hover:bg-brand/90 text-brand-content'
             )}
           >
             {confirmText}

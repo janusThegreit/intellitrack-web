@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
-import { formatPeso } from '../Utils/currency';
 import {
   Users,
   Briefcase,
@@ -12,12 +11,14 @@ import {
   FolderKanban,
   TrendingUp,
   TrendingDown,
-  ArrowUpRight,
-  BrainCircuit,
-  AlertTriangle,
-  Clock,
-  ChevronRight,
+  UserPlus,
+  PhoneCall,
+  FileEdit,
+  ClipboardCheck,
+  CalendarPlus,
+  Rocket,
 } from 'lucide-react';
+import axios from 'axios';
 
 interface DashboardData {
   total_customers: number;
@@ -34,332 +35,306 @@ interface DashboardData {
   revenue_this_month: number;
   revenue_this_year: number;
   pending_notifications: number;
-  completion_status: {
-    total: number;
-    completed: number;
-    percentage: number;
-  };
-  top_customers: Array<{
-    id: number;
-    name: string;
-    total_spending: number;
-    job_orders_count: number;
-  }>;
-  recent_rentals: Array<{
-    id: number;
-    customer_name: string;
-    equipment_name: string;
-    status: string;
-    rental_start_date: string;
-    rental_end_date: string;
-  }>;
-  job_order_statuses?: Record<string, number>;
-  project_statuses?: Record<string, number>;
-  quotation_statuses?: Record<string, number>;
+  recent_inquiries?: any[];
+  recent_quotations?: any[];
+  recent_job_orders?: any[];
+  recent_projects?: any[];
 }
 
-interface DashboardPageProps {
-  data?: DashboardData;
-}
-
-type Period = 'week' | 'month' | 'quarter' | 'year';
-
-const normalizeDashboardData = (d: DashboardData): DashboardData => ({
-  ...d,
-  revenue_this_month: Number(d.revenue_this_month ?? 0),
-  revenue_this_year: Number(d.revenue_this_year ?? 0),
-  top_customers: (d.top_customers ?? []).map(c => ({
-    ...c,
-    total_spending: Number(c.total_spending ?? 0),
-    job_orders_count: c.job_orders_count ?? (c as { total_job_orders?: number }).total_job_orders ?? 0,
-  })),
-});
-
-const TrendBadge = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
-  if (value === 0) return <span className="text-xs font-medium text-slate-400">0</span>;
+const TrendBadge = ({ value, suffix = '', text }: { value: number; suffix?: string, text?: string }) => {
+  if (value === 0) return <span className="text-xs font-medium text-content-secondary">{text ?? '0'}</span>;
   const positive = value > 0;
   return (
-    <span className={`flex items-center gap-0.5 text-xs font-semibold ${positive ? 'text-emerald-600' : 'text-red-500'}`}>
+    <span className={`flex items-center gap-0.5 text-[10px] font-semibold mt-2 ${positive ? 'text-emerald-500' : 'text-red-500'}`}>
       {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-      {positive ? '+' : ''}{value}{suffix}
+      {positive ? '+' : ''}{value}{suffix} {text}
     </span>
   );
 };
 
-interface KpiCardProps {
-  title: string;
-  value: string | number;
-  trend?: number;
-  trendSuffix?: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  href?: string;
-}
-
-const KpiCard = ({ title, value, trend, trendSuffix, icon, iconBg, href }: KpiCardProps) => (
-  <a href={href ?? '#'} className="group block rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:shadow-md">
-    <div className="flex items-start justify-between">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
-        {icon}
-      </div>
-      {trend !== undefined && <TrendBadge value={trend} suffix={trendSuffix} />}
-    </div>
-    <p className="mt-3 text-2xl font-bold text-slate-800">{value}</p>
-    <p className="mt-0.5 text-sm text-slate-500">{title}</p>
-  </a>
-);
-
-const StatusRow = ({ label, count, color }: { label: string; count: number; color: string }) => (
-  <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-    <div className="flex items-center gap-2">
-      <div className={`h-2.5 w-2.5 rounded-full ${color}`} />
-      <span className="text-sm text-slate-600">{label}</span>
-    </div>
-    <span className="text-sm font-semibold text-slate-800">{count}</span>
-  </div>
-);
-
-const Dashboard = ({ data }: DashboardPageProps) => {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    data ? normalizeDashboardData(data) : null
+const StatusPill = ({ status }: { status: string }) => {
+  const getStyle = () => {
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'approved':
+      case 'completed':
+        return 'text-emerald-400 border border-emerald-900/50 bg-emerald-900/10';
+      case 'pending':
+      case 'in progress':
+      case 'ongoing':
+        return 'text-amber-400 border border-amber-900/50 bg-amber-900/10';
+      case 'draft':
+      default:
+        return 'text-content-secondary border border-border-subtle bg-zinc-900/50';
+    }
+  };
+  return (
+    <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getStyle()}`}>
+      {status}
+    </span>
   );
-  const [loading, setLoading] = useState(!data);
-  const [error, setError] = useState('');
-  const [period, setPeriod] = useState<Period>('month');
+};
+
+const Dashboard = () => {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!data) {
-      fetch('/api/dashboard/summary')
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(d => { setDashboardData(normalizeDashboardData(d)); setLoading(false); })
-        .catch(() => { setError('Dashboard data could not be loaded.'); setLoading(false); });
-    }
-  }, [data]);
+    const fetchDashboardData = async () => {
+      try {
+        const response = await axios.get('/api/dashboard/summary');
+        setData(response.data);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
-  if (!dashboardData) {
-    return (
-      <AppLayout title="Sales Dashboard">
-        <div className="flex h-64 items-center justify-center">
-          {loading ? (
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2563eb] border-t-transparent" />
-          ) : (
-            <p className="text-sm text-slate-500">{error || 'Loading...'}</p>
-          )}
-        </div>
-      </AppLayout>
-    );
-  }
-
-  const d = dashboardData;
-
-  const kpiCards: KpiCardProps[] = [
-    {
-      title: 'Total Customers',
-      value: d.total_customers,
-      trend: 12,
-      icon: <Users className="h-5 w-5 text-blue-600" />,
-      iconBg: 'bg-blue-50',
-      href: '/customers',
-    },
-    {
-      title: 'Active Clients',
-      value: d.active_clients ?? d.total_customers,
-      trend: 4,
-      icon: <Briefcase className="h-5 w-5 text-emerald-600" />,
-      iconBg: 'bg-emerald-50',
-      href: '/clients',
-    },
-    {
-      title: 'Customer Inquiries',
-      value: d.customer_inquiries ?? d.pending_notifications ?? 0,
-      trend: -3,
-      icon: <MessageSquare className="h-5 w-5 text-indigo-500" />,
-      iconBg: 'bg-indigo-50',
-      href: '/inquiries',
-    },
-    {
-      title: 'Pending Quotations',
-      value: d.pending_quotations ?? 0,
-      trend: 6,
-      icon: <FileText className="h-5 w-5 text-amber-500" />,
-      iconBg: 'bg-amber-50',
-      href: '/quotations',
-    },
-    {
-      title: 'Active Job Orders',
-      value: d.active_job_orders,
-      trend: 2,
-      icon: <ClipboardList className="h-5 w-5 text-violet-600" />,
-      iconBg: 'bg-violet-50',
-      href: '/job-orders',
-    },
-    {
-      title: 'Rental Requests',
-      value: d.rental_requests ?? d.active_rentals,
-      trend: 1,
-      icon: <Truck className="h-5 w-5 text-teal-600" />,
-      iconBg: 'bg-teal-50',
-      href: '/rental-requirements',
-    },
-    {
-      title: 'Active Projects',
-      value: d.active_projects,
-      trend: 0,
-      icon: <FolderKanban className="h-5 w-5 text-slate-500" />,
-      iconBg: 'bg-slate-100',
-      href: '/projects',
-    },
-    {
-      title: 'Monthly Revenue',
-      value: formatPeso(d.revenue_this_month),
-      trend: 14,
-      trendSuffix: '%',
-      icon: <TrendingUp className="h-5 w-5 text-emerald-600" />,
-      iconBg: 'bg-emerald-50',
-      href: '/reports',
-    },
+  // Map the API response to the KPI array structure, or fallback to 0/empty if loading
+  const kpis = [
+    { title: 'CUSTOMERS', value: data?.total_customers?.toString() || '0', sub: 'total', trend: 0, trendText: 'vs last week', icon: <Users className="h-3 w-3 text-brand" /> },
+    { title: 'JOB ORDERS', value: data?.active_job_orders?.toString() || '0', sub: 'active', trend: 0, trendText: 'vs last week', icon: <ClipboardList className="h-3 w-3 text-brand" /> },
+    { title: 'RENTALS', value: data?.active_rentals?.toString() || '0', sub: 'active', trend: 0, trendText: 'flat vs last week', icon: <Truck className="h-3 w-3 text-brand" /> },
+    { title: 'OVERDUE RENTALS', value: data?.overdue_rentals?.toString() || '0', sub: 'overdue', trend: 0, trendText: 'action needed', icon: <Truck className="h-3 w-3 text-brand" /> },
+    { title: 'PROJECTS', value: data?.active_projects?.toString() || '0', sub: 'ongoing', trend: 0, trendText: 'new this week', icon: <FolderKanban className="h-3 w-3 text-brand" /> },
+    { title: 'REVENUE', value: `P${data?.revenue_this_month?.toLocaleString() || '0'}`, sub: 'this month', trend: 0, trendText: 'vs last month', icon: <TrendingUp className="h-3 w-3 text-brand" /> },
   ];
 
-  const jobOrderStatuses = d.job_order_statuses ?? { Draft: 2, Confirmed: 3, Scheduled: 2, Ongoing: 4, Completed: 18, Cancelled: 1 };
-  const projectStatuses = d.project_statuses ?? { Planned: 1, Confirmed: 2, Ongoing: 3, 'On Hold': 1, Completed: 4 };
-  const quotationStatuses = d.quotation_statuses ?? { Accepted: 8, Sent: 5, 'For Approval': 4, Draft: 3, Rejected: 2 };
-
-  const jobStatusColors: Record<string, string> = { Draft: 'bg-slate-300', Confirmed: 'bg-blue-400', Scheduled: 'bg-indigo-400', Ongoing: 'bg-amber-400', Completed: 'bg-emerald-500', Cancelled: 'bg-red-400' };
-  const projectStatusColors: Record<string, string> = { Planned: 'bg-slate-300', Confirmed: 'bg-blue-400', Ongoing: 'bg-amber-400', 'On Hold': 'bg-orange-400', Completed: 'bg-emerald-500' };
-  const quotationStatusColors: Record<string, string> = { Accepted: 'bg-emerald-500', Sent: 'bg-blue-400', 'For Approval': 'bg-amber-400', Draft: 'bg-slate-300', Rejected: 'bg-red-400' };
-
-  const periods: { key: Period; label: string }[] = [
-    { key: 'week', label: 'Week' },
-    { key: 'month', label: 'Month' },
-    { key: 'quarter', label: 'Quarter' },
-    { key: 'year', label: 'Year' },
+  const quickActions = [
+    { label: 'Add Customer', icon: <UserPlus className="h-4 w-4" />, href: '/customers' },
+    { label: 'Record Inquiry', icon: <PhoneCall className="h-4 w-4" />, href: '/inquiries' },
+    { label: 'Create Quotation', icon: <FileEdit className="h-4 w-4" />, href: '/quotations' },
+    { label: 'Create Job Order', icon: <ClipboardCheck className="h-4 w-4" />, href: '/job-orders' },
+    { label: 'Create Rental Request', icon: <CalendarPlus className="h-4 w-4" />, href: '/rental-requirements' },
+    { label: 'Create Project', icon: <Rocket className="h-4 w-4" />, href: '/projects' },
   ];
+
+  // Use API data or fallback to empty arrays
+  const inquiries = data?.recent_inquiries || [];
+  const quotations = data?.recent_quotations || [];
+  const jobOrders = data?.recent_job_orders || [];
+  const projects = data?.recent_projects || [];
+
+  const pipelineStages = ['Requested', 'Availability Check', 'Available', 'Confirmed', 'Scheduled', 'Ongoing'];
+  const currentPipelineStage = 2; // 'Available' is active
 
   return (
     <>
-      <Head title="Sales Dashboard" />
-      <AppLayout title="Sales Dashboard">
-        <div className="space-y-6">
-          {/* Page header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Sales Dashboard</h1>
-              <p className="mt-1 text-sm text-slate-500">Overview of sales, clients, transactions and operational activity</p>
-            </div>
-            <div className="flex items-center gap-1 rounded-lg bg-white p-1 ring-1 ring-slate-200 self-start">
-              {periods.map(p => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => setPeriod(p.key)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${period === p.key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  {p.label}
-                </button>
+      <Head title="Dashboard" />
+      <AppLayout title="Dashboard" dark={true}>
+        <div className="flex flex-col lg:flex-row gap-6">
+          
+          {/* Main Content (Left, 3/4 width) */}
+          <div className="flex-1 space-y-6">
+            
+            {/* KPI Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {kpis.map((kpi, idx) => (
+                <div key={idx} className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-bold text-content-secondary tracking-wider">
+                      {kpi.icon} {kpi.title}
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-3xl font-bold text-white">{kpi.value}</span>
+                      <span className="text-[10px] font-medium text-content-secondary">{kpi.sub}</span>
+                    </div>
+                  </div>
+                  <TrendBadge value={kpi.trend} text={kpi.trendText} />
+                </div>
               ))}
             </div>
-          </div>
 
-          {/* KPI cards 2-column grid */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {kpiCards.map(card => <KpiCard key={card.title} {...card} />)}
-          </div>
-
-          {/* Charts row */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Sales Performance placeholder */}
-            <div className="lg:col-span-2 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <div className="flex items-center justify-between">
+            {/* Rental Requests Pipeline */}
+            <div className="bg-surface-card border border-border-subtle rounded-xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-10">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-800">Sales Performance</h2>
-                  <p className="text-xs text-slate-400">Monthly revenue vs quotation activity</p>
+                  <h3 className="text-sm font-bold text-white">Rental Requests</h3>
+                  <p className="text-[11px] text-content-secondary mt-1">Live fulfillment pipeline - 12 open requests</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-[#2563eb]" />Revenue</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-emerald-500" />Accepted</span>
-                </div>
+                <a href="#" className="text-[10px] font-semibold text-brand hover:underline">View all</a>
               </div>
-              <div className="mt-4 h-40 flex items-end gap-2">
-                {['Mar','Apr','May','Jun','Jul','Aug'].map((m, i) => (
-                  <div key={m} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex gap-1 items-end" style={{ height: '120px' }}>
-                      <div className="flex-1 rounded-t bg-[#2563eb]/20" style={{ height: `${[55,60,65,72,80,85][i]}%` }} />
-                      <div className="flex-1 rounded-t bg-emerald-100" style={{ height: `${[30,35,40,45,50,55][i]}%` }} />
+              
+              <div className="relative flex justify-between items-center px-4 md:px-8 max-w-4xl">
+                {/* Connecting Line Base */}
+                <div className="absolute left-8 right-8 top-[6px] h-[2px] bg-zinc-800 -z-10" />
+                {/* Connecting Line Active */}
+                <div 
+                  className="absolute left-8 top-[6px] h-[2px] bg-brand -z-10 transition-all duration-500" 
+                  style={{ width: `calc(${(currentPipelineStage / (pipelineStages.length - 1)) * 100}% - 2rem)` }} 
+                />
+                
+                {pipelineStages.map((stage, idx) => {
+                  const isActive = idx <= currentPipelineStage;
+                  return (
+                    <div key={stage} className="flex flex-col items-center gap-3 relative z-10 bg-surface-card">
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 ${isActive ? 'bg-brand border-brand shadow-[0_0_10px_rgba(255,204,0,0.4)]' : 'bg-surface-card border-border-default'}`} />
+                      <span className={`absolute top-6 text-[9px] font-semibold text-center w-24 leading-tight ${isActive ? 'text-content-primary' : 'text-zinc-600'}`}>{stage}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400">{m}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            {/* Quotation Status */}
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-semibold text-slate-800">Quotation Status</h2>
-              <p className="text-xs text-slate-400">By status distribution</p>
-              <div className="mt-4 space-y-1">
-                {Object.entries(quotationStatuses).map(([label, count]) => (
-                  <StatusRow key={label} label={label} count={count} color={quotationStatusColors[label] ?? 'bg-slate-300'} />
+            {/* Tables Row 1: Inquiries & Quotations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+              
+              {/* Recent Customer Inquiries */}
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-sm font-bold text-content-primary">Recent Inquiries</h3>
+                  <Link href="/inquiries" className="text-[10px] font-semibold text-brand hover:underline">View all</Link>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-content-secondary border-b border-border-subtle">
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Inquiry ID</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Customer</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Source</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Inquiry</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap text-center">Status</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/50">
+                      {inquiries.length > 0 ? inquiries.map((inq: any) => (
+                        <tr key={inq.id} className="text-content-primary hover:bg-surface-input transition">
+                          <td className="py-3 text-content-secondary font-medium text-[10px] whitespace-nowrap">#{inq.id}</td>
+                          <td className="py-3 font-semibold text-content-primary whitespace-nowrap pr-4">{inq.customer?.name || inq.customer_name}</td>
+                          <td className="py-3 text-content-secondary whitespace-nowrap">{inq.source || 'Web'}</td>
+                          <td className="py-3 whitespace-nowrap pr-4">{inq.subject || inq.inquiry_type || 'General Inquiry'}</td>
+                          <td className="py-3 text-center whitespace-nowrap"><StatusPill status={inq.status} /></td>
+                          <td className="py-3 text-right text-content-secondary text-[10px] whitespace-nowrap pl-2">{new Date(inq.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      )) : <tr><td colSpan={6} className="py-4 text-center text-content-secondary">No recent inquiries</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Recent Quotations */}
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-sm font-bold text-white">Recent Quotations</h3>
+                  <Link href="/quotations" className="text-[10px] font-semibold text-brand hover:underline">View all</Link>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-content-secondary border-b border-border-subtle">
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Quotation No.</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Customer</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Project</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap">Amount</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap text-center">Status</th>
+                        <th className="pb-3 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/50">
+                      {quotations.length > 0 ? quotations.map((qt: any) => (
+                        <tr key={qt.id} className="text-content-primary hover:bg-surface-input transition">
+                          <td className="py-3 text-content-secondary font-medium text-[10px] whitespace-nowrap">{qt.quotation_number || `#QT-${qt.id}`}</td>
+                          <td className="py-3 font-semibold text-content-primary whitespace-nowrap pr-4">{qt.customer?.name}</td>
+                          <td className="py-3 text-content-secondary whitespace-nowrap pr-4">{qt.project?.name || 'N/A'}</td>
+                          <td className="py-3 font-medium whitespace-nowrap">P{Number(qt.total_amount).toLocaleString()}</td>
+                          <td className="py-3 text-center whitespace-nowrap"><StatusPill status={qt.status} /></td>
+                          <td className="py-3 text-right text-content-secondary text-[10px] whitespace-nowrap pl-2">{new Date(qt.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      )) : <tr><td colSpan={6} className="py-4 text-center text-content-secondary">No recent quotations</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Tables Row 2: Job Orders & Projects */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Recent Job Orders */}
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-sm font-bold text-white">Recent Job Orders</h3>
+                  <Link href="/job-orders" className="text-[10px] font-semibold text-brand hover:underline">View all</Link>
+                </div>
+                <div className="space-y-4">
+                  {jobOrders.length > 0 ? jobOrders.map((jo: any, idx: number) => (
+                    <div key={jo.id} className="flex gap-3 group relative">
+                      <div className="mt-1 flex flex-col items-center">
+                        <div className={`h-2.5 w-2.5 rounded-full border-2 border-surface-app ring-1 ${jo.status === 'completed' ? 'bg-emerald-500 ring-emerald-500/50' : 'bg-brand ring-brand/50'}`} />
+                        {idx !== jobOrders.length - 1 && <div className="w-[1px] h-full bg-border-subtle mt-1" />}
+                      </div>
+                      <div className="flex-1 pb-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-xs font-bold text-content-primary">{jo.jo_number || `JO-${jo.id}`}</h4>
+                            <p className="text-[11px] text-content-secondary mt-0.5"><span className="font-medium text-content-primary">Client:</span> {jo.customer?.name}</p>
+                            <p className="text-[10px] text-content-secondary mt-0.5">Project: {jo.project?.name || 'N/A'}</p>
+                            <div className="mt-2">
+                              <StatusPill status={jo.status} />
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-content-secondary">{new Date(jo.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )) : <div className="text-center text-sm text-content-secondary py-4">No recent job orders</div>}
+                </div>
+              </div>
+
+              {/* Projects */}
+              <div className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-sm font-bold text-white">Projects</h3>
+                  <Link href="/projects" className="text-[10px] font-semibold text-brand hover:underline">View all</Link>
+                </div>
+                <div className="space-y-6">
+                  {projects.length > 0 ? projects.map((proj: any, idx: number) => (
+                    <div key={proj.id}>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="text-xs font-bold text-content-primary">{proj.name || proj.title}</h4>
+                          <p className="text-[10px] text-content-secondary mt-0.5">Client: {proj.customer?.name} • {new Date(proj.start_date).toLocaleDateString()} - {new Date(proj.end_date).toLocaleDateString()}</p>
+                        </div>
+                        <StatusPill status={proj.status} />
+                      </div>
+                      <div className="w-full bg-surface-input rounded-full h-1.5 overflow-hidden">
+                        <div className={`h-1.5 rounded-full ${proj.status === 'completed' ? 'bg-emerald-500' : 'bg-brand'}`} style={{ width: `${proj.progress || 0}%` }} />
+                      </div>
+                    </div>
+                  )) : <div className="text-center text-sm text-content-secondary py-4">No recent projects</div>}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Quick Actions Sidebar (Right, 1/4 width) */}
+          <div className="w-full lg:w-72 shrink-0">
+            <div className="bg-surface-card border border-border-subtle rounded-xl p-5 shadow-sm sticky top-24">
+              <h3 className="text-sm font-bold text-white mb-1">Quick Actions</h3>
+              <p className="text-[11px] text-content-secondary mb-5">Start a new record or request</p>
+              
+              <div className="space-y-2">
+                {quickActions.map((action, idx) => (
+                  <Link 
+                    key={idx}
+                    href={action.href}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-border-subtle bg-surface-app/30 text-content-secondary hover:text-content-primary hover:border-border-default hover:bg-surface-input transition group"
+                  >
+                    <span className="text-[11px] font-semibold">{action.label}</span>
+                    <span className="text-content-secondary group-hover:text-brand transition-colors">{action.icon}</span>
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Status & AI Insights row */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Job Order Status */}
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-semibold text-slate-800">Job Order Status</h2>
-              <div className="mt-3 space-y-1">
-                {Object.entries(jobOrderStatuses).map(([label, count]) => (
-                  <StatusRow key={label} label={label} count={count} color={jobStatusColors[label] ?? 'bg-slate-300'} />
-                ))}
-              </div>
-            </div>
-
-            {/* Project Status */}
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-semibold text-slate-800">Project Status</h2>
-              <div className="mt-3 space-y-1">
-                {Object.entries(projectStatuses).map(([label, count]) => (
-                  <StatusRow key={label} label={label} count={count} color={projectStatusColors[label] ?? 'bg-slate-300'} />
-                ))}
-              </div>
-            </div>
-
-            {/* AI Insights */}
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <div className="flex items-center gap-2 mb-3">
-                <BrainCircuit className="h-4 w-4 text-violet-600" />
-                <h2 className="text-base font-semibold text-slate-800">AI Insights</h2>
-              </div>
-              <div className="space-y-3">
-                <div className="rounded-lg bg-amber-50 p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                    <span className="text-xs font-semibold text-amber-700">Opportunity Alert</span>
-                  </div>
-                  <p className="text-xs text-amber-600">12 active customers have recent inquiries but no quotation.</p>
-                  <a href="/customers" className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline">View Customers <ChevronRight className="h-3 w-3" /></a>
-                </div>
-                <div className="rounded-lg bg-red-50 p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-3.5 w-3.5 text-red-600" />
-                    <span className="text-xs font-semibold text-red-700">Quotation Risk</span>
-                  </div>
-                  <p className="text-xs text-red-600">8 quotations are approaching their expiration date.</p>
-                  <a href="/quotations" className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-red-700 hover:underline">Review Quotations <ChevronRight className="h-3 w-3" /></a>
-                </div>
-                <div className="rounded-lg bg-emerald-50 p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-xs font-semibold text-emerald-700">Sales Trend +14%</span>
-                  </div>
-                  <p className="text-xs text-emerald-600">Acceptance rate increased 14% vs last month.</p>
-                  <a href="/ai-analytics" className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">View Analytics <ChevronRight className="h-3 w-3" /></a>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </AppLayout>
     </>

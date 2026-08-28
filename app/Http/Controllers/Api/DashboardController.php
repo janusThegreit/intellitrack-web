@@ -48,6 +48,22 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(5)
                 ->get(),
+            'recent_inquiries' => \App\Models\CustomerInquiry::with('customer')
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'recent_quotations' => \App\Models\Quotation::with(['customer', 'project'])
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'recent_job_orders' => JobOrder::with(['customer', 'project'])
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'recent_projects' => Project::with('customer')
+                ->latest()
+                ->limit(5)
+                ->get(),
         ]);
     }
 

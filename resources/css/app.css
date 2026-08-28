@@ -5,6 +5,28 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+:root {
+    --bg-app: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-subtle: #f1f5f9;
+    --border-default: #e2e8f0;
+    --brand-primary: #ffcc00;
+    --brand-fg: #000000;
+}
+
+.dark {
+    --bg-app: #0f0f11;
+    --bg-card: #1c1c1e;
+    --bg-input: #121213;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --border-subtle: #27272a;
+    --border-default: #3f3f46;
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
@@ -15,12 +37,24 @@
     --color-primary-500: #3b82f6;
     --color-primary-600: #2563eb;
     --color-primary-700: #1d4ed8;
+
+    /* Semantic Tokens */
+    --color-surface-app: var(--bg-app);
+    --color-surface-card: var(--bg-card);
+    --color-surface-input: var(--bg-input);
+    --color-content-primary: var(--text-primary);
+    --color-content-secondary: var(--text-secondary);
+    --color-border-subtle: var(--border-subtle);
+    --color-border-default: var(--border-default);
+    --color-brand: var(--brand-primary);
+    --color-brand-content: var(--brand-fg);
 }
 
 html,
 body,
 #app {
-    background-color: #f1f5f9;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
     min-width: 0;
     overflow-x: hidden;
 }

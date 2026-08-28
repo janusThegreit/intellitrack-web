@@ -123,18 +123,18 @@ const Pagination = ({
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200">
-      <div className="text-sm text-neutral-600">
-        Showing <span className="font-medium">{startItem}</span> to{' '}
-        <span className="font-medium">{endItem}</span> of{' '}
-        <span className="font-medium">{total}</span>
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border-default">
+      <div className="text-sm text-content-secondary">
+        Showing <span className="font-medium text-content-primary">{startItem}</span> to{' '}
+        <span className="font-medium text-content-primary">{endItem}</span> of{' '}
+        <span className="font-medium text-content-primary">{total}</span>
       </div>
 
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1 border border-border-default rounded-lg text-sm text-content-primary hover:bg-surface-input disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Previous
         </button>
@@ -149,8 +149,8 @@ const Pagination = ({
                 className={clsx(
                   'px-3 py-1 border rounded-lg text-sm transition-colors',
                   page === currentPage
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100'
+                    ? 'bg-brand text-brand-content border-brand'
+                    : 'border-border-default text-content-primary hover:bg-surface-input'
                 )}
               >
                 {page}
@@ -162,7 +162,7 @@ const Pagination = ({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === lastPage}
-          className="px-3 py-1 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1 border border-border-default rounded-lg text-sm text-content-primary hover:bg-surface-input disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Next
         </button>

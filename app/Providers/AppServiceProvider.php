@@ -24,56 +24,61 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::before(function (User $user, string $ability) {
+            if ($user->isAdministrator()) {
+                return true;
+            }
+        });
         Gate::define('view-core-dashboard', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-crm', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-crm', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-clients', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-clients', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-rentals', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-rentals', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-projects', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-projects', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-customers', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('approve-quotations', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager();
+            return $user->isSalesManager();
         });
 
         Gate::define('manage-job-orders', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment() || $user->isSalesManager();
+            return $user->isSalesBusinessDevelopment() || $user->isSalesManager();
         });
 
         Gate::define('view-reports', function (User $user) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-users', function (User $user) {
@@ -81,11 +86,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('view-customer', function (User $user, Customer $customer) {
-            return $user->isAdministrator() || $user->isSalesBusinessDevelopment() || $user->isSalesManager();
+            return $user->isSalesBusinessDevelopment() || $user->isSalesManager();
         });
 
         Gate::define('approve-quotation', function (User $user, Quotation $quotation) {
-            if (! $user->isAdministrator() && ! $user->isSalesManager()) {
+            if (! $user->isSalesManager()) {
                 return false;
             }
 
@@ -97,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-job-order', function (User $user, JobOrder $jobOrder) {
-            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->id === $jobOrder->created_by;
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->id === $jobOrder->created_by;
         });
     }
 }

@@ -1,9 +1,7 @@
 import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Head } from '@inertiajs/react';
-import { Bell, Camera, CheckCheck, LockKeyhole, Sparkles, UserRound } from 'lucide-react';
+import { Camera, CheckCheck } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
-import { Card, CardBody, CardHeader } from '../../Components/Card';
-import Button from '../../Components/Button';
 
 interface Profile {
   name: string; email: string; first_name?: string; last_name?: string; nickname?: string;
@@ -13,19 +11,28 @@ interface Profile {
 const roleName = (role: string) => role.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'password'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security'>('profile');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; type: string; read_at?: string; created_at: string }>>([]);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState({ current_password: '', password: '', password_confirmation: '' });
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 
   useEffect(() => {
     fetch('/api/profile', { headers: { Accept: 'application/json' } })
       .then(response => response.ok ? response.json() : Promise.reject())
-      .then(setProfile)
+      .then(data => {
+        setProfile(data);
+        if (data.role === 'administrator') {
+          fetch('/api/system/maintenance', { headers: { Accept: 'application/json' } })
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(sys => setMaintenanceMode(sys.enabled))
+            .catch(() => {});
+        }
+      })
       .catch(() => setMessage('Account settings could not be loaded.'));
   }, []);
 
@@ -43,7 +50,8 @@ const Settings = () => {
       const response = await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(profile) });
       if (!response.ok) throw new Error();
       setProfile(await response.json());
-      setMessage('Profile saved.');
+      setMessage('Profile saved successfully.');
+      setTimeout(() => setMessage(''), 3000);
     } catch { setMessage('Profile could not be saved.'); } finally { setSaving(false); }
   };
 
@@ -58,8 +66,9 @@ const Settings = () => {
       if (!response.ok) throw new Error();
       const data = await response.json();
       setProfile({ ...profile, avatar_url: data.avatar_url });
-      setMessage('Profile picture updated.');
-    } catch { setMessage('Profile picture could not be uploaded. Use a PNG, JPG, or WebP image below 2 MB.'); } finally { setSaving(false); }
+      setMessage('Profile picture updated successfully.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch { setMessage('Profile picture could not be uploaded.'); } finally { setSaving(false); }
   };
 
   const savePassword = async () => {
@@ -68,7 +77,8 @@ const Settings = () => {
       const response = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(password) });
       if (!response.ok) throw new Error();
       setPassword({ current_password: '', password: '', password_confirmation: '' });
-      setMessage('Password updated.');
+      setMessage('Password updated successfully.');
+      setTimeout(() => setMessage(''), 3000);
     } catch { setMessage('Password update failed. Check the current password and confirmation.'); } finally { setSaving(false); }
   };
 
@@ -76,35 +86,317 @@ const Settings = () => {
     await fetch('/api/dashboard/notifications/read-all', { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf } });
     await loadNotifications();
     setMessage('All notifications marked as read.');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const toggleMaintenanceMode = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/system/maintenance', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, 
+        body: JSON.stringify({ enabled: !maintenanceMode }) 
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      setMaintenanceMode(data.enabled);
+      setMessage(data.message);
+      setTimeout(() => setMessage(''), 3000);
+    } catch { 
+      setMessage('Failed to update maintenance mode.'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   const initial = (profile?.nickname || profile?.first_name || profile?.name || 'A').slice(0, 1).toUpperCase();
 
-  return <><Head title="Settings" /><AppLayout title="Settings"><div className="mx-auto max-w-5xl space-y-5">
-    {message && <p className="border border-neutral-300 bg-neutral-50 p-3 text-sm text-neutral-700 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200">{message}</p>}
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]"><div className="border border-neutral-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1b1b1b]"><div className="flex items-start gap-4"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#edf3ff] text-[#246bdb] dark:bg-[#3b3208] dark:text-[#ffd000]"><Sparkles className="h-5 w-5" /></span><div><p className="text-lg font-semibold text-neutral-950 dark:text-white">Personal workspace settings</p><p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage your public identity, notification inbox, and account security.</p></div></div></div><div className="border border-neutral-200 bg-[#f8fafc] p-5 dark:border-white/10 dark:bg-[#202020]"><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Account status</p><p className="mt-2 font-semibold text-neutral-900 dark:text-white">{profile ? roleName(profile.role) : 'Loading account'}</p><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Access controlled by Core 1 roles</p></div></div>
-    <Card noPadding><CardBody><div className="border-b border-neutral-200 px-6 pt-5 dark:border-white/10"><div className="flex items-center gap-3 overflow-x-auto"><button type="button" onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium ${activeTab === 'profile' ? 'border-[#246bdb] text-[#246bdb] dark:border-[#ffd000] dark:text-[#ffd000]' : 'border-transparent text-neutral-500'}`}><UserRound className="h-4 w-4" />Profile</button><button type="button" onClick={() => setActiveTab('notifications')} className={`flex items-center gap-2 border-b-2 px-3 pb-3 text-sm font-medium ${activeTab === 'notifications' ? 'border-[#246bdb] text-[#246bdb] dark:border-[#ffd000] dark:text-[#ffd000]' : 'border-transparent text-neutral-500'}`}><Bell className="h-4 w-4" />Notifications{notifications.filter(notification => !notification.read_at).length > 0 && <span className="rounded-full bg-[#246bdb] px-1.5 py-0.5 text-[10px] text-white dark:bg-[#ffd000] dark:text-neutral-950">{notifications.filter(notification => !notification.read_at).length}</span>}</button><button type="button" onClick={() => setActiveTab('password')} className={`flex items-center gap-2 border-b-2 px-3 pb-3 text-sm font-medium ${activeTab === 'password' ? 'border-[#246bdb] text-[#246bdb] dark:border-[#ffd000] dark:text-[#ffd000]' : 'border-transparent text-neutral-500'}`}><LockKeyhole className="h-4 w-4" />Password</button></div></div></CardBody>{activeTab === 'profile' && <><CardHeader title="Profile & identity" subtitle="Choose how your account appears in the Alibaton workspace." /><CardBody>{profile ? <div className="grid grid-cols-1 gap-8 lg:grid-cols-[210px_1fr]">
-      <div className="flex flex-col items-center border-b border-neutral-200 pb-6 dark:border-white/10 lg:border-b-0 lg:border-r lg:pr-8">
-        <button type="button" onClick={() => inputRef.current?.click()} className="group relative h-28 w-28 overflow-hidden rounded-full bg-[#ffd000] text-3xl font-bold text-neutral-950 ring-4 ring-neutral-100 dark:ring-white/10">
-          {profile.avatar_url ? <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" /> : initial}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"><Camera className="h-6 w-6" /></span>
-        </button>
-        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadAvatar} className="hidden" />
-        <button type="button" onClick={() => inputRef.current?.click()} className="mt-3 text-sm font-medium text-[#246bdb] dark:text-[#ffd000]">Change profile picture</button>
-        <p className="mt-1 text-center text-xs text-neutral-500 dark:text-neutral-400">PNG, JPG, or WebP up to 2 MB</p>
-        <div className="mt-6 w-full border-t border-neutral-200 pt-4 text-center dark:border-white/10"><p className="text-xs text-neutral-500">Assigned role</p><p className="mt-1 font-semibold text-neutral-900 dark:text-white">{roleName(profile.role)}</p></div>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Display name<input value={profile.name} onChange={event => setProfile({ ...profile, name: event.target.value })} className="mt-1 w-full border border-neutral-300 p-2.5 text-sm" /></label>
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Nickname<input value={profile.nickname || ''} onChange={event => setProfile({ ...profile, nickname: event.target.value })} placeholder="e.g. Johnny" className="mt-1 w-full border border-neutral-300 p-2.5 text-sm" /></label>
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Email<input value={profile.email} disabled className="mt-1 w-full border border-neutral-200 bg-neutral-100 p-2.5 text-sm dark:bg-white/5" /></label>
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Phone<input value={profile.phone || ''} onChange={event => setProfile({ ...profile, phone: event.target.value })} className="mt-1 w-full border border-neutral-300 p-2.5 text-sm" /></label>
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">First name<input value={profile.first_name || ''} onChange={event => setProfile({ ...profile, first_name: event.target.value })} className="mt-1 w-full border border-neutral-300 p-2.5 text-sm" /></label>
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Last name<input value={profile.last_name || ''} onChange={event => setProfile({ ...profile, last_name: event.target.value })} className="mt-1 w-full border border-neutral-300 p-2.5 text-sm" /></label>
-        <div className="md:col-span-2"><Button onClick={saveProfile} loading={saving}>Save profile</Button></div>
-      </div>
-    </div> : <p className="text-sm text-neutral-500">Loading profile...</p>}</CardBody></>}{activeTab === 'notifications' && <CardBody><div className="flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-white/10"><div><h3 className="font-semibold text-neutral-900 dark:text-white">Notification center</h3><p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Recent alerts from inquiries, rentals, quotations, and workflow updates.</p></div><Button size="sm" variant="outline" onClick={markAllRead}><CheckCheck className="h-4 w-4" />Mark all read</Button></div><div className="divide-y divide-neutral-200 dark:divide-white/10">{notifications.length ? notifications.map(notification => <div className="flex gap-3 py-4" key={notification.id}><span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${notification.read_at ? 'bg-neutral-300 dark:bg-neutral-600' : notification.type === 'warning' ? 'bg-[#ffd000]' : notification.type === 'urgent' ? 'bg-red-500' : 'bg-[#246bdb]'}`} /><div><p className="text-sm font-medium text-neutral-900 dark:text-white">{notification.title}</p><p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{notification.message}</p></div></div>) : <div className="py-12 text-center text-sm text-neutral-500">No notifications yet.</div>}</div></CardBody>}{activeTab === 'password' && <CardBody><div className="flex items-start gap-3 border-b border-neutral-200 pb-5 dark:border-white/10"><span className="flex h-9 w-9 items-center justify-center bg-neutral-100 dark:bg-white/8"><LockKeyhole className="h-4 w-4" /></span><div><h3 className="font-semibold text-neutral-900 dark:text-white">Password & security</h3><p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Use at least eight characters and keep your password private.</p></div></div><div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3"><input type="password" value={password.current_password} onChange={event => setPassword({ ...password, current_password: event.target.value })} placeholder="Current password" className="border border-neutral-300 p-2.5 text-sm" /><input type="password" value={password.password} onChange={event => setPassword({ ...password, password: event.target.value })} placeholder="New password" className="border border-neutral-300 p-2.5 text-sm" /><input type="password" value={password.password_confirmation} onChange={event => setPassword({ ...password, password_confirmation: event.target.value })} placeholder="Confirm new password" className="border border-neutral-300 p-2.5 text-sm" /></div><Button className="mt-5" onClick={savePassword} loading={saving}>Update password</Button></CardBody>}</Card>
-  </div></AppLayout></>;
+  const unreadCount = notifications.filter(n => !n.read_at).length;
+
+  return (
+    <>
+      <Head title="Settings" />
+      <AppLayout dark={true} showHeader={false}>
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row gap-8">
+            
+            {/* Left Sidebar (Settings Navigation) */}
+            <div className="w-full md:w-64 shrink-0">
+              <nav className="flex flex-col space-y-1">
+                <button 
+                  onClick={() => setActiveTab('profile')}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'profile' ? 'bg-zinc-800 text-white' : 'text-content-secondary hover:bg-zinc-800/50 hover:text-white'}`}
+                >
+                  Public profile
+                </button>
+                <button 
+                  onClick={() => setActiveTab('security')}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'security' ? 'bg-zinc-800 text-white' : 'text-content-secondary hover:bg-zinc-800/50 hover:text-white'}`}
+                >
+                  Password & security
+                </button>
+                <button 
+                  onClick={() => setActiveTab('notifications')}
+                  className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'notifications' ? 'bg-zinc-800 text-white' : 'text-content-secondary hover:bg-zinc-800/50 hover:text-white'}`}
+                >
+                  Notifications
+                  {unreadCount > 0 && (
+                    <span className="bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">{unreadCount}</span>
+                  )}
+                </button>
+              </nav>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 min-w-0">
+              {message && (
+                <div className="mb-6 rounded-md border border-green-500/30 bg-green-500/10 p-4">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-400">{message}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'profile' && profile && (
+                <div>
+                  <h2 className="text-2xl font-semibold text-white mb-6 pb-2 border-b border-border-subtle">Public profile</h2>
+                  
+                  <div className="flex flex-col-reverse lg:flex-row gap-10">
+                    {/* Form Fields */}
+                    <div className="flex-1 space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Name</label>
+                        <input 
+                          value={profile.name} 
+                          onChange={e => setProfile({...profile, name: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-content-secondary">Your name may appear around IntelliTrack where you contribute or are mentioned.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Public email</label>
+                        <input 
+                          value={profile.email} 
+                          disabled 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-slate-400"
+                        />
+                        <p className="mt-1 text-xs text-content-secondary">You can manage verified email addresses in your email settings.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Nickname</label>
+                        <input 
+                          value={profile.nickname || ''} 
+                          onChange={e => setProfile({...profile, nickname: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-200 mb-1">First name</label>
+                          <input 
+                            value={profile.first_name || ''} 
+                            onChange={e => setProfile({...profile, first_name: e.target.value})} 
+                            className="w-full rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-200 mb-1">Last name</label>
+                          <input 
+                            value={profile.last_name || ''} 
+                            onChange={e => setProfile({...profile, last_name: e.target.value})} 
+                            className="w-full rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Phone</label>
+                        <input 
+                          value={profile.phone || ''} 
+                          onChange={e => setProfile({...profile, phone: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="pt-4">
+                        <button 
+                          onClick={saveProfile} 
+                          disabled={saving}
+                          className="rounded-md bg-[#238636] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#2ea043] disabled:opacity-50"
+                        >
+                          {saving ? 'Saving...' : 'Update profile'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Avatar Upload (Right side) */}
+                    <div className="flex flex-col items-start lg:w-48 shrink-0">
+                      <label className="block text-sm font-semibold text-slate-200 mb-2">Profile picture</label>
+                      <div className="relative group rounded-full overflow-hidden h-48 w-48 border border-border-subtle bg-zinc-800">
+                        {profile.avatar_url ? (
+                          <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-5xl text-black font-bold bg-[#ffcc00]">
+                            {initial}
+                          </div>
+                        )}
+                        <button 
+                          onClick={() => inputRef.current?.click()}
+                          className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Camera className="h-8 w-8 mb-2" />
+                          <span className="text-sm font-medium">Edit</span>
+                        </button>
+                      </div>
+                      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadAvatar} className="hidden" />
+                      
+                      <div className="mt-6 w-full rounded-md border border-border-subtle p-3 bg-zinc-900/50 text-center">
+                        <p className="text-xs text-content-secondary uppercase tracking-wider font-semibold">Assigned Role</p>
+                        <p className="mt-1 font-medium text-brand">{roleName(profile.role)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'security' && (
+                <div>
+                  <h2 className="text-2xl font-semibold text-white mb-6 pb-2 border-b border-border-subtle">Password & security</h2>
+                  
+                  <div className="max-w-2xl">
+                    <h3 className="text-lg font-medium text-white mb-4">Change password</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Old password</label>
+                        <input 
+                          type="password"
+                          value={password.current_password} 
+                          onChange={e => setPassword({...password, current_password: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="border-t border-border-subtle my-4 max-w-md" />
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">New password</label>
+                        <input 
+                          type="password"
+                          value={password.password} 
+                          onChange={e => setPassword({...password, password: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-200 mb-1">Confirm new password</label>
+                        <input 
+                          type="password"
+                          value={password.password_confirmation} 
+                          onChange={e => setPassword({...password, password_confirmation: e.target.value})} 
+                          className="w-full max-w-md rounded-md border border-zinc-700 bg-surface-input px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-content-secondary">Make sure it's at least 8 characters including a number and a lowercase letter.</p>
+                      </div>
+                      
+                      <div className="pt-4">
+                        <button 
+                          onClick={savePassword} 
+                          disabled={saving}
+                          className="rounded-md bg-[#238636] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#2ea043] disabled:opacity-50"
+                        >
+                          {saving ? 'Updating...' : 'Update password'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-medium text-red-500 mt-12 mb-4">Danger zone</h3>
+                    <div className="rounded-md border border-red-500/30 bg-transparent flex flex-col divide-y divide-red-500/30">
+                      
+                      {profile?.role === 'administrator' && (
+                        <div className="p-4 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-white">System Maintenance Mode</p>
+                            <p className="text-xs text-content-secondary">When enabled, the system will be locked down for all non-administrator users. They will see a maintenance screen.</p>
+                          </div>
+                          <button 
+                            onClick={toggleMaintenanceMode}
+                            disabled={saving}
+                            className={`rounded-md border px-4 py-1.5 text-sm font-semibold transition ${maintenanceMode ? 'bg-red-600/20 border-red-500 text-red-500 hover:bg-red-600 hover:text-white' : 'bg-transparent border-red-500 text-red-500 hover:bg-red-600 hover:text-white'}`}
+                          >
+                            {saving ? 'Updating...' : maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance'}
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="p-4 flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-semibold text-white">Deactivate your account</p>
+                          <p className="text-xs text-content-secondary">Once you deactivate your account, there is no going back. Please be certain.</p>
+                        </div>
+                        <button className="rounded-md bg-red-600/10 border border-red-500 px-4 py-1.5 text-sm font-semibold text-red-500 transition hover:bg-red-600 hover:text-white">
+                          Deactivate account
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notifications' && (
+                <div>
+                  <div className="flex justify-between items-end mb-6 pb-2 border-b border-border-subtle">
+                    <h2 className="text-2xl font-semibold text-white">Notifications</h2>
+                    <button 
+                      onClick={markAllRead}
+                      className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+                  
+                  <div className="max-w-3xl">
+                    <div className="rounded-md border border-border-subtle bg-surface-card overflow-hidden">
+                      {notifications.length ? (
+                        <div className="divide-y divide-border-subtle">
+                          {notifications.map(notification => (
+                            <div key={notification.id} className={`p-4 flex gap-4 ${notification.read_at ? 'opacity-60' : 'bg-zinc-800/30'}`}>
+                              <div className="mt-0.5">
+                                {notification.read_at ? (
+                                  <CheckCheck className="h-5 w-5 text-content-secondary" />
+                                ) : (
+                                  <span className={`block h-3 w-3 mt-1 rounded-full ${notification.type === 'warning' ? 'bg-yellow-500' : notification.type === 'urgent' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-white">{notification.title}</h4>
+                                <p className="text-sm text-content-secondary mt-1">{notification.message}</p>
+                                <p className="text-xs text-content-secondary mt-2">{new Date(notification.created_at).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center">
+                          <p className="text-sm text-content-secondary">No notifications yet.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    </>
+  );
 };
 
 export default Settings;

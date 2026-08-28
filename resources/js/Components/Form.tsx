@@ -21,7 +21,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-sm font-medium text-content-secondary">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
@@ -34,13 +34,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          className={clsx(
-            'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm',
-            'text-slate-900 placeholder:text-slate-400',
-            'transition-all duration-200',
-            'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
-            'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
-            error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
+          className={clsx( 'w-full rounded-lg border border-border-default bg-surface-input px-4 py-2.5 text-sm', 'text-content-primary placeholder:text-content-secondary', 'transition-all duration-200', 'focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15', 'disabled:bg-surface-app disabled:text-content-secondary disabled:cursor-not-allowed',
+            error && 'border-error-500 focus:border-error-500 focus:ring-error-500/15',
             startIcon && 'pl-10',
             endIcon && 'pr-10',
             className
@@ -57,7 +52,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <p className="mt-1 text-xs text-red-600">{error}</p>
       )}
       {helperText && !error && (
-        <p className="mt-1 text-xs text-slate-500">{helperText}</p>
+        <p className="mt-1 text-xs text-content-secondary">{helperText}</p>
       )}
     </div>
   )
@@ -81,19 +76,15 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-sm font-medium text-content-secondary">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
       )}
       <select
         ref={ref}
-        className={clsx(
-          'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900',
-          'transition-all duration-200',
-          'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
-          'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
-          error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
+        className={clsx( 'w-full rounded-lg border border-border-default bg-surface-input px-4 py-2.5 text-sm text-content-primary', 'transition-all duration-200', 'focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15', 'disabled:bg-surface-app disabled:text-content-secondary disabled:cursor-not-allowed',
+          error && 'border-error-500 focus:border-error-500 focus:ring-error-500/15',
           className
         )}
         {...props}
@@ -127,19 +118,15 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
   }, ref) => (
     <div className="w-full">
       {label && (
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-sm font-medium text-content-secondary">
           {label}
           {props.required && <span className="text-error-600 ml-1">*</span>}
         </label>
       )}
       <textarea
         ref={ref}
-        className={clsx(
-          'w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400',
-          'transition-all duration-200 resize-none',
-          'focus:outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15',
-          'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
-          error && 'border-red-500 focus:border-red-500 focus:ring-red-100',
+        className={clsx( 'w-full rounded-lg border border-border-default bg-surface-input px-4 py-2.5 text-sm text-content-primary placeholder:text-content-secondary', 'transition-all duration-200 resize-none', 'focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15', 'disabled:bg-surface-app disabled:text-content-secondary disabled:cursor-not-allowed',
+          error && 'border-error-500 focus:border-error-500 focus:ring-error-500/15',
           className
         )}
         {...props}

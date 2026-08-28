@@ -55,7 +55,7 @@ class DashboardAccessTest extends TestCase
         $user = User::factory()->create(['role' => 'administrator']);
 
         $this->actingAs($user)->get('/users')->assertOk();
-        $this->actingAs($user)->getJson('/api/users')->assertOk()->assertJsonStructure(['data']);
+        $this->actingAs($user)->getJson('/api/users')->assertOk()->assertJsonStructure(['users' => ['data']]);
     }
 
     public function test_administrators_can_list_and_create_clients(): void
