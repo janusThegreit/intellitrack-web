@@ -16,12 +16,14 @@ class DashboardAccessTest extends TestCase
         $this->get('/dashboard')->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_can_open_the_dashboard(): void
-    {
-        $user = User::factory()->create();
+   public function test_authenticated_users_can_open_the_dashboard(): void
+{
+    $user = User::factory()->create([
+        'role' => 'sales_business_development',
+    ]);
 
-        $this->actingAs($user)->get('/dashboard')->assertOk();
-    }
+    $this->actingAs($user)->get('/dashboard')->assertOk();
+}
 
     public function test_authenticated_users_can_load_dashboard_summary_data(): void
     {
@@ -71,10 +73,11 @@ class DashboardAccessTest extends TestCase
     }
 
     public function test_login_redirects_to_a_visible_dashboard(): void
-    {
-        $user = User::factory()->create([
-            'password' => Hash::make('secure-password'),
-        ]);
+{
+    $user = User::factory()->create([
+        'role' => 'sales_business_development',
+        'password' => Hash::make('secure-password'),
+    ]);
 
         $this->post('/login', [
             'email' => $user->email,

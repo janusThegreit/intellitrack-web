@@ -15,9 +15,9 @@ services:
       DB_DATABASE: intellitrack_db
       DB_USERNAME: intellitrack_web
       DB_PASSWORD: intellitrack_password
-      SESSION_DRIVER: database
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
     depends_on:
       db:
         condition: service_healthy
