@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
                 'last_name' => 'Camarig',
                 'password' => Hash::make('Intellitrack2026@'),
                 'phone' => '1234567890',
-                'role' => 'administrator',
+                'role' => 'sales_manager',
                 'is_active' => true,
             ]
         );
