@@ -35,6 +35,10 @@ if [ -z "$APP_KEY_TRIMMED" ]; then
   fi
 fi
 
+if [ -z "$APP_KEY" ] || [ "$APP_KEY" = '""' ] || [ "$APP_KEY" = "''" ]; then
+  export APP_KEY="base64:wEFibhxIILPLd8k9dYOfxAqV/5Ios9SicOeHj9ndKfQ="
+fi
+
 # Clear old configuration and optimize cache
 php artisan optimize:clear || true
 php artisan storage:link || true
