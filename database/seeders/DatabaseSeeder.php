@@ -18,7 +18,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create / ensure administrator user
+        User::updateOrCreate(
+            ['email' => 'johnnerrycamarig@gmail.com'],
+            [
+                'name' => 'John Nerry Camarig',
+                'first_name' => 'John Nerry',
+                'last_name' => 'Camarig',
+                'password' => Hash::make('Intellitrack2026@'),
+                'phone' => '1234567890',
+                'role' => 'administrator',
+                'is_active' => true,
+            ]
+        );
         User::updateOrCreate(
             ['email' => 'admin@intellitrack.com'],
             [
