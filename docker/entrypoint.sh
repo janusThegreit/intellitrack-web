@@ -98,7 +98,7 @@ php artisan storage:link || true
 # Run database migrations and seeds without crashing the container if DB is not ready yet
 if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
   echo "Checking database connection and running migrations..."
-  php artisan migrate --force --isolated || echo "WARNING: Database migration failed. Continuing application startup..."
+  php artisan migrate --force || echo "WARNING: Database migration failed. Continuing application startup..."
   php artisan db:seed --force || echo "WARNING: Database seeding failed."
 fi
 
