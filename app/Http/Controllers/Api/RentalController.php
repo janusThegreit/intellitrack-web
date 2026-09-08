@@ -6,6 +6,7 @@ use App\Models\Rental;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use App\Services\NotificationService;
 
@@ -16,7 +17,8 @@ class RentalController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Rental::query()->with(['customer', 'equipment']);
+        Gate::authorize('view-rentals');
+        $query = Rental::query()->with(['customer', 'equipment', 'jobOrder']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -30,6 +32,15 @@ class RentalController extends Controller
             $query->where('equipment_id', $request->input('equipment_id'));
         }
 
+        if ($request->filled('search')) {
+            $search = '%' . strtolower($request->input('search')) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(rental_number)'), 'like', $search)
+                  ->orWhereHas('customer', fn ($cq) => $cq->where(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), 'like', $search)->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(company_name)'), 'like', $search))
+                  ->orWhereHas('equipment', fn ($eq) => $eq->where(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), 'like', $search)->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(code)'), 'like', $search));
+            });
+        }
+
         $rentals = $query->orderByDesc('created_at')->paginate($request->input('per_page', 15));
 
         return response()->json($rentals);
@@ -40,6 +51,7 @@ class RentalController extends Controller
      */
     public function store(Request $request)
     {
+        Gate::authorize('manage-rentals');
         $validated = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'equipment_id' => ['required', 'exists:equipment,id'],
@@ -52,7 +64,7 @@ class RentalController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $validated['rental_number'] = 'RNT-' . date('Ymd') . '-' . Str::random(6);
+        $validated['rental_number'] = 'RNT-' . date('Ymd') . '-' . strtoupper(Str::random(6));
         
         // Calculate rental days and cost
         $startDate = new \DateTime($validated['rental_start_date']);
@@ -65,6 +77,7 @@ class RentalController extends Controller
         $validated['total_amount'] = $rentalCost + ($validated['deposit_amount'] ?? 0);
 
         $rental = Rental::create($validated);
+        $rental->equipment?->update(['status' => 'rented']);
 
         app(NotificationService::class)->notifyRoles(
             ['administrator', 'sales_manager'],
@@ -83,6 +96,7 @@ class RentalController extends Controller
      */
     public function show(Rental $rental)
     {
+        Gate::authorize('view-rentals');
         $rental->load(['customer', 'equipment', 'jobOrder']);
         return response()->json($rental);
     }
@@ -92,12 +106,17 @@ class RentalController extends Controller
      */
     public function update(Request $request, Rental $rental)
     {
+        Gate::authorize('manage-rentals');
         $validated = $request->validate([
+            'status' => ['nullable', 'string'],
+            'daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'rental_start_date' => ['nullable', 'date'],
+            'rental_end_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'damage_notes' => ['nullable', 'string'],
         ]);
 
-        $rental->update($validated);
+        $rental->update(array_filter($validated, fn ($val) => !is_null($val)));
 
         return response()->json($rental);
     }
@@ -107,6 +126,7 @@ class RentalController extends Controller
      */
     public function destroy(Rental $rental)
     {
+        Gate::authorize('manage-rentals');
         $rental->delete();
         return response()->json(null, Response::HTTP_NO_CONTENT);
     }
@@ -116,6 +136,7 @@ class RentalController extends Controller
      */
     public function returnEquipment(Request $request, Rental $rental)
     {
+        Gate::authorize('manage-rentals');
         $validated = $request->validate([
             'actual_return_date' => ['required', 'date'],
             'damage_notes' => ['nullable', 'string'],
@@ -129,8 +150,8 @@ class RentalController extends Controller
             'status' => 'completed',
         ]);
 
-        // Update equipment status back to available
-        $rental->equipment->update(['status' => 'available']);
+        // Update equipment status back to available safely
+        $rental->equipment?->update(['status' => 'available']);
 
         app(NotificationService::class)->notifyRoles(
             ['administrator', 'sales_manager', 'sales_business_development'],
@@ -149,6 +170,7 @@ class RentalController extends Controller
      */
     public function overdue()
     {
+        Gate::authorize('view-rentals');
         $overdueRentals = Rental::where('status', '!=', 'completed')
             ->where('status', '!=', 'cancelled')
             ->where('rental_end_date', '<', now())

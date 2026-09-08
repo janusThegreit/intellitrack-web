@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { Filter, PackageSearch } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -10,7 +10,7 @@ interface Crane {
   final_height?: number; final_height_unit?: string; status: string; image_url?: string; rental_services?: string[];
 }
 
-const label = (value?: string) => value ? value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()) : 'Not recorded';
+const label = (value?: string) => value ? value.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase()) : 'Not recorded';
 
 const TowerCranes = () => {
   const [cranes, setCranes] = useState<Crane[]>([]);

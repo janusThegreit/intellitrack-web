@@ -11,6 +11,8 @@ class EquipmentMaintenance extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'equipment_maintenance';
+
     protected $fillable = [
         'equipment_id', 'maintenance_type', 'description', 'scheduled_date',
         'start_date', 'completion_date', 'status', 'cost', 'findings',

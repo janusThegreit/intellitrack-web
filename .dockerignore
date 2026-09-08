@@ -1,8 +1,37 @@
+# Git & VCS
 .git
+.gitignore
+.gitattributes
+.github
+
+# Environment & Config
 .env
+.env.*
+!.env.example
+!.env.microservices.example
+.editorconfig
+
+# Dependencies & Package Managers
 node_modules
-public/build
-storage/logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npmrc
+
+# Application Caches & Logs
+storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/framework/testing/*
+.phpunit.result.cache
+.phpunit.cache
+
+# Frontend build cache (built fresh inside multi-stage Docker build)
+public/hot
+
+# Tests & IDE Files
+tests
+.idea
+.vscode
+*.log

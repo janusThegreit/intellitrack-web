@@ -32,12 +32,12 @@ class CustomerInquiryController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = '%' . strtolower($request->input('search')) . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('inquiry_number', 'like', "%{$search}%")
-                    ->orWhere('subject', 'like', "%{$search}%")
-                    ->orWhere('details', 'like', "%{$search}%")
-                    ->orWhere('remarks', 'like', "%{$search}%");
+                $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(inquiry_number)'), 'like', $search)
+                    ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(subject)'), 'like', $search)
+                    ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(details)'), 'like', $search)
+                    ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(remarks)'), 'like', $search);
             });
         }
 
@@ -47,12 +47,25 @@ class CustomerInquiryController extends Controller
     public function store(Request $request)
     {
         Gate::authorize('manage-crm');
+
+        // Provide smart fallbacks for source, subject, and details if frontend submits alternate field names
+        $request->merge([
+            'source' => $request->input('source') ?: 'direct_inquiry',
+            'subject' => $request->input('subject') ?: ($request->input('project_name') ? "Inquiry for {$request->input('project_name')}" : ($request->input('company_name') ? "Requirement for {$request->input('company_name')}" : "Inquiry from {$request->input('contact_name', 'Client')}")),
+            'details' => $request->input('details') ?: ($request->input('notes') ?: 'Customer inquiry for crane rental and heavy equipment services.'),
+            'customer_name' => $request->input('customer_name') ?: ($request->input('company_name') ?: $request->input('contact_name')),
+            'customer_email' => $request->input('customer_email') ?: $request->input('email'),
+            'customer_phone' => $request->input('customer_phone') ?: $request->input('phone'),
+            'contact_person' => $request->input('contact_person') ?: $request->input('contact_name'),
+            'address' => $request->input('address') ?: $request->input('project_location'),
+        ]);
+
         $validated = $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
             'source' => ['required', 'string', 'max:255'],
             'subject' => ['required', 'string', 'max:255'],
             'details' => ['required', 'string'],
-            'status' => ['nullable', 'in:new,contacted,qualified,quoted,closed,archived'],
+            'status' => ['nullable', 'in:new,contacted,qualified,quoted,proposal_sent,converted,closed,closed_lost,archived'],
             'priority' => ['nullable', 'in:low,medium,high,urgent'],
             'remarks' => ['nullable', 'string'],
             'assigned_to' => ['nullable', 'exists:users,id'],
@@ -155,7 +168,7 @@ class CustomerInquiryController extends Controller
     {
         Gate::authorize('manage-crm');
         $validated = $request->validate([
-            'status' => ['required', 'in:new,contacted,qualified,quoted,closed,archived'],
+            'status' => ['required', 'in:new,contacted,qualified,quoted,proposal_sent,converted,closed,closed_lost,archived'],
             'remarks' => ['nullable', 'string'],
         ]);
 
@@ -173,5 +186,46 @@ class CustomerInquiryController extends Controller
         ]);
 
         return response()->json($customerInquiry->load(['customer', 'creator', 'assignee', 'history.user']));
+    }
+
+    /**
+     * Convert an inquiry into a draft quotation.
+     */
+    public function convertToQuotation(Request $request, CustomerInquiry $customerInquiry)
+    {
+        Gate::authorize('manage-crm');
+
+        if (! $customerInquiry->customer_id) {
+            abort(422, 'Cannot convert inquiry without an associated customer account.');
+        }
+
+        $quotation = \App\Models\Quotation::create([
+            'quotation_number' => 'QT-' . date('Ymd') . '-' . strtoupper(Str::random(6)),
+            'customer_id' => $customerInquiry->customer_id,
+            'created_by' => Auth::id(),
+            'quotation_date' => now(),
+            'valid_until' => now()->addDays(30),
+            'status' => 'draft',
+            'description' => "Proposal for Inquiry {$customerInquiry->inquiry_number}: {$customerInquiry->subject}",
+            'notes' => $customerInquiry->details,
+            'subtotal' => 0,
+            'tax_rate' => 12,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 0,
+        ]);
+
+        $oldStatus = $customerInquiry->status;
+        $customerInquiry->update(['status' => 'quoted']);
+
+        $customerInquiry->history()->create([
+            'user_id' => Auth::id(),
+            'action' => 'converted_to_quotation',
+            'notes' => "Converted to Quotation {$quotation->quotation_number}",
+            'old_status' => $oldStatus,
+            'new_status' => 'quoted',
+        ]);
+
+        return response()->json($quotation->load(['customer', 'createdBy']), Response::HTTP_CREATED);
     }
 }

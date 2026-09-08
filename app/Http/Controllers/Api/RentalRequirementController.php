@@ -71,7 +71,7 @@ class RentalRequirementController extends Controller
 
     public function assess(Request $request, RentalRequirement $rentalRequirement)
     {
-        Gate::authorize('manage-users');
+        Gate::authorize('manage-rentals');
 
         $data = $request->validate([
             'equipment_id' => ['nullable', 'exists:equipment,id'],

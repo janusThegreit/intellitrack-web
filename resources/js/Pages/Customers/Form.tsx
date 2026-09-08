@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { FormEvent } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Card, CardHeader, CardBody, CardFooter } from '../../Components/Card';
@@ -44,10 +44,9 @@ const CustomerForm = ({ customer, isEditing = false }: CustomerFormProps) => {
     notes: customer?.notes || '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const url = isEditing ? `/api/customers/${customer?.id}` : '/api/customers';
-    const method = isEditing ? 'post' : 'post';
     post(url);
   };
 

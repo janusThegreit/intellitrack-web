@@ -2,12 +2,19 @@
 set -e
 
 if [ ! -f .env ]; then
-  cp .env.example .env
+  if [ -f .env.example ]; then
+    cp .env.example .env
+  fi
 fi
 
-php artisan key:generate --force
+if [ -z "$APP_KEY" ]; then
+  php artisan key:generate --force
+fi
+
 php artisan optimize:clear
 php artisan migrate --force
 php artisan storage:link || true
 
-exec php artisan serve --host=0.0.0.0 --port=8000
+PORT="${PORT:-8000}"
+echo "Starting IntelliTrack Web on port ${PORT}..."
+exec php artisan serve --host=0.0.0.0 --port="${PORT}"

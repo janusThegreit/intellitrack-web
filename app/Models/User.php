@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role'])]
+#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -146,11 +146,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has operations & technical staff role
+     */
+    public function isOperationsTechnical(): bool
+    {
+        return in_array($this->role, [
+            'operations_technical',
+            'operations_staff',
+            'technical_staff',
+            'staff',
+        ]);
+    }
+
+    /**
      * Check if user has staff role
      */
     public function isStaff(): bool
     {
-        return $this->role === 'staff';
+        return $this->isOperationsTechnical();
     }
 
     /**

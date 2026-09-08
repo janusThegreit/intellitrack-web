@@ -29,7 +29,7 @@ class RoleBasedMaintenanceMode
 
             // Allow if it's the login/logout route so users can still attempt to log in
             // Admins need to be able to log in during maintenance.
-            if ($request->is('login') || $request->is('logout') || $request->is('api/login')) {
+            if ($request->is('login') || $request->is('logout') || $request->is('api/login') || $request->is('maintenance')) {
                 return $next($request);
             }
 
@@ -45,7 +45,10 @@ class RoleBasedMaintenanceMode
                 ], 503);
             }
 
-            return Inertia::render('Maintenance')->toResponse($request)->setStatusCode(503);
+            $customMessage = Cache::get('system_maintenance_message', 'IntelliTrack is currently undergoing scheduled maintenance to improve our services and reliability. We apologize for any inconvenience.');
+            return Inertia::render('Maintenance', [
+                'custom_message' => $customMessage,
+            ])->toResponse($request)->setStatusCode(503);
         }
 
         return $next($request);

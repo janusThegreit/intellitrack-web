@@ -1,6 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Inbox } from 'lucide-react';
 
 export interface TableColumn<T> {
   key: keyof T;
@@ -35,7 +35,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     loading = false,
     error = null,
     empty = false,
-    emptyMessage = 'No data found',
+    emptyMessage = 'No records found matching your criteria',
     sortBy,
     sortOrder = 'asc',
     onSort,
@@ -55,89 +55,96 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     const renderSortIcon = (column: any) => {
       if (sortBy !== column.key) return null;
       return sortOrder === 'asc' ? (
-        <ChevronUp className="w-4 h-4 inline ml-1" />
+        <ChevronUp className="w-3.5 h-3.5 text-amber-500" />
       ) : (
-        <ChevronDown className="w-4 h-4 inline ml-1" />
+        <ChevronDown className="w-3.5 h-3.5 text-amber-500" />
       );
     };
 
     return (
-      <div ref={ref} className="overflow-x-auto rounded-xl border border-border-default bg-surface-card">
-        <table className="w-full">
-          <thead className="border-b border-border-subtle">
-            <tr>
-              {columns.map((column) => (
-                <th
-                  key={String(column.key)}
-                  onClick={() => handleSort(column)}
-                  className={clsx( 'px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-content-secondary',
-                    column.sortable && 'cursor-pointer hover:bg-surface-input',
-                    column.className
-                  )}
-                  style={column.width ? { width: column.width } : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    {column.label}
-                    {column.sortable && renderSortIcon(column)}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
+      <div ref={ref} className="overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 shadow-sm backdrop-blur-md transition-all">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="border-b border-border-subtle/80 bg-surface-app/60 backdrop-blur-sm">
               <tr>
-                <td colSpan={columns.length} className="px-6 py-8 text-center">
-                  <div className="flex justify-center items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span className="text-content-secondary">Loading...</span>
-                  </div>
-                </td>
-              </tr>
-            )}
-            {error && (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-8 text-center">
-                  <p className="text-red-600">{error}</p>
-                </td>
-              </tr>
-            )}
-            {!loading && !error && (data.length === 0 || empty) && (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center">
-                  <p className="text-content-secondary">{emptyMessage}</p>
-                </td>
-              </tr>
-            )}
-            {!loading && !error && data.length > 0 && data.map((row, idx) => (
-              <tr
-                key={String(row[rowKey as keyof typeof row] || idx)}
-                onClick={() => onRowClick?.(row)}
-                className={clsx( 'border-b border-border-subtle transition-colors',
-                  striped && idx % 2 === 0 && 'bg-surface-app',
-                  hoverable && 'cursor-pointer hover:bg-surface-input'
-                )}
-              >
                 {columns.map((column) => (
-                  <td
+                  <th
                     key={String(column.key)}
-                    className={clsx( 'px-5 text-sm text-content-secondary',
-                      compact ? 'py-2.5' : 'py-4',
+                    onClick={() => handleSort(column)}
+                    className={clsx(
+                      'px-6 py-4 text-xs font-bold uppercase tracking-wider text-content-secondary select-none',
+                      column.sortable && 'cursor-pointer hover:text-amber-500 transition-colors',
                       column.className
                     )}
+                    style={column.width ? { width: column.width } : undefined}
                   >
-                    {column.render
-                      ? column.render(row[column.key], row)
-                      : String(row[column.key] ?? '-')}
-                  </td>
+                    <div className="flex items-center gap-1.5">
+                      {column.label}
+                      {column.sortable && renderSortIcon(column)}
+                    </div>
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border-subtle/60">
+              {loading && (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-16 text-center">
+                    <div className="flex flex-col justify-center items-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent shadow-sm shadow-amber-500/30" />
+                      <span className="text-xs font-medium text-content-secondary">Fetching real-time records...</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {error && (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-12 text-center">
+                    <p className="text-sm font-semibold text-rose-500">{error}</p>
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && (data.length === 0 || empty) && (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-input border border-border-default text-content-secondary">
+                        <Inbox className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-medium text-content-secondary">{emptyMessage}</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && data.length > 0 && data.map((row, idx) => (
+                <tr
+                  key={String(row[rowKey as keyof typeof row] || idx)}
+                  onClick={() => onRowClick?.(row)}
+                  className={clsx(
+                    'transition-colors duration-150',
+                    striped && idx % 2 === 0 ? 'bg-transparent' : 'bg-surface-app/40',
+                    hoverable && 'cursor-pointer hover:bg-amber-500/5 dark:hover:bg-amber-500/10'
+                  )}
+                >
+                  {columns.map((column) => (
+                    <td
+                      key={String(column.key)}
+                      className={clsx(
+                        'px-6 text-sm text-content-primary',
+                        compact ? 'py-3' : 'py-4',
+                        column.className
+                      )}
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : String(row[column.key] ?? '-')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

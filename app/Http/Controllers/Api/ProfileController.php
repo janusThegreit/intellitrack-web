@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -26,6 +27,8 @@ class ProfileController extends Controller
 
         $request->user()->update($data);
 
+        ActivityLogService::log($request->user(), 'updated', \App\Models\User::class, $request->user()->id, "User '{$request->user()->name}' updated personal profile information.");
+
         return response()->json($request->user()->fresh()->only(['id', 'name', 'email', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'last_login_at']));
     }
 
@@ -41,6 +44,8 @@ class ProfileController extends Controller
         $path = $data['avatar']->store('avatars', 'public');
         $user->update(['avatar_url' => '/storage/'.$path]);
 
+        ActivityLogService::log($user, 'updated', \App\Models\User::class, $user->id, "User '{$user->name}' updated profile avatar.");
+
         return response()->json(['avatar_url' => $user->avatar_url]);
     }
 
@@ -51,7 +56,12 @@ class ProfileController extends Controller
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
 
-        $request->user()->update(['password' => Hash::make($data['password'])]);
+        $user = $request->user();
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        ActivityLogService::logSecurity('password_changed', "User '{$user->name}' ({$user->email}) successfully changed their security password.", $user, [
+            'ip' => $request->ip(),
+        ]);
 
         return response()->json(['message' => 'Password updated.']);
     }

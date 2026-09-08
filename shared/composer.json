@@ -1,0 +1,16 @@
+{
+    "name": "intellitrack/shared",
+    "description": "IntelliTrack Microservices Shared Kernel SDK",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "IntelliTrack\\Shared\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2|^8.3",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/http": "^10.0|^11.0|^12.0|^13.0"
+    }
+}

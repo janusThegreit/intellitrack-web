@@ -5,10 +5,10 @@ import clsx from 'clsx';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
+  title?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
   closeButton?: boolean;
 }
 
@@ -28,6 +28,11 @@ const Modal = ({
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
   };
 
   return (
@@ -109,7 +114,7 @@ const ConfirmDialog = ({
   } as const;
 
   return (
-    <Modal isOpen={isOpen} onClose={onCancel} size="sm">
+    <Modal isOpen={isOpen} onClose={onCancel} title={title} size="sm">
       <div className="flex flex-col gap-4">
         <div className={clsx('p-3 rounded-lg', variantColors[variant])}>
           <p className="font-medium">{message}</p>

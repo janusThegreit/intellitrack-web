@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Card, CardBody, CardHeader } from '../../Components/Card';
-import Button from '../../Components/Button';
 import { formatPeso } from '../../Utils/currency';
 
 interface RecordPageProps { type: string; recordId: number; }

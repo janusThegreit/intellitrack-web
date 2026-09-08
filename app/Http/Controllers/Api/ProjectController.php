@@ -18,7 +18,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('view-projects');
-        $query = Project::query()->with(['customer', 'projectManager']);
+        $query = Project::query()->with(['customer', 'projectManager', 'tasks'])->withCount('tasks');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -28,7 +28,7 @@ class ProjectController extends Controller
             $query->where('customer_id', $request->input('customer_id'));
         }
 
-        $projects = $query->orderByDesc('created_at')->paginate($request->input('per_page', 15));
+        $projects = $query->orderByDesc('id')->paginate($request->input('per_page', 25));
 
         return response()->json($projects);
     }
@@ -45,27 +45,70 @@ class ProjectController extends Controller
             'project_manager_id' => ['required', 'exists:users,id'],
             'description' => ['nullable', 'string'],
             'start_date' => ['required', 'date'],
-            'deadline' => ['nullable', 'date', 'after:start_date'],
+            'deadline' => ['nullable', 'date'],
             'budget' => ['nullable', 'numeric', 'min:0'],
             'objectives' => ['nullable', 'string'],
             'deliverables' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:planning,active,on-hold,completed,cancelled'],
         ]);
 
-        $validated['project_code'] = 'PRJ-' . date('Ymd') . '-' . Str::random(6);
+        $validated['project_code'] = 'PRJ-' . date('Y') . '-' . strtoupper(Str::random(6));
+        $validated['status'] = $validated['status'] ?? 'active';
 
         $project = Project::create($validated);
+
+        // Auto-seed default industry milestone phases
+        $defaultPhases = [
+            ['task_name' => 'Site Survey, Soil Bearing Capacity & Anchor Bolt Inspection', 'priority' => 'critical', 'hours' => 24],
+            ['task_name' => 'Mobilization of Heavy Equipment, Boom Trucks & Counterweights', 'priority' => 'high', 'hours' => 48],
+            ['task_name' => 'Tower Crane Mast Erection & Hook Height Calibration', 'priority' => 'critical', 'hours' => 60],
+            ['task_name' => 'Active Project Rigging & Structural Steel Operations', 'priority' => 'high', 'hours' => 120],
+            ['task_name' => 'DOLE Third-Party Load Testing Certification & Site Demob', 'priority' => 'medium', 'hours' => 32],
+        ];
+
+        foreach ($defaultPhases as $idx => $phase) {
+            $project->tasks()->create([
+                'task_name' => $phase['task_name'],
+                'priority' => $phase['priority'],
+                'status' => $idx === 0 ? 'in-progress' : 'todo',
+                'progress_percentage' => $idx === 0 ? 30 : 0,
+                'assigned_to' => $project->project_manager_id,
+                'estimated_hours' => $phase['hours'],
+                'actual_hours' => 0,
+                'description' => 'Mandatory operational phase for crane site rigging and safety protocol.',
+            ]);
+        }
+
+        $project->load(['customer', 'projectManager', 'tasks']);
 
         return response()->json($project, Response::HTTP_CREATED);
     }
 
     /**
-     * Display the specified project.
+     * Display the specified project with full connected operational intelligence.
      */
     public function show(Project $project)
     {
         Gate::authorize('view-projects');
-        $project->load(['customer', 'projectManager', 'tasks']);
-        return response()->json($project);
+        $project->load(['customer', 'projectManager', 'tasks.assignedTo']);
+
+        // Attach connected Job Orders
+        $jobOrders = \App\Models\JobOrder::where('customer_id', $project->customer_id)
+            ->with(['createdBy', 'assignedTo'])
+            ->latest()
+            ->get();
+
+        // Attach connected Rentals & Fleet
+        $rentals = \App\Models\Rental::where('customer_id', $project->customer_id)
+            ->with(['equipment'])
+            ->latest()
+            ->get();
+
+        $data = $project->toArray();
+        $data['job_orders'] = $jobOrders;
+        $data['rentals'] = $rentals;
+
+        return response()->json($data);
     }
 
     /**
@@ -104,7 +147,7 @@ class ProjectController extends Controller
     /**
      * Display a listing of project tasks.
      */
-    public function indexTasks(Project $project)
+    public function indexTasks(Request $request, Project $project)
     {
         Gate::authorize('view-projects');
         $tasks = $project->tasks()->paginate($request->input('per_page', 15));

@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
         Gate::define('view-core-dashboard', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
         });
 
         Gate::define('view-crm', function (User $user) {
@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-crm', function (User $user) {
-            return $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-clients', function (User $user) {
@@ -46,27 +46,27 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-clients', function (User $user) {
-            return $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-rentals', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
         });
 
         Gate::define('manage-rentals', function (User $user) {
-            return $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
         });
 
         Gate::define('view-projects', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
         });
 
         Gate::define('manage-projects', function (User $user) {
-            return $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-customers', function (User $user) {
-            return $user->isSalesBusinessDevelopment();
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('approve-quotations', function (User $user) {
@@ -74,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-job-orders', function (User $user) {
-            return $user->isSalesBusinessDevelopment() || $user->isSalesManager();
+            return $user->isSalesBusinessDevelopment() || $user->isSalesManager() || $user->isOperationsTechnical();
         });
 
         Gate::define('view-reports', function (User $user) {
@@ -102,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('manage-job-order', function (User $user, JobOrder $jobOrder) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->id === $jobOrder->created_by;
+            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical() || $user->id === $jobOrder->created_by;
         });
     }
 }

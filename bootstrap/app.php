@@ -14,10 +14,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
+        $middleware->alias([
+            'correlation' => \IntelliTrack\Shared\Middleware\CorrelationIdMiddleware::class,
+            'internal_auth' => \IntelliTrack\Shared\Middleware\InternalServiceAuthMiddleware::class,
+        ]);
         $middleware->web(append: [
+            \IntelliTrack\Shared\Middleware\CorrelationIdMiddleware::class,
             \App\Http\Middleware\RoleBasedMaintenanceMode::class,
+            \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
         $middleware->api(append: [
+            \IntelliTrack\Shared\Middleware\CorrelationIdMiddleware::class,
             \App\Http\Middleware\RoleBasedMaintenanceMode::class,
         ]);
     })

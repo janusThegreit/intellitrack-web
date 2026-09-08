@@ -58,6 +58,11 @@ class JobOrder extends Model
         return $this->hasMany(Quotation::class);
     }
 
+    public function feedback(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CustomerFeedback::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(ActivityLog::class, 'loggable_id')
