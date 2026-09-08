@@ -6,6 +6,16 @@ if [ -n "$DATABASE_URL" ] && [ -z "$DB_URL" ]; then
   export DB_URL="$DATABASE_URL"
 fi
 
+if [ -n "$DB_USER" ]; then
+  export DB_USERNAME="$DB_USER"
+fi
+if [ -n "$DB_NAME" ] && [ -z "$DB_DATABASE" ]; then
+  export DB_DATABASE="$DB_NAME"
+fi
+if [ -n "$DB_PASS" ] && [ -z "$DB_PASSWORD" ]; then
+  export DB_PASSWORD="$DB_PASS"
+fi
+
 # Ensure .env exists so artisan commands don't complain
 if [ ! -f .env ]; then
   if [ -f .env.example ]; then
