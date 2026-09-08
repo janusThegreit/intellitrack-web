@@ -15,10 +15,24 @@ if [ ! -f .env ]; then
   fi
 fi
 
-# Generate application key if not set
-if [ -z "$APP_KEY" ]; then
-  echo "Generating application key..."
-  php artisan key:generate --force || true
+# Generate and export application key if not set
+APP_KEY_TRIMMED=$(echo "$APP_KEY" | tr -d '[:space:]')
+if [ -z "$APP_KEY_TRIMMED" ]; then
+  EXISTING_KEY=$(grep "^APP_KEY=base64:" .env 2>/dev/null | cut -d '=' -f2- | tr -d '\r[:space:]')
+  if [ -n "$EXISTING_KEY" ]; then
+    export APP_KEY="$EXISTING_KEY"
+  else
+    echo "Generating new application key..."
+    NEW_KEY=$(php artisan key:generate --show --no-ansi | tr -d '\r[:space:]')
+    if [ -n "$NEW_KEY" ]; then
+      export APP_KEY="$NEW_KEY"
+      if grep -q "^APP_KEY=" .env 2>/dev/null; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" .env
+      else
+        echo "APP_KEY=${NEW_KEY}" >> .env
+      fi
+    fi
+  fi
 fi
 
 # Clear old configuration and optimize cache
