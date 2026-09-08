@@ -1,29 +1,26 @@
 #!/bin/sh
 set -e
 
-# Map DATABASE_URL to DB_URL if provided by cloud platforms like Koyeb/Render/Railway
-if [ -n "$DATABASE_URL" ] && [ -z "$DB_URL" ]; then
-  export DB_URL="$DATABASE_URL"
+# Map and parse DATABASE_URL if provided (e.g. from Neon.tech, Supabase, etc.)
+ACTIVE_DB_URL="${DATABASE_URL:-$DB_URL}"
+if [ -n "$ACTIVE_DB_URL" ]; then
+  export DATABASE_URL="$ACTIVE_DB_URL"
+  export DB_URL="$ACTIVE_DB_URL"
+  eval $(php -r '
+    $url = parse_url(getenv("ACTIVE_DB_URL"));
+    if ($url) {
+      if (!empty($url["host"])) echo "export DB_HOST=" . escapeshellarg($url["host"]) . ";\n";
+      if (!empty($url["port"])) echo "export DB_PORT=" . escapeshellarg((string)$url["port"]) . ";\n";
+      if (!empty($url["path"])) echo "export DB_DATABASE=" . escapeshellarg(ltrim($url["path"], "/")) . ";\n";
+      if (!empty($url["user"])) echo "export DB_USERNAME=" . escapeshellarg($url["user"]) . ";\n";
+      if (!empty($url["pass"])) echo "export DB_PASSWORD=" . escapeshellarg($url["pass"]) . ";\n";
+    }
+  ')
 fi
 
-# Normalize DB credentials across host platforms
-if [ "$DB_HOST" = "db" ] || [ -z "$DB_HOST" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
-  export DB_HOST="postgresql-pzpescve.internal"
-fi
-if [ "$DB_PORT" = "" ] || [ -z "$DB_PORT" ]; then
-  export DB_PORT="5432"
-fi
-if [ "$DB_DATABASE" = "intellitrack_db" ] || [ -z "$DB_DATABASE" ]; then
-  export DB_DATABASE="hf_db_pzpescve"
-fi
-if [ "$DB_USERNAME" = "intellitrack_web" ] || [ -z "$DB_USERNAME" ] || [ "$DB_USERNAME" = "hf_dmqlt7pxci" ]; then
-  export DB_USERNAME="hf_aup2rjxdid"
-fi
-if [ -n "$DB_USER" ]; then
+# Support DB_USER alias if set
+if [ -n "$DB_USER" ] && [ -z "$DB_USERNAME" ]; then
   export DB_USERNAME="$DB_USER"
-fi
-if [ "$DB_PASSWORD" = "intellitrack_password" ] || [ -z "$DB_PASSWORD" ]; then
-  export DB_PASSWORD="7B9UGfusvvsYTXIfNb5PUpgGKXTZYs9g"
 fi
 
 # Ensure .env exists so artisan commands don't complain
@@ -35,18 +32,39 @@ if [ ! -f .env ]; then
   fi
 fi
 
-# Update DB_HOST in .env if it was set to "db"
-if grep -q "DB_HOST=db" .env 2>/dev/null; then
-  sed -i "s|DB_HOST=db|DB_HOST=postgresql-pzpescve.internal|" .env
+# Sync active DB variables to .env if set
+if [ -n "$DATABASE_URL" ]; then
+  if grep -q "^DATABASE_URL=" .env 2>/dev/null; then
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" .env
+  else
+    echo "DATABASE_URL=${DATABASE_URL}" >> .env
+  fi
+  if grep -q "^DB_URL=" .env 2>/dev/null; then
+    sed -i "s|^DB_URL=.*|DB_URL=${DATABASE_URL}|" .env
+  else
+    echo "DB_URL=${DATABASE_URL}" >> .env
+  fi
 fi
-if grep -q "DB_DATABASE=intellitrack_db" .env 2>/dev/null; then
-  sed -i "s|DB_DATABASE=intellitrack_db|DB_DATABASE=hf_db_pzpescve|" .env
+
+if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "127.0.0.1" ] && [ "$DB_HOST" != "db" ]; then
+  if grep -q "^DB_HOST=" .env 2>/dev/null; then
+    sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" .env
+  fi
 fi
-if grep -q "DB_USERNAME=intellitrack_web" .env 2>/dev/null; then
-  sed -i "s|DB_USERNAME=intellitrack_web|DB_USERNAME=hf_aup2rjxdid|" .env
+if [ -n "$DB_DATABASE" ]; then
+  if grep -q "^DB_DATABASE=" .env 2>/dev/null; then
+    sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|" .env
+  fi
 fi
-if grep -q "DB_PASSWORD=intellitrack_password" .env 2>/dev/null; then
-  sed -i "s|DB_PASSWORD=intellitrack_password|DB_PASSWORD=7B9UGfusvvsYTXIfNb5PUpgGKXTZYs9g|" .env
+if [ -n "$DB_USERNAME" ]; then
+  if grep -q "^DB_USERNAME=" .env 2>/dev/null; then
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env
+  fi
+fi
+if [ -n "$DB_PASSWORD" ]; then
+  if grep -q "^DB_PASSWORD=" .env 2>/dev/null; then
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
+  fi
 fi
 
 # Generate and export application key if not set
