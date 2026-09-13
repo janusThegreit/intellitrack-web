@@ -5,8 +5,6 @@ import {
   EyeOff,
   Mail,
   Lock,
-  Moon,
-  Sun,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
@@ -82,26 +80,12 @@ const SLIDES: Slide[] = [
 const Login = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    try {
-      const stored = localStorage.getItem('intelitrack-theme-dark');
-      if (stored !== null) return stored === 'true';
-      return true; // default to dark
-    } catch {
-      return true;
-    }
-  });
 
   useEffect(() => {
     try {
-      localStorage.setItem('intelitrack-theme-dark', String(isDark));
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.add('dark');
     } catch {}
-  }, [isDark]);
+  }, []);
 
   // Fully automatic non-stop slide rotation every 3.5 seconds
   useEffect(() => {
@@ -187,14 +171,6 @@ const Login = () => {
 
             {/* Header Right Actions */}
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setIsDark(!isDark)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white hover:border-slate-700 shadow-sm transition-all"
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun className="h-4 w-4 text-[#f2b600]" /> : <Moon className="h-4 w-4 text-slate-300" />}
-              </button>
             </div>
           </div>
         </header>
