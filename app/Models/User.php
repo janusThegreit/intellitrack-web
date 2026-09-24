@@ -90,6 +90,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's password reset requests
+     */
+    public function passwordResetRequests(): HasMany
+    {
+        return $this->hasMany(PasswordResetRequest::class);
+    }
+
+    /**
      * Get the user's uploaded attachments
      */
     public function attachments(): HasMany

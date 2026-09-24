@@ -16,11 +16,21 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PasswordResetRequestController;
+use App\Http\Controllers\Api\DepartmentWebhookController;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 
 Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('session/ping', function (Illuminate\Http\Request $request) {
+        $request->session()->put('last_activity_timestamp', time());
+        return response()->json([
+            'status' => 'active',
+            'session_lifetime_minutes' => config('session.lifetime'),
+            'timestamp' => time(),
+        ]);
+    });
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('profile', [ProfileController::class, 'show']);
     Route::put('profile', [ProfileController::class, 'update']);
@@ -145,6 +155,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::patch('job-orders/{jobOrder}/status', [JobOrderController::class, 'updateStatus']);
     Route::post('job-orders/{jobOrder}/assign', [JobOrderController::class, 'assign']);
     Route::post('job-orders/{jobOrder}/schedule', [JobOrderController::class, 'schedule']);
+    Route::post('job-orders/{jobOrder}/sync-department/{department}', [DepartmentWebhookController::class, 'syncDepartment']);
 
     // Rental Routes
     Route::apiResource('rentals', RentalController::class);
@@ -187,6 +198,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('users/{user}/role', [RoleController::class, 'updateUserRole']);
     Route::patch('users/{user}/status', [RoleController::class, 'updateUserStatus']);
 
+    // Admin Password Reset Request Management
+    Route::get('password-reset-requests', [PasswordResetRequestController::class, 'index']);
+    Route::post('password-reset-requests/{passwordResetRequest}/generate-link', [PasswordResetRequestController::class, 'generateLink']);
+    Route::post('password-reset-requests/{passwordResetRequest}/reject', [PasswordResetRequestController::class, 'reject']);
+
     // Security & System Audit Logs
     Route::get('logs', [AuditLogController::class, 'index']);
     Route::get('logs/export', [AuditLogController::class, 'export']);
@@ -201,4 +217,36 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('reports/rentals', [ReportController::class, 'rentalReport']);
     Route::get('reports/customers', [ReportController::class, 'customerReport']);
     Route::get('reports/revenue', [ReportController::class, 'revenueReport']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| BPA Level 1 - External Department Inbound Webhook Endpoints
+| Protected by 'department_webhook' middleware (X-Department-Key / Bearer)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('v1/integrations')->middleware('department_webhook')->group(function () {
+    // 1. Crane & Equipment Management Webhook
+    Route::post('crane/status-update', [DepartmentWebhookController::class, 'craneStatusUpdate']);
+
+    // 2. Assign Driver / Operator & Equipment Webhook
+    Route::post('manpower/assignment', [DepartmentWebhookController::class, 'manpowerAssignment']);
+
+    // 3. Dispatch Job & Scheduling Webhook
+    Route::patch('dispatch/status', [DepartmentWebhookController::class, 'dispatchStatus']);
+
+    // 4. Fleet Management Webhook
+    Route::post('fleet/trip-status', [DepartmentWebhookController::class, 'fleetTripStatus']);
+
+    // 5. Accounts Receivable (AR) Webhook
+    Route::post('ar/credit-clearance', [DepartmentWebhookController::class, 'arCreditClearance']);
+
+    // 6. Billing and Invoicing Webhook
+    Route::post('billing/invoice-status', [DepartmentWebhookController::class, 'billingInvoiceStatus']);
+
+    // 7. Contract & Permit Management Webhook
+    Route::post('contracts/update-status', [DepartmentWebhookController::class, 'contractStatusUpdate']);
+
+    // 8. Asset Management Webhook
+    Route::post('assets/availability-status', [DepartmentWebhookController::class, 'assetAvailabilityStatus']);
 });

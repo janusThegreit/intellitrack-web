@@ -151,10 +151,23 @@ class DashboardController extends Controller
             ];
         }
 
+        $totalEquipmentCount = Equipment::count();
+        $availableEquipmentCount = Equipment::where('status', 'available')->count();
+        $deployedEquipmentCount = Equipment::whereIn('status', ['rented', 'deployed', 'active'])->count();
+        $maintenanceEquipmentCount = Equipment::where('status', 'maintenance')->count();
+        $deploymentRate = $totalEquipmentCount > 0 ? round(($deployedEquipmentCount / $totalEquipmentCount) * 100) : 20;
+
         return response()->json([
             'admin_summary' => $adminSummary,
             'sales_manager_summary' => $salesManagerSummary,
             'operations_summary' => $operationsSummary,
+            'fleet_breakdown' => [
+                'total_fleet' => $totalEquipmentCount,
+                'available' => $availableEquipmentCount,
+                'deployed' => $deployedEquipmentCount,
+                'maintenance' => $maintenanceEquipmentCount,
+                'deployment_rate' => $deploymentRate,
+            ],
             'total_customers' => Customer::count(),
             'active_job_orders' => JobOrder::whereIn('status', ['pending', 'approved', 'in-progress'])->count(),
             'active_rentals' => Rental::where('status', 'active')->count(),
@@ -163,8 +176,8 @@ class DashboardController extends Controller
                 ->where('rental_end_date', '<', now())
                 ->count(),
             'active_projects' => Project::where('status', 'active')->count(),
-            'total_equipment' => Equipment::count(),
-            'available_equipment' => Equipment::where('status', 'available')->count(),
+            'total_equipment' => $totalEquipmentCount,
+            'available_equipment' => $availableEquipmentCount,
             'revenue_this_month' => JobOrder::where('status', 'completed')
                 ->whereMonth('completion_date', now()->month)
                 ->whereYear('completion_date', now()->year)

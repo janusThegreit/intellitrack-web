@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: IntelliTrack Inter-Departmental HTTP API (BPA Level 1)
+  description: >-
+    REST API and Webhook interfaces connecting IntelliTrack (CRM & Job Order System)
+    with the 8 external departments/modules: Crane & Equipment Management, Assign Driver/Operator,
+    Dispatch & Scheduling, Fleet Management, Accounts Receivable (AR), Billing & Invoicing,
+    Contract & Permit Management, and Asset Management.
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8000/api/v1/integrations
+    description: IntelliTrack Local Webhook Gateway
+  - url: https://api.intellitrack.local/api/v1/integrations
+    description: Production Environment
+
+paths:
+  /crane/status-update:
+    post:
+      summary: 1. Crane & Equipment Dept Status Callback
+      description: External Crane department notifies IntelliTrack of equipment inspection, reserve, or mobilization status.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - equipment_code
+                - status
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                equipment_code:
+                  type: string
+                  example: "CRN-TC-004"
+                status:
+                  type: string
+                  enum: [available, rented, maintenance, retired, mobilized]
+                  example: "rented"
+                inspection_passed:
+                  type: boolean
+                  example: true
+                pemea_safety_cert_no:
+                  type: string
+                  example: "DOLE-NCR-2026-8812"
+                notes:
+                  type: string
+                  example: "Safety inspection passed. Ready for job site operation."
+      responses:
+        '200':
+          description: Equipment status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  equipment_status:
+                    type: string
+
+  /manpower/assignment:
+    post:
+      summary: 2. Operator & Crew Assignment Callback
+      description: Manpower/HR department confirms assigned operator, rigger, and driver details for the Job Order.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_order_number
+                - assigned_crew
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                assigned_crew:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        example: "Tower Crane Operator"
+                      full_name:
+                        type: string
+                        example: "Juan Dela Cruz"
+                      mobile:
+                        type: string
+                        example: "+639171234567"
+                      employee_id:
+                        type: string
+                        example: "EMP-1049"
+                assignment_status:
+                  type: string
+                  example: "confirmed"
+      responses:
+        '200':
+          description: Crew assignment registered
+
+  /dispatch/status:
+    patch:
+      summary: 3. Dispatch & Mobilization Status Update
+      description: Dispatch & Scheduling department notifies IntelliTrack when equipment has departed, arrived on site, or completed rigging.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_order_number
+                - status
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                status:
+                  type: string
+                  enum: [scheduled, en_route, arrived_on_site, rigging, in-progress, demobilized]
+                  example: "arrived_on_site"
+                remarks:
+                  type: string
+                  example: "Trailers entered BGC construction staging area."
+                arrived_at:
+                  type: string
+                  format: date-time
+                live_tracking_url:
+                  type: string
+                  format: uri
+                  example: "https://dispatch.local/track/DSP-9912"
+      responses:
+        '200':
+          description: Dispatch status updated successfully
+
+  /fleet/trip-status:
+    post:
+      summary: 4. Fleet Telemetry & Hauling Status
+      description: Fleet Management pushes vehicle transit, trailer plate, driver, and GPS telematics.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_order_number
+                - status
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                trip_id:
+                  type: string
+                  example: "TRP-4019"
+                vehicle_plate:
+                  type: string
+                  example: "NCB-4921"
+                driver_name:
+                  type: string
+                  example: "Danilo Cruz"
+                status:
+                  type: string
+                  enum: [dispatched, in_transit, delayed, delivered]
+                  example: "in_transit"
+                gps_coordinates:
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                      example: 14.6507
+                    longitude:
+                      type: number
+                      example: 121.0354
+                estimated_arrival:
+                  type: string
+                  example: "2026-09-30T23:30:00Z"
+      responses:
+        '200':
+          description: Fleet trip telematics logged
+
+  /ar/credit-clearance:
+    post:
+      summary: 5. Accounts Receivable (AR) Credit Clearance
+      description: Finance AR clears the customer credit limit, downpayment receipt, and issues credit hold release.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_order_number
+                - credit_status
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                credit_status:
+                  type: string
+                  enum: [cleared, approved, hold, rejected]
+                  example: "cleared"
+                downpayment_received:
+                  type: number
+                  example: 90000.00
+                or_number:
+                  type: string
+                  example: "OR-2026-7894"
+                approved_by:
+                  type: string
+                  example: "Finance AR Specialist"
+      responses:
+        '200':
+          description: Credit clearance acknowledged
+
+  /billing/invoice-status:
+    post:
+      summary: 6. Billing & Invoicing Module Invoice Status
+      description: Billing module links the official customer sales invoice to the completed Job Order.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_order_number
+                - invoice_number
+                - status
+              properties:
+                job_order_number:
+                  type: string
+                  example: "JO-20260924-AB12CD"
+                invoice_number:
+                  type: string
+                  example: "INV-2027-0104"
+                status:
+                  type: string
+                  enum: [draft, posted, paid, cancelled]
+                  example: "posted"
+                grand_total:
+                  type: number
+                  example: 520000.00
+                invoice_pdf_url:
+                  type: string
+                  format: uri
+                  example: "https://billing.local/invoices/INV-2027-0104.pdf"
+      responses:
+        '200':
+          description: Invoice linked to Job Order
+
+  /contracts/update-status:
+    post:
+      summary: 7. Contract & Permit Management Synchronization
+      description: Legal/Contract module synchronizes signed contracts, CAAP permits, and LGU licenses.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - client_id
+                - contract_number
+                - contract_status
+              properties:
+                client_id:
+                  type: integer
+                  example: 1
+                contract_number:
+                  type: string
+                  example: "CNT-2026-MGW-009"
+                contract_status:
+                  type: string
+                  example: "signed"
+                contract_file_url:
+                  type: string
+                  format: uri
+                  example: "https://legal.local/contracts/CNT-2026-MGW-009.pdf"
+                permits:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: "LGU Road Occupancy"
+                      status:
+                        type: string
+                        example: "approved"
+                      valid_until:
+                        type: string
+                        example: "2026-10-10"
+      responses:
+        '200':
+          description: Contract and permit updates recorded
+
+  /assets/availability-status:
+    post:
+      summary: 8. Asset Management Availability Callback
+      description: Asset management team validates physical machine readiness, asset tag, and condition before rental deployment.
+      security:
+        - DepartmentApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rental_id
+                - asset_tag
+                - availability_status
+              properties:
+                rental_id:
+                  type: integer
+                  example: 1
+                asset_tag:
+                  type: string
+                  example: "AST-TC-2022-01"
+                availability_status:
+                  type: string
+                  example: "ready_for_dispatch"
+                asset_condition:
+                  type: string
+                  example: "Excellent"
+      responses:
+        '200':
+          description: Asset readiness linked to rental
+
+components:
+  securitySchemes:
+    DepartmentApiKey:
+      type: apiKey
+      in: header
+      name: X-Department-Key
+      description: Shared API key or internal token for department authentication.

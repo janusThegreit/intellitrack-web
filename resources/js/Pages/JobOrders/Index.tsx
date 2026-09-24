@@ -838,7 +838,6 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     <>
       <Head title="Job Orders & Fleet Mobilization - IntelliTrack" />
       <AppLayout
-        dark={true}
         title="Job Orders & Fleet Mobilization"
         headerAction={
           <div className="flex items-center gap-2">

@@ -14,6 +14,10 @@ if [ -n "$ACTIVE_DB_URL" ]; then
       if (!empty($url["path"])) echo "export DB_DATABASE=" . escapeshellarg(ltrim($url["path"], "/")) . ";\n";
       if (!empty($url["user"])) echo "export DB_USERNAME=" . escapeshellarg($url["user"]) . ";\n";
       if (!empty($url["pass"])) echo "export DB_PASSWORD=" . escapeshellarg($url["pass"]) . ";\n";
+      if (!empty($url["query"])) {
+        parse_str($url["query"], $q);
+        if (!empty($q["sslmode"])) echo "export DB_SSLMODE=" . escapeshellarg($q["sslmode"]) . ";\n";
+      }
     }
   ')
 fi
@@ -21,6 +25,13 @@ fi
 # Support DB_USER alias if set
 if [ -n "$DB_USER" ] && [ -z "$DB_USERNAME" ]; then
   export DB_USERNAME="$DB_USER"
+fi
+
+# Neon Tech and modern cloud Postgres require SSL
+if [ -z "$DB_SSLMODE" ]; then
+  case "$DB_HOST" in
+    *neon.tech*) export DB_SSLMODE="require" ;;
+  esac
 fi
 
 # Ensure .env exists so artisan commands don't complain
@@ -32,40 +43,31 @@ if [ ! -f .env ]; then
   fi
 fi
 
-# Sync active DB variables to .env if set
-if [ -n "$DATABASE_URL" ]; then
-  if grep -q "^DATABASE_URL=" .env 2>/dev/null; then
-    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" .env
-  else
-    echo "DATABASE_URL=${DATABASE_URL}" >> .env
-  fi
-  if grep -q "^DB_URL=" .env 2>/dev/null; then
-    sed -i "s|^DB_URL=.*|DB_URL=${DATABASE_URL}|" .env
-  else
-    echo "DB_URL=${DATABASE_URL}" >> .env
-  fi
-fi
-
-if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "127.0.0.1" ] && [ "$DB_HOST" != "db" ]; then
-  if grep -q "^DB_HOST=" .env 2>/dev/null; then
-    sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" .env
-  fi
-fi
-if [ -n "$DB_DATABASE" ]; then
-  if grep -q "^DB_DATABASE=" .env 2>/dev/null; then
-    sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|" .env
-  fi
-fi
-if [ -n "$DB_USERNAME" ]; then
-  if grep -q "^DB_USERNAME=" .env 2>/dev/null; then
-    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env
-  fi
-fi
-if [ -n "$DB_PASSWORD" ]; then
-  if grep -q "^DB_PASSWORD=" .env 2>/dev/null; then
-    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
-  fi
-fi
+# Safely sync active DB variables into .env using PHP to avoid sed escaping issues (&, |, /)
+php -r '
+  $envFile = ".env";
+  if (!file_exists($envFile)) exit(0);
+  $content = file_get_contents($envFile);
+  $vars = [
+    "DATABASE_URL" => getenv("DATABASE_URL"),
+    "DB_URL"       => getenv("DB_URL"),
+    "DB_HOST"      => getenv("DB_HOST"),
+    "DB_PORT"      => getenv("DB_PORT"),
+    "DB_DATABASE"  => getenv("DB_DATABASE"),
+    "DB_USERNAME"  => getenv("DB_USERNAME"),
+    "DB_PASSWORD"  => getenv("DB_PASSWORD"),
+    "DB_SSLMODE"   => getenv("DB_SSLMODE"),
+  ];
+  foreach ($vars as $key => $val) {
+    if ($val === false || $val === null || $val === "") continue;
+    if (preg_match("/^{$key}=/m", $content)) {
+      $content = preg_replace("/^{$key}=.*/m", "{$key}={$val}", $content);
+    } else {
+      $content .= "\n{$key}={$val}";
+    }
+  }
+  file_put_contents($envFile, $content);
+'
 
 # Generate and export application key if not set
 APP_KEY_TRIMMED=$(echo "$APP_KEY" | tr -d '[:space:]')

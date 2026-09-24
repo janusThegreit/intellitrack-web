@@ -234,7 +234,7 @@ export default function RentalsList() {
   return (
     <>
       <Head title="Active Rentals & Deployments | IntelliTrack" />
-      <AppLayout dark={true} title="Fleet & Rentals">
+      <AppLayout title="Fleet & Rentals">
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
           {/* Nav Tabs */}
           <FleetNavTabs
@@ -245,16 +245,16 @@ export default function RentalsList() {
                   size="sm"
                   onClick={loadRentals}
                   disabled={loading}
-                  className="border-neutral-700 text-neutral-300"
+                  className="border-border-default hover:border-amber-500 text-content-primary cursor-pointer"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-amber-500' : ''}`} />
                   Refresh
                 </Button>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold shadow-lg shadow-amber-500/20"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 mr-1.5" />
                   New Rental

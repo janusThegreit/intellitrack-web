@@ -17,10 +17,20 @@ class CustomerInquiryController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('view-crm');
-        $query = CustomerInquiry::query()->with(['customer', 'creator', 'assignee', 'history.user']);
+        $query = CustomerInquiry::query()->with([
+            'customer',
+            'rentalRequirements.equipment',
+            'creator',
+            'assignee',
+            'history.user'
+        ]);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
         }
 
         if ($request->filled('source')) {
@@ -37,11 +47,16 @@ class CustomerInquiryController extends Controller
                 $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(inquiry_number)'), 'like', $search)
                     ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(subject)'), 'like', $search)
                     ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(details)'), 'like', $search)
-                    ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(remarks)'), 'like', $search);
+                    ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(remarks)'), 'like', $search)
+                    ->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where(\Illuminate\Support\Facades\DB::raw('LOWER(company_name)'), 'like', $search)
+                            ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), 'like', $search)
+                            ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(contact_person)'), 'like', $search);
+                    });
             });
         }
 
-        return response()->json($query->latest()->paginate($request->input('per_page', 15)));
+        return response()->json($query->latest()->paginate($request->input('per_page', 50)));
     }
 
     public function store(Request $request)
@@ -84,6 +99,9 @@ class CustomerInquiryController extends Controller
                     'address' => $request->input('address'),
                     'city' => $request->input('city'),
                     'province' => $request->input('province'),
+                    'project_location' => $request->input('project_location'),
+                    'estimated_budget' => $request->input('estimated_budget'),
+                    'technical_requirements' => $request->input('notes'),
                     'customer_type' => $request->input('customer_type', 'business'),
                     'status' => 'active',
                 ]

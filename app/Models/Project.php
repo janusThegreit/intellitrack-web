@@ -40,4 +40,9 @@ class Project extends Model
     {
         return $this->hasMany(ProjectTask::class);
     }
+
+    public function communications(): HasMany
+    {
+        return $this->hasMany(CustomerCommunication::class);
+    }
 }

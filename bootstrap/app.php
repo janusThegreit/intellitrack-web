@@ -17,10 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'correlation' => \IntelliTrack\Shared\Middleware\CorrelationIdMiddleware::class,
             'internal_auth' => \IntelliTrack\Shared\Middleware\InternalServiceAuthMiddleware::class,
+            'department_webhook' => \App\Http\Middleware\VerifyDepartmentWebhook::class,
         ]);
         $middleware->web(append: [
             \IntelliTrack\Shared\Middleware\CorrelationIdMiddleware::class,
             \App\Http\Middleware\RoleBasedMaintenanceMode::class,
+            \App\Http\Middleware\SessionTimeout::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
         $middleware->api(append: [

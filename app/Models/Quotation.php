@@ -59,4 +59,5 @@ class Quotation extends Model
     public function opportunity(): BelongsTo { return $this->belongsTo(SalesOpportunity::class, 'sales_opportunity_id'); }
     public function items(): HasMany { return $this->hasMany(QuotationItem::class); }
     public function history(): HasMany { return $this->hasMany(QuotationHistory::class); }
+    public function communications(): HasMany { return $this->hasMany(CustomerCommunication::class); }
 }

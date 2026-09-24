@@ -372,13 +372,13 @@ class SalesAnalyticsController extends Controller
                 . "Ang bawat project ay may nakatalagang heavy machinery at assigned operators.";
         } else {
             $response = "Nakatanggap ako ng iyong mensahe: *\"{$prompt}\"*\n\n"
-                . "💡 **Bakit ganito ang sagot:**\n"
-                . "Kasalukuyang tumatakbo ang **Built-in Offline Engine** dahil **hindi pa naka-activate ang iyong libreng Google Gemini API Key**. Ang built-in engine ay limitado lamang sa pagsusuri ng live equipment, revenue, quotations, at job orders.\n\n"
-                . "✨ **Gusto mo bang sumagot ito sa kahit anong tanong?**\n"
-                . "1. I-click ang **`Use Gemini API (Free)`** button sa itaas ng chatbox na ito.\n"
-                . "2. Kumuha ng 100% libreng key sa [Google AI Studio](https://aistudio.google.com/) *(walang bayad, walang credit card)*.\n"
-                . "3. I-paste ang key at i-save.\n\n"
-                . "Kapag naka-connect na si Gemini, maiintindihan at masasagot na ng Copilot ang **kahit anong tanong mo** nang natural at matalino!";
+                . "💡 **IntelliTrack Analytical Engine:**\n"
+                . "Kasalukuyang nakatuon ang engine sa pagsusuri ng ating live operations, equipment status, revenue forecast, quotations, at job orders.\n\n"
+                . "Maaari kang magtanong tulad ng:\n"
+                . "- *\"Ilan ang available na heavy equipment?\"*\n"
+                . "- *\"Magkano ang revenue forecast para sa susunod na buwan?\"*\n"
+                . "- *\"Ano ang conversion rate ng ating quotations?\"*\n"
+                . "- *\"May overdue ba sa rentals ngayon?\"*";
         }
 
         return response()->json([

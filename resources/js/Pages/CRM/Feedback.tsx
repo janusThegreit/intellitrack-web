@@ -171,7 +171,7 @@ const FeedbackPage = () => {
   return (
     <>
       <Head title="Client Satisfaction & Service Feedback - CRM" />
-      <AppLayout dark={true} title="CRM & Client Management">
+      <AppLayout title="CRM & Client Management">
         <div className="space-y-5">
           <CrmNavTabs
             actionButton={

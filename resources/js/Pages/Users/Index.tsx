@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Shield, Wrench, TrendingUp, Target,
   Truck, UserCheck, Mail, Phone, Key, Lock, Clock,
   Calendar, Activity, Sparkles, Check, AlertTriangle, RefreshCw,
-  User as UserIcon
+  User as UserIcon, KeyRound, Copy, ShieldAlert
 } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../../Components/Modal';
@@ -48,6 +48,31 @@ interface UserDossierData {
     created_at: string;
     ip_address?: string;
   }>;
+}
+
+interface PasswordResetRequestItem {
+  id: number;
+  user_id: number;
+  email: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'used' | 'rejected' | 'expired';
+  token?: string;
+  requested_at: string;
+  token_expires_at?: string;
+  is_used: boolean;
+  used_at?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    avatar_url?: string;
+  };
+  approved_by?: {
+    id: number;
+    name: string;
+    email: string;
+  };
 }
 
 interface RoleConfig {
@@ -256,6 +281,72 @@ export default function UsersIndex() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Tab state: 'directory' or 'reset_requests'
+  const [activeTab, setActiveTab] = useState<'directory' | 'reset_requests'>('directory');
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequestItem[]>([]);
+  const [resetStats, setResetStats] = useState({ total: 0, pending: 0, approved: 0, used: 0 });
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [generatedLinkModal, setGeneratedLinkModal] = useState<{
+    isOpen: boolean;
+    request: PasswordResetRequestItem | null;
+    resetUrl: string;
+    copied: boolean;
+  }>({
+    isOpen: false,
+    request: null,
+    resetUrl: '',
+    copied: false,
+  });
+
+  const loadResetRequests = async () => {
+    setLoadingRequests(true);
+    try {
+      const res = await axios.get('/api/password-reset-requests');
+      setResetRequests(res.data.requests || []);
+      setResetStats(res.data.stats || { total: 0, pending: 0, approved: 0, used: 0 });
+    } catch (err) {
+      console.error('Failed to load password reset requests', err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const generateOneTimeLink = async (item: PasswordResetRequestItem) => {
+    try {
+      const res = await axios.post(`/api/password-reset-requests/${item.id}/generate-link`);
+      showToast('One-time password reset link generated successfully!');
+      setGeneratedLinkModal({
+        isOpen: true,
+        request: res.data.request || item,
+        resetUrl: res.data.reset_url,
+        copied: false,
+      });
+      loadResetRequests();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to generate reset link.');
+    }
+  };
+
+  const copyLinkToClipboard = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setGeneratedLinkModal(prev => ({ ...prev, copied: true }));
+    showToast('Reset link copied to clipboard!');
+    setTimeout(() => {
+      setGeneratedLinkModal(prev => ({ ...prev, copied: false }));
+    }, 2500);
+  };
+
+  const rejectResetRequest = async (item: PasswordResetRequestItem) => {
+    if (!confirm(`Are you sure you want to reject the reset request for ${item.email}?`)) return;
+    try {
+      await axios.post(`/api/password-reset-requests/${item.id}/reject`);
+      showToast('Password reset request has been rejected.');
+      loadResetRequests();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to reject request.');
+    }
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -285,6 +376,10 @@ export default function UsersIndex() {
       })
       .catch(console.error);
   };
+
+  useEffect(() => {
+    loadResetRequests();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -462,7 +557,7 @@ export default function UsersIndex() {
   };
 
   return (
-    <AppLayout dark={true} showHeader={false}>
+    <AppLayout showHeader={false}>
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/90 px-4 py-3 text-sm font-medium text-emerald-200 shadow-2xl backdrop-blur-md transition-all">
@@ -479,7 +574,7 @@ export default function UsersIndex() {
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">User Management & IAM</h1>
+              <h1 className="text-xl font-bold tracking-tight text-content-primary sm:text-2xl">User Management & IAM</h1>
               <p className="text-xs text-content-secondary">
                 Configure identity, role assignments, technical clearances, and system authorization.
               </p>
@@ -490,7 +585,7 @@ export default function UsersIndex() {
         <div className="flex items-center gap-3">
           <button
             onClick={exportUsersCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3.5 py-2 text-xs font-semibold text-content-secondary transition hover:border-zinc-500 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3.5 py-2 text-xs font-semibold text-content-secondary transition hover:border-amber-500/40 hover:text-content-primary"
           >
             <Download className="h-4 w-4" />
             Export CSV
@@ -510,11 +605,11 @@ export default function UsersIndex() {
         <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-surface-card p-5 shadow-lg">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">Total Accounts</p>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-content-secondary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-input text-content-secondary">
               <UserIcon className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-white">{stats.total}</p>
+          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">{stats.total}</p>
           <p className="mt-1 text-[11px] text-content-secondary">Configured system identities</p>
         </div>
 
@@ -525,7 +620,7 @@ export default function UsersIndex() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-400">{stats.active}</p>
+          <p className="mt-3 text-3xl font-extrabold text-emerald-400 font-mono">{stats.active}</p>
           <p className="mt-1 text-[11px] text-emerald-400/80">Authorized & operational</p>
         </div>
 
@@ -536,7 +631,7 @@ export default function UsersIndex() {
               <XCircle className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-rose-400">{stats.inactive}</p>
+          <p className="mt-3 text-3xl font-extrabold text-rose-400 font-mono">{stats.inactive}</p>
           <p className="mt-1 text-[11px] text-rose-400/80">Revoked / pending review</p>
         </div>
 
@@ -547,15 +642,80 @@ export default function UsersIndex() {
               <Sparkles className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-white">
+          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">
             {stats.recent} <span className="text-xs font-normal text-content-secondary">this month</span>
           </p>
           <p className="mt-1 text-[11px] text-content-secondary">New staff accounts added</p>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl">
+      {/* Navigation Tabs */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('directory')}
+            className={clsx(
+              'flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer',
+              activeTab === 'directory'
+                ? 'bg-[#ffcc00] text-black shadow-lg shadow-amber-500/20'
+                : 'text-content-secondary hover:bg-surface-card hover:text-white'
+            )}
+          >
+            <UserCheck className="h-4 w-4" />
+            <span>User Directory & Clearances</span>
+            <span className={clsx(
+              'rounded-full px-2 py-0.5 text-[10px] font-mono',
+              activeTab === 'directory' ? 'bg-black/20 text-black font-black' : 'bg-surface-input text-zinc-400'
+            )}>
+              {stats.total}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('reset_requests');
+              loadResetRequests();
+            }}
+            className={clsx(
+              'flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer relative',
+              activeTab === 'reset_requests'
+                ? 'bg-[#ffcc00] text-black shadow-lg shadow-amber-500/20'
+                : 'text-content-secondary hover:bg-surface-card hover:text-white'
+            )}
+          >
+            <KeyRound className="h-4 w-4" />
+            <span>Password Reset Requests</span>
+            {resetStats.pending > 0 ? (
+              <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-black animate-pulse shadow-sm">
+                <span>{resetStats.pending}</span>
+                <span className="hidden sm:inline">PENDING</span>
+              </span>
+            ) : (
+              <span className={clsx(
+                'rounded-full px-2 py-0.5 text-[10px] font-mono',
+                activeTab === 'reset_requests' ? 'bg-black/20 text-black font-black' : 'bg-surface-input text-zinc-400'
+              )}>
+                {resetStats.total}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'reset_requests' && (
+          <button
+            onClick={loadResetRequests}
+            disabled={loadingRequests}
+            className="flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-card hover:text-white transition-colors cursor-pointer"
+          >
+            <RefreshCw className={clsx('h-3.5 w-3.5', loadingRequests && 'animate-spin')} />
+            <span>Refresh Requests</span>
+          </button>
+        )}
+      </div>
+
+      {/* Main Content Area - User Directory */}
+      {activeTab === 'directory' && (
+        <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl">
         
         {/* Filters Bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-b border-border-subtle p-4 sm:flex-row">
@@ -795,6 +955,241 @@ export default function UsersIndex() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* Main Content Area - Password Reset Requests */}
+      {activeTab === 'reset_requests' && (
+        <div className="space-y-6">
+          {/* Reset Request Metrics Summary */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-400">Pending Review</p>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl font-black text-amber-300 font-mono">{resetStats.pending}</p>
+              <p className="mt-1 text-[11px] text-amber-400/80">Awaiting admin link generation</p>
+            </div>
+
+            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-400">Active Links Issued</p>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl font-black text-blue-300 font-mono">{resetStats.approved}</p>
+              <p className="mt-1 text-[11px] text-blue-400/80">Single-use links valid for 24h</p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Completed & Burned</p>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl font-black text-emerald-300 font-mono">{resetStats.used}</p>
+              <p className="mt-1 text-[11px] text-emerald-400/80">Password updated & link expired</p>
+            </div>
+
+            <div className="rounded-xl border border-border-subtle bg-surface-card p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Requests Logged</p>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-input text-content-secondary">
+                  <Shield className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl font-black text-content-primary font-mono">{resetStats.total}</p>
+              <p className="mt-1 text-[11px] text-content-secondary">Audited reset requests</p>
+            </div>
+          </div>
+
+          {/* Reset Requests Table Card */}
+          <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden">
+            <div className="border-b border-border-subtle p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-[#ffcc00]" />
+                    <span>User Password Reset Authorization Log</span>
+                  </h2>
+                  <p className="text-xs text-content-secondary mt-1">
+                    When you generate a link, provide it to the user. The link will automatically deactivate permanently once the user updates their password.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-content-secondary">
+                <thead className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
+                  <tr>
+                    <th className="px-6 py-3.5">Requester Identity</th>
+                    <th className="px-6 py-3.5">Request Reason / Remarks</th>
+                    <th className="px-6 py-3.5">Date & Time</th>
+                    <th className="px-6 py-3.5">Status & Single-Use State</th>
+                    <th className="px-6 py-3.5 text-right">Admin Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {resetRequests.length > 0 ? (
+                    resetRequests.map((req) => {
+                      const isPending = req.status === 'pending';
+                      const isApproved = req.status === 'approved' && !req.is_used;
+                      const isUsed = req.is_used || req.status === 'used';
+                      const isExpired = req.status === 'expired';
+                      const isRejected = req.status === 'rejected';
+
+                      return (
+                        <tr key={req.id} className="group transition-colors hover:bg-zinc-800/30">
+                          {/* Requester Identity */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 font-bold text-white shadow-sm">
+                                {getInitials(req.user?.name || req.email)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-white">{req.user?.name || 'Account Identity'}</p>
+                                <p className="text-[11px] text-zinc-400 font-mono">{req.email}</p>
+                                {req.user?.role && (
+                                  <span className="inline-block mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400">
+                                    {formatRole(req.user.role)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Reason */}
+                          <td className="px-6 py-4 max-w-xs">
+                            <p className="text-zinc-300 text-xs truncate" title={req.reason}>
+                              {req.reason || 'User requested password reset from login.'}
+                            </p>
+                          </td>
+
+                          {/* Time */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <p className="text-zinc-300 font-medium">{formatDateTime(req.requested_at)}</p>
+                            {req.used_at && (
+                              <p className="text-[10px] text-emerald-400 font-mono">
+                                Used: {formatDateTime(req.used_at)}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Status Badge */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {isPending && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 border border-amber-500/30">
+                                <Clock className="h-3 w-3 animate-spin" />
+                                <span>Pending Action</span>
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-300 border border-blue-500/30">
+                                <KeyRound className="h-3 w-3" />
+                                <span>Link Active (Unused)</span>
+                              </span>
+                            )}
+                            {isUsed && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30">
+                                <CheckCircle2 className="h-3 w-3" />
+                                <span>Completed &amp; Burned</span>
+                              </span>
+                            )}
+                            {isExpired && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400 border border-slate-700">
+                                <Clock className="h-3 w-3" />
+                                <span>Expired (&gt;24h)</span>
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 border border-rose-500/30">
+                                <XCircle className="h-3 w-3" />
+                                <span>Rejected</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2">
+                              {isPending && (
+                                <>
+                                  <button
+                                    onClick={() => generateOneTimeLink(req)}
+                                    className="flex items-center gap-1.5 rounded-lg bg-[#ffcc00] hover:bg-[#ffcc00]/90 px-3 py-1.5 text-xs font-bold text-black shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02] cursor-pointer"
+                                  >
+                                    <KeyRound className="h-3.5 w-3.5" />
+                                    <span>Generate Link</span>
+                                  </button>
+                                  <button
+                                    onClick={() => rejectResetRequest(req)}
+                                    className="rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors cursor-pointer"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+
+                              {isApproved && (
+                                <button
+                                  onClick={() => {
+                                    const fullUrl = req.token ? `${window.location.origin}/reset-password/${req.token}` : '';
+                                    setGeneratedLinkModal({
+                                      isOpen: true,
+                                      request: req,
+                                      resetUrl: fullUrl,
+                                      copied: false,
+                                    });
+                                  }}
+                                  className="flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-300 transition-colors cursor-pointer"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  <span>View / Copy Link</span>
+                                </button>
+                              )}
+
+                              {isUsed && (
+                                <span className="text-[11px] text-zinc-500 italic">
+                                  Link deactivated after single use
+                                </span>
+                              )}
+
+                              {(isExpired || isRejected) && (
+                                <span className="text-[11px] text-zinc-500 italic">
+                                  Awaiting new user request
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-content-secondary">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-input text-zinc-500">
+                            <KeyRound className="h-6 w-6" />
+                          </div>
+                          <p className="text-sm font-semibold text-zinc-300">No password reset requests</p>
+                          <p className="text-xs text-zinc-500">
+                            When users request a password reset from the login page, their requests will appear here for administrator authorization.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* USER 360 PROFILE & IAM DOSSIER MODAL */}
@@ -1474,6 +1869,104 @@ export default function UsersIndex() {
               {processing ? 'Deleting...' : 'Confirm Delete'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* GENERATED ONE-TIME PASSWORD RESET LINK MODAL */}
+      {/* ========================================================================= */}
+      <Modal 
+        isOpen={generatedLinkModal.isOpen} 
+        onClose={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))} 
+        size="md"
+      >
+        <div className="bg-surface-card p-6 text-white">
+          <div className="mb-4 flex items-center justify-between border-b border-border-subtle pb-3">
+            <div className="flex items-center gap-2.5 text-amber-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">One-Time Reset Link</h3>
+                <p className="text-[11px] text-zinc-400">Single-use security token generated</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))} 
+              className="text-zinc-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {generatedLinkModal.request && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border-default bg-surface-input p-3 text-xs">
+                <p className="text-zinc-400 text-[11px]">Authorized Recipient:</p>
+                <p className="font-bold text-white text-sm">
+                  {generatedLinkModal.request.user?.name || generatedLinkModal.request.email}
+                </p>
+                <p className="text-zinc-400 text-xs font-mono">{generatedLinkModal.request.email}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-1.5">
+                  Single-Use Reset Link (Valid for 24 hours):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={generatedLinkModal.resetUrl}
+                    className="w-full rounded-lg border border-amber-500/30 bg-black/60 px-3 py-2 text-xs font-mono text-amber-300 select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyLinkToClipboard(generatedLinkModal.resetUrl)}
+                    className={clsx(
+                      "flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition-all",
+                      generatedLinkModal.copied
+                        ? "bg-emerald-500 text-black"
+                        : "bg-[#ffcc00] text-black hover:bg-[#ffcc00]/90"
+                    )}
+                  >
+                    {generatedLinkModal.copied ? (
+                      <>
+                        <Check className="h-4 w-4 stroke-[3]" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        <span>Copy Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Single-use policy notice */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300 text-[11px] uppercase tracking-wider">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <span>Single-Use Security Enforcement</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Send this link to the user. Once the user enters their new password, this link will automatically burn and cannot be used again. If they need to reset their password again in the future, they will need to submit a new request.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))}
+                  className="rounded-lg bg-surface-input border border-border-default px-4 py-2 text-xs font-semibold text-white hover:bg-border-subtle"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </AppLayout>

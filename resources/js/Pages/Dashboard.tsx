@@ -24,7 +24,6 @@ import {
   History,
   Settings,
   Lock,
-  AlertTriangle,
   Calendar,
   HardHat,
 } from 'lucide-react';
@@ -126,7 +125,16 @@ interface OperationsSummary {
   }>;
 }
 
+interface FleetBreakdown {
+  total_fleet: number;
+  available: number;
+  deployed: number;
+  maintenance: number;
+  deployment_rate: number;
+}
+
 interface DashboardData {
+  fleet_breakdown?: FleetBreakdown;
   admin_summary?: AdminSummary | null;
   sales_manager_summary?: SalesManagerSummary | null;
   operations_summary?: OperationsSummary | null;
@@ -157,6 +165,272 @@ interface DashboardData {
   recent_rentals?: any[];
 }
 
+interface FleetBreakdownProps {
+  data: DashboardData | null;
+}
+
+const FleetAvailabilityBreakdown = ({ data }: FleetBreakdownProps) => {
+  const totalFleet = data?.fleet_breakdown?.total_fleet ?? data?.total_equipment ?? 10;
+  const availableUnits = data?.fleet_breakdown?.available ?? data?.available_equipment ?? 8;
+  const deployedUnits =
+    data?.fleet_breakdown?.deployed ?? (data?.sales_manager_summary?.active_cranes_count || 2);
+  const maintenanceUnits = data?.fleet_breakdown?.maintenance ?? 1;
+
+  const deploymentRatio = totalFleet > 0 ? Math.round((deployedUnits / totalFleet) * 100) : 20;
+  const availableRatio = totalFleet > 0 ? Math.round((availableUnits / totalFleet) * 100) : 70;
+  const maintenanceRatio =
+    totalFleet > 0 ? Math.max(5, 100 - deploymentRatio - availableRatio) : 10;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 shadow-xs backdrop-blur-2xl transition-all duration-300 dark:border-white/[0.08] dark:bg-slate-900/90 dark:shadow-2xl">
+      {/* Subtle Ambient Backlights */}
+      <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/[0.08] blur-3xl dark:bg-amber-500/10" />
+      <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-blue-500/[0.06] blur-3xl dark:bg-blue-500/10" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500/20 via-amber-400 to-amber-500/20" />
+
+      {/* Header with Title and 'View Fleet' Action Button */}
+      <div className="relative z-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-slate-100 pb-5 dark:border-white/[0.06]">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-600 shadow-inner dark:border-amber-500/20 dark:text-amber-400">
+            <Truck className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Fleet Availability & Status Breakdown
+              </h2>
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                </span>
+                Live Allocation
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Real-time allocation metrics for heavy equipment, site deployments, and scheduled maintenance
+            </p>
+          </div>
+        </div>
+
+        {/* Direct quick-action link button */}
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/fleet"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#f2b600] to-amber-500 hover:from-amber-400 hover:to-amber-500 px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-md shadow-amber-500/20 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Truck className="h-4 w-4" />
+            <span>View Fleet</span>
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+
+      {/* 4 Dedicated Allocation Metric Cards */}
+      <div className="relative z-10 mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Metric 1: Total Fleet Size */}
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md dark:border-white/[0.06] dark:bg-slate-950/60 dark:hover:border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Fleet Size
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Layers className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline">
+              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                {totalFleet}
+              </span>
+              <span className="ml-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Tower & Mobile Cranes
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <span className="inline-flex items-center rounded-md border border-slate-300/60 bg-slate-200/60 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-300">
+                100% Asset Inventory
+              </span>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Heavy lifting, erection & transport fleet
+          </p>
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-500" />
+        </div>
+
+        {/* Metric 2: Available for Rental / Ready to Dispatch */}
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-md dark:border-white/[0.06] dark:bg-slate-950/60 dark:hover:border-emerald-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Available for Rental
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline">
+              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
+                {availableUnits}
+              </span>
+              <span className="ml-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                units ready
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                Ready to Dispatch
+              </span>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Stationed at depot for immediate lease
+          </p>
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-500" />
+        </div>
+
+        {/* Metric 3: Currently Deployed on Project Sites */}
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/40 hover:shadow-md dark:border-white/[0.06] dark:bg-slate-950/60 dark:hover:border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Currently Deployed
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <HardHat className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline">
+              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-600 dark:text-blue-400">
+                {deployedUnits}
+              </span>
+              <span className="ml-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                on project sites
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                <Activity className="h-3 w-3" />
+                {deploymentRatio}% Utilization
+              </span>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Active on high-rise & infrastructure sites
+          </p>
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
+        </div>
+
+        {/* Metric 4: Undergoing Maintenance */}
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md dark:border-white/[0.06] dark:bg-slate-950/60 dark:hover:border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Undergoing Maintenance
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Wrench className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline">
+              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">
+                {maintenanceUnits}
+              </span>
+              <span className="ml-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                unit scheduled
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                <Clock className="h-3 w-3" />
+                Sunday checks
+              </span>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Scheduled preventative checks & DOLE audits
+          </p>
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+        </div>
+      </div>
+
+      {/* Progress & Capacity Bar Visualizing Fleet Deployment Ratio */}
+      <div className="relative z-10 mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 sm:p-5 dark:border-white/[0.06] dark:bg-slate-950/50">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Fleet Deployment Ratio & Capacity
+            </span>
+            <span className="inline-flex items-center rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400">
+              {deploymentRatio}% Allocated
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-400">
+            <span>{deployedUnits} of {totalFleet} Cranes in Operation</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              {availableRatio}% Available Capacity
+            </span>
+          </div>
+        </div>
+
+        {/* Visual Multi-Segment Capacity Bar */}
+        <div className="h-3.5 w-full overflow-hidden rounded-full bg-slate-200/80 p-0.5 border border-slate-300/80 flex gap-1 dark:bg-slate-800/80 dark:border-slate-700/60">
+          {/* Deployed Segment */}
+          <div
+            className="h-full rounded-l-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-700 shadow-sm"
+            style={{ width: `${deploymentRatio}%` }}
+            title={`Deployed: ${deployedUnits} units (${deploymentRatio}%)`}
+          />
+          {/* Available Segment */}
+          <div
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700 shadow-sm"
+            style={{ width: `${availableRatio}%` }}
+            title={`Available: ${availableUnits} units (${availableRatio}%)`}
+          />
+          {/* Maintenance Segment */}
+          <div
+            className="h-full rounded-r-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-700 shadow-sm"
+            style={{ width: `${maintenanceRatio}%` }}
+            title={`Maintenance: ${maintenanceUnits} unit (${maintenanceRatio}%)`}
+          />
+        </div>
+
+        {/* Capacity Legend & Maintenance Schedule Notice */}
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/60 pt-3 text-[11px] text-slate-500 dark:border-white/[0.04] dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500 shadow-xs inline-block" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Deployed on Sites: {deployedUnits} units ({deploymentRatio}%)
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-xs inline-block" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Available to Lease: {availableUnits} units ({availableRatio}%)
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-xs inline-block" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Scheduled Checks: {maintenanceUnits} unit ({maintenanceRatio}%)
+              </span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+            <span>Scheduled Sunday checks: 02:00 AM UTC weekly cycle</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { auth } = usePage<any>().props;
   const userRole = auth?.user?.role || (typeof window !== 'undefined' ? localStorage.getItem('intelitrack-user-role') : null) || '';
@@ -182,7 +456,6 @@ const Dashboard = () => {
 
   const totalEquipment = data?.total_equipment || 24;
   const availableEquipment = data?.available_equipment || 18;
-  const utilizationRate = totalEquipment > 0 ? Math.round(((totalEquipment - availableEquipment) / totalEquipment) * 100) : 65;
 
   if (loading) {
     if (isAdmin) {
@@ -1044,38 +1317,45 @@ const Dashboard = () => {
     <AppLayout title="Executive Overview">
       <Head title="Executive Operations Dashboard" />
 
-      <div className="space-y-8 pb-12">
+      <div className="space-y-6 pb-12">
         
-        {/* Top Hero Banner */}
-        <div className="relative overflow-hidden rounded-3xl border border-border-default/80 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-8 text-white shadow-xl backdrop-blur-xl">
-          {/* Ambient Glows */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-amber-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-blue-500/15 blur-3xl" />
+        {/* Sleek Executive Header */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-2xl dark:border-white/[0.08] dark:bg-slate-900/70 dark:shadow-xl">
+          {/* Subtle Ambient Backlights */}
+          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-amber-500/[0.07] blur-3xl dark:bg-amber-500/10" />
+          <div className="pointer-events-none absolute -left-16 -bottom-16 h-64 w-64 rounded-full bg-blue-500/[0.05] blur-3xl dark:bg-blue-500/10" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-white/15" />
 
-          <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+          <div className="relative z-10 flex flex-col justify-between gap-5 md:flex-row md:items-center">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 text-xs font-semibold text-amber-300 backdrop-blur-sm">
-                <Sparkles className="h-3.5 w-3.5 animate-pulse" /> Live Fleet & Operations Intelligence
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                <span>Live Fleet & Telematics Intelligence</span>
+                <span className="text-amber-500/40">•</span>
+                <span className="font-normal text-slate-500 dark:text-slate-400">Active Operations</span>
               </div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
                 Commercial & Heavy Fleet Portal
               </h1>
-              <p className="mt-1 text-sm text-slate-400 max-w-xl">
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                 Real-time visibility over tower crane specifications, active job orders, quotation pipeline, and heavy equipment allocation.
               </p>
             </div>
 
-            {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* High-End Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2.5">
               <Link href="/quotations">
-                <Button variant="primary" size="md" className="shadow-lg shadow-amber-500/20">
-                  <FileEdit className="h-4 w-4" />
+                <Button variant="primary" size="md" className="border-0 bg-gradient-to-r from-amber-500 to-amber-600 font-bold text-slate-950 shadow-md shadow-amber-500/20 hover:from-amber-400 hover:to-amber-500">
+                  <FileEdit className="mr-1.5 h-4 w-4" />
                   <span>Create Quotation</span>
                 </Button>
               </Link>
               <Link href="/inquiries">
-                <Button variant="glass" size="md">
-                  <MessageSquare className="h-4 w-4 text-amber-400" />
+                <Button variant="glass" size="md" className="border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:border-white/20 dark:hover:bg-white/[0.08]">
+                  <MessageSquare className="mr-1.5 h-4 w-4 text-amber-500 dark:text-amber-400" />
                   <span>New Inquiry</span>
                 </Button>
               </Link>
@@ -1085,23 +1365,23 @@ const Dashboard = () => {
 
         {/* Sales Manager Executive AI Intelligence & Commercial Roll-Up Strip */}
         {data?.sales_manager_summary && (
-          <div className="space-y-5">
-            {/* AI Copilot Quick Prompt Launcher Banner */}
-            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface-card to-amber-500/5 dark:from-neutral-950 dark:via-neutral-900 dark:to-amber-950/40 p-5 shadow-sm backdrop-blur-xl">
-              <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-500/15 blur-2xl" />
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-neutral-950 font-black shadow-md shadow-amber-500/30">
-                    <Sparkles className="h-6 w-6" />
+          <div className="space-y-6">
+            {/* Executive AI Copilot Command Strip */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs backdrop-blur-xl transition hover:border-amber-500/40 dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-amber-500/30">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-500/[0.06] blur-xl dark:bg-amber-500/10" />
+              <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-600 shadow-inner dark:text-amber-400">
+                    <Sparkles className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-content-primary tracking-tight">IntelliTrack AI Sales Intelligence Copilot</h3>
-                      <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold">
+                      <h3 className="text-xs font-bold tracking-tight text-slate-900 dark:text-white">IntelliTrack Copilot</h3>
+                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
                         Real-Time Telemetry
                       </span>
                     </div>
-                    <p className="text-xs text-content-secondary mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
                       Itanong sa AI ang revenue improvement vs nakaraang taon, crane fleet demand, o pipeline forecast.
                     </p>
                   </div>
@@ -1112,180 +1392,199 @@ const Dashboard = () => {
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('open-sales-ai', { detail: { prompt: 'ano yung improvement nong nakaraan taon' } }))}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300 transition shadow-xs cursor-pointer"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-xs transition hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
                   >
                     <TrendingUp className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Improvement nong nakaraan taon?</span>
+                    <span>Improvement vs 2025?</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('open-sales-ai', { detail: { prompt: 'aling crane ang pinakamalakas ang demand' } }))}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-border-default bg-surface-card hover:bg-surface-app px-3 py-1.5 text-xs font-semibold text-content-primary transition shadow-xs cursor-pointer"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    <Truck className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+                    <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                     <span>Crane demand & rentals?</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('open-sales-ai', { detail: { prompt: 'may pending quotation approval ba tayo ngayon?' } }))}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-border-default bg-surface-card hover:bg-surface-app px-3 py-1.5 text-xs font-semibold text-content-primary transition shadow-xs cursor-pointer"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Pending approvals?</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Commercial Performance Roll-Up Cards */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Card 1: 2026 YTD Revenue with YoY Badge */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-amber-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-amber-500/50 hover:shadow-md">
+            {/* Commercial Performance Roll-Up Cards (4 Luxury Cards) */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Card 1: 2026 YTD Revenue */}
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-amber-500/30 dark:hover:shadow-lg">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">2026 YTD Settled Revenue</span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <DollarSign className="h-5 w-5" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">2026 YTD Settled Revenue</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <DollarSign className="h-4.5 w-4.5" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
+                  <div className="font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                     ₱{Number(data.sales_manager_summary.ytd_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
                       <TrendingUp className="h-3 w-3" />
                       +{data.sales_manager_summary.yoy_growth_pct}% vs 2025
                     </span>
                   </div>
                 </div>
-                <p className="mt-2 text-[11px] text-content-secondary">
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                   2025 Baseline: ₱{Number(data.sales_manager_summary.prev_year_revenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
               </div>
 
               {/* Card 2: Sales Pipeline Value */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-blue-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-blue-500/50 hover:shadow-md">
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-blue-500/30 dark:hover:shadow-lg">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Active Sales Pipeline</span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    <Layers className="h-5 w-5" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Sales Pipeline</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Layers className="h-4.5 w-4.5" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
+                  <div className="font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                     ₱{Number(data.sales_manager_summary.pipeline_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-400">
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
                       Commercial Quotes
                     </span>
                   </div>
                 </div>
-                <p className="mt-2 text-[11px] text-content-secondary">
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                   Tracked proposals in active negotiation
                 </p>
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600" />
               </div>
 
               {/* Card 3: Crane Fleet Demand & Deployment */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-indigo-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-indigo-500/50 hover:shadow-md">
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-indigo-500/30 dark:hover:shadow-lg">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Fleet Utilization</span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                    <Truck className="h-5 w-5" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Crane Fleet Utilization</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <Truck className="h-4.5 w-4.5" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
+                  <div className="font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {data.sales_manager_summary.active_cranes_count} / {data.sales_manager_summary.total_cranes_count} Cranes
                   </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-400">
                       {data.sales_manager_summary.total_cranes_count > 0 ? Math.round((data.sales_manager_summary.active_cranes_count / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Deployed
                     </span>
                   </div>
                 </div>
-                <p className="mt-2 text-[11px] text-content-secondary">
+                <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                    style={{ width: `${data.sales_manager_summary.total_cranes_count > 0 ? Math.round((data.sales_manager_summary.active_cranes_count / data.sales_manager_summary.total_cranes_count) * 100) : 0}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                   Tower & Mobile Cranes active on project sites
                 </p>
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-400 to-indigo-600" />
               </div>
 
               {/* Card 4: Manager Approvals Queue */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-amber-500/40 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-amber-500/50 hover:shadow-md">
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-amber-500/30 dark:hover:shadow-lg">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Manager Approval Radar</span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                    <FileEdit className="h-5 w-5" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Manager Approval Radar</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <FileEdit className="h-4.5 w-4.5" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
+                  <div className="font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {data.sales_manager_summary.pending_approvals_count} Proposals
                   </div>
-                  <div className="mt-2 flex items-center gap-1.5">
+                  <div className="mt-2 flex items-center gap-2">
                     <span className={clsx(
-                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border',
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold border',
                       data.sales_manager_summary.pending_approvals_count > 0
-                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400'
-                        : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                     )}>
                       {data.sales_manager_summary.pending_approvals_count > 0 ? 'Awaiting Sign-off' : 'All Clear'}
                     </span>
                   </div>
                 </div>
-                <p className="mt-2 text-[11px] text-content-secondary">
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                   Requires Sales Manager sign-off
                 </p>
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
               </div>
             </div>
 
+            {/* Dedicated "Fleet Availability & Status Breakdown" Widget right below top KPI summary cards */}
+            <FleetAvailabilityBreakdown data={data} />
+
             {/* Manager Quotation Approval Radar Table / Cards */}
             {data.sales_manager_summary.pending_approvals && data.sales_manager_summary.pending_approvals.length > 0 && (
-              <div className="rounded-2xl border border-border-default/80 dark:border-amber-500/40 bg-surface-card dark:bg-neutral-900/80 p-5 shadow-xs backdrop-blur-md">
-                <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                  <div className="flex items-center gap-2">
-                    <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">
-                      Quotations Awaiting Sales Manager Sign-off ({data.sales_manager_summary.pending_approvals.length})
-                    </h4>
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <FileEdit className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                        Quotations Awaiting Sales Manager Sign-off
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">Proposals requiring pricing approval and signature</p>
+                    </div>
                   </div>
-                  <Link
-                    href="/quotations"
-                    className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 transition"
-                  >
-                    <span>View All Quotations</span>
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                      {data.sales_manager_summary.pending_approvals.length} Pending
+                    </span>
+                    <Link
+                      href="/quotations"
+                      className="flex items-center gap-1 text-xs font-semibold text-amber-600 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                    >
+                      <span>View All</span>
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </div>
 
-                <div className="mt-3 divide-y divide-border-subtle">
+                <div className="mt-3 divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {data.sales_manager_summary.pending_approvals.map((q) => (
-                    <div key={q.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div key={q.id} className="flex flex-col justify-between gap-3 rounded-xl px-2 py-3.5 transition hover:bg-slate-50/80 sm:flex-row sm:items-center dark:hover:bg-white/[0.02]">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs">{q.quotation_number}</span>
-                          <span className="text-xs font-semibold text-content-primary">{q.customer?.company_name || q.customer?.name || 'Client'}</span>
-                          <span className="rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-1.5 py-0.5 border border-amber-500/30">
+                          <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">{q.quotation_number}</span>
+                          <span className="text-xs font-semibold text-slate-900 dark:text-white">{q.customer?.company_name || q.customer?.name || 'Client'}</span>
+                          <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
                             Under Review
                           </span>
                         </div>
-                        <p className="text-xs text-content-secondary mt-1 line-clamp-1">
+                        <p className="mt-1 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
                           {q.description || 'Commercial crane rental and heavy equipment services proposal'}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-4 shrink-0">
-                        <span className="text-sm font-bold text-content-primary font-mono">
+                      <div className="flex shrink-0 items-center gap-4">
+                        <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
                           ₱{Number(q.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                         <Link
                           href="/quotations"
-                          className="inline-flex items-center gap-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold px-3 py-1.5 text-xs transition shadow-xs"
+                          className="inline-flex items-center gap-1 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 shadow-sm transition hover:bg-amber-400"
                         >
-                          <span>Review</span>
+                          <span>Review & Sign</span>
                           <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                       </div>
@@ -1294,277 +1593,234 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Compact Operational Telemetry Strip (Customers, Job Orders, Rentals, Projects) */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs backdrop-blur-md dark:border-white/[0.06] dark:bg-slate-900/40">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Customers</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{loading ? '...' : (data?.total_customers ?? 0)}</p>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Users className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs backdrop-blur-md dark:border-white/[0.06] dark:bg-slate-900/40">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Job Orders</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{loading ? '...' : (data?.active_job_orders ?? 0)}</p>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <ClipboardList className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs backdrop-blur-md dark:border-white/[0.06] dark:bg-slate-900/40">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Rentals</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{loading ? '...' : (data?.active_rentals ?? 0)}</p>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Truck className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs backdrop-blur-md dark:border-white/[0.06] dark:bg-slate-900/40">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Projects</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{loading ? '...' : (data?.active_projects ?? 0)}</p>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                  <FolderKanban className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Manager Action Alert: Quotations Awaiting Review */}
-        {Number(data?.pending_quotations || 0) > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-4 text-amber-300 shadow-md">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold">
-                <AlertTriangle className="h-5 w-5" />
+        {/* Primary Metric KPI Cards Grid (Rendered for non-Sales-Manager general view) */}
+        {!data?.sales_manager_summary && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              
+              {/* KPI 1: Active Customers */}
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-amber-500/30 dark:hover:shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Customers</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Users className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {loading ? '...' : (data?.total_customers ?? 0)}
+                  </span>
+                  <span className="flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <TrendingUp className="mr-0.5 h-3 w-3" /> +12%
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Active corporate & construction accounts</p>
               </div>
-              <div>
-                <p className="text-xs font-bold text-white">
-                  Action Required: {data?.pending_quotations} Commercial Proposal{Number(data?.pending_quotations) > 1 ? 's' : ''} Awaiting Manager Review
-                </p>
-                <p className="text-[11px] text-amber-300/80">
-                  Proposals submitted by sales representatives require pricing review, specification check, or formal sign-off.
-                </p>
+
+              {/* KPI 2: Active Job Orders */}
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-blue-500/30 dark:hover:shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Job Orders</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {loading ? '...' : (data?.active_job_orders ?? 0)}
+                  </span>
+                  <span className="flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400">
+                    <Layers className="mr-0.5 h-3 w-3" /> In-Progress
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Field dispatches & installations</p>
               </div>
+
+              {/* KPI 3: Fleet Rentals */}
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-emerald-500/30 dark:hover:shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Rentals</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {loading ? '...' : (data?.active_rentals ?? 0)}
+                  </span>
+                  <span className="flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="mr-0.5 h-3 w-3" /> Deployed
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Heavy cranes on project sites</p>
+              </div>
+
+              {/* KPI 4: Active Projects */}
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-500/40 hover:shadow-md dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm dark:hover:border-violet-500/30 dark:hover:shadow-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Projects</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                    <FolderKanban className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {loading ? '...' : (data?.active_projects ?? 0)}
+                  </span>
+                  <span className="flex items-center text-xs font-semibold text-violet-600 dark:text-violet-400">
+                    <Compass className="mr-0.5 h-3 w-3" /> Ongoing
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Construction site contracts</p>
+              </div>
+
             </div>
+
+            {/* Dedicated "Fleet Availability & Status Breakdown" Widget right below top KPI summary cards */}
+            <FleetAvailabilityBreakdown data={data} />
+          </div>
+        )}
+
+        {/* Quick Operations Dispatch Hub */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center border-b border-slate-100 pb-4 dark:border-white/[0.06]">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Quick Operations Dispatch</h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Direct actions and workflows for field & commercial teams</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:border-white/[0.06] dark:bg-slate-800/30 dark:text-slate-400">
+              <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+              <span>Routine fleet maintenance window: Sundays 02:00 AM UTC</span>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+            <Link
+              href="/inquiries"
+              className="group flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:border-amber-500/40 hover:bg-slate-100/80 dark:border-white/[0.06] dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 transition-transform group-hover:scale-110 dark:text-amber-400">
+                <UserPlus className="h-4 w-4" />
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">New Client</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Register account</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/rental-requirements"
+              className="group flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:border-blue-500/40 hover:bg-slate-100/80 dark:border-white/[0.06] dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-600 transition-transform group-hover:scale-110 dark:text-blue-400">
+                <Compass className="h-4 w-4" />
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Match Crane</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Specs calculator</p>
+              </div>
+            </Link>
+
             <Link
               href="/quotations"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 text-xs transition shadow-sm shrink-0"
+              className="group flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:border-emerald-500/40 hover:bg-slate-100/80 dark:border-white/[0.06] dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
             >
-              <span>Review Proposals</span>
-              <ArrowUpRight className="h-3.5 w-3.5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 transition-transform group-hover:scale-110 dark:text-emerald-400">
+                <DollarSign className="h-4 w-4" />
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Draft Quote</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Pricing approval</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/job-orders"
+              className="group flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:border-violet-500/40 hover:bg-slate-100/80 dark:border-white/[0.06] dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-600 transition-transform group-hover:scale-110 dark:text-violet-400">
+                <Wrench className="h-4 w-4" />
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Job Orders</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Dispatch crew</p>
+              </div>
             </Link>
           </div>
-        )}
-
-        {/* Primary Metric KPI Cards Grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          
-          {/* KPI 1: Active Customers */}
-          <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/5">
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-500/10 blur-xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Customers</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                <Users className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black tracking-tight text-content-primary">
-                {loading ? '...' : (data?.total_customers ?? 0)}
-              </span>
-              <span className="text-xs font-semibold text-emerald-500 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-0.5" /> +12%
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-content-secondary">Active corporate & construction accounts</p>
-          </div>
-
-          {/* KPI 2: Active Job Orders */}
-          <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5">
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-500/10 blur-xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Job Orders</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black tracking-tight text-content-primary">
-                {loading ? '...' : (data?.active_job_orders ?? 0)}
-              </span>
-              <span className="text-xs font-semibold text-blue-500 flex items-center">
-                <Layers className="h-3 w-3 mr-0.5" /> In-Progress
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-content-secondary">Field dispatches & installations</p>
-          </div>
-
-          {/* KPI 3: Fleet Rentals */}
-          <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5">
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Rentals</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                <Truck className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black tracking-tight text-content-primary">
-                {loading ? '...' : (data?.active_rentals ?? 0)}
-              </span>
-              <span className="text-xs font-semibold text-emerald-500 flex items-center">
-                <CheckCircle2 className="h-3 w-3 mr-0.5" /> Deployed
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-content-secondary">Heavy cranes on project sites</p>
-          </div>
-
-          {/* KPI 4: Active Projects */}
-          <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/5">
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-violet-500/10 blur-xl transition-all group-hover:scale-150" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Projects</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 border border-violet-500/20">
-                <FolderKanban className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black tracking-tight text-content-primary">
-                {loading ? '...' : (data?.active_projects ?? 0)}
-              </span>
-              <span className="text-xs font-semibold text-violet-500 flex items-center">
-                <Compass className="h-3 w-3 mr-0.5" /> Ongoing
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-content-secondary">Construction site contracts</p>
-          </div>
-
-        </div>
-
-        {/* Middle Section: Fleet Availability Gauge & Operations Dispatch Dock */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          
-          {/* Fleet Availability Card (7 cols) */}
-          <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md lg:col-span-7">
-            <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-content-primary">Fleet Utilization & Inventory Status</h3>
-                <p className="text-xs text-content-secondary">Heavy equipment and tower crane allocation metrics</p>
-              </div>
-              <Link href="/rental-requirements" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
-                View Fleet <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-              
-              {/* Stat 1 */}
-              <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
-                <p className="text-xs font-medium text-content-secondary">Total Fleet Size</p>
-                <p className="mt-2 text-2xl font-extrabold text-content-primary">{data?.total_equipment || 24}</p>
-                <div className="mt-2 flex items-center gap-1 text-[11px] text-content-muted">
-                  <span>Tower & Mobile Cranes</span>
-                </div>
-              </div>
-
-              {/* Stat 2 */}
-              <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
-                <p className="text-xs font-medium text-content-secondary">Available for Rental</p>
-                <p className="mt-2 text-2xl font-extrabold text-emerald-500">{data?.available_equipment || 18}</p>
-                <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3" /> Ready to dispatch
-                </div>
-              </div>
-
-              {/* Stat 3 */}
-              <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
-                <p className="text-xs font-medium text-content-secondary">Fleet Utilization</p>
-                <p className="mt-2 text-2xl font-extrabold text-amber-500">{utilizationRate}%</p>
-                <div className="mt-2 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
-                  <Activity className="h-3 w-3" /> High demand
-                </div>
-              </div>
-            </div>
-
-            {/* Visual Utilization Progress Bar */}
-            <div className="mt-6 space-y-2">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-content-secondary">Fleet Deployment Capacity</span>
-                <span className="text-amber-500">{utilizationRate}% Allocated</span>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-surface-input">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 shadow-sm transition-all duration-500" 
-                  style={{ width: `${utilizationRate}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Operations Shortcuts (5 cols) */}
-          <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md lg:col-span-5 flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-bold text-content-primary">Quick Operations Dispatch</h3>
-              <p className="text-xs text-content-secondary mt-0.5">Direct actions for field & sales teams</p>
-              
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <Link
-                  href="/inquiries"
-                  className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
-                    <UserPlus className="h-4 w-4" />
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-content-primary">New Client</p>
-                    <p className="text-[10px] text-content-secondary">Register account</p>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/rental-requirements"
-                  className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
-                    <Compass className="h-4 w-4" />
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-content-primary">Match Crane</p>
-                    <p className="text-[10px] text-content-secondary">Specs calculator</p>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/quotations"
-                  className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
-                    <DollarSign className="h-4 w-4" />
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-content-primary">Draft Quote</p>
-                    <p className="text-[10px] text-content-secondary">Pricing approval</p>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/job-orders"
-                  className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 group-hover:scale-110 transition-transform">
-                    <Wrench className="h-4 w-4" />
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-content-primary">Job Orders</p>
-                    <p className="text-[10px] text-content-secondary">Dispatch crew</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
-
-            {/* Quick status notice */}
-            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-app/60 p-3.5 text-xs">
-              <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-              <span className="text-content-secondary">
-                Maintenance window scheduled for fleet cranes every Sunday 02:00 AM UTC.
-              </span>
-            </div>
-          </div>
-
         </div>
 
         {/* Bottom Split: Recent Quotations & Active Projects */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           
           {/* Recent Quotations */}
-          <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md">
-            <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-white/[0.06]">
               <div>
-                <h3 className="text-base font-bold text-content-primary">Recent Quotations</h3>
-                <p className="text-xs text-content-secondary">Commercial proposals and approval lifecycle</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Recent Quotations</h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Commercial proposals and approval lifecycle</p>
               </div>
-              <Link href="/quotations" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
-                View All <ArrowUpRight className="h-3.5 w-3.5" />
+              <Link href="/quotations" className="flex items-center gap-1 text-xs font-semibold text-amber-600 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300">
+                <span>View All</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
-            <div className="mt-4 divide-y divide-border-subtle/60">
+            <div className="mt-4 divide-y divide-slate-100 dark:divide-white/[0.04]">
               {(data?.recent_quotations && data.recent_quotations.length > 0) ? (
                 data.recent_quotations.slice(0, 5).map((q: any) => (
-                  <div key={q.id} className="flex items-center justify-between py-3.5 hover:bg-surface-app/40 rounded-xl px-2 transition-colors">
+                  <div key={q.id} className="flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-slate-50/80 dark:hover:bg-white/[0.02]">
                     <div>
-                      <p className="text-xs font-bold text-content-primary">{q.quotation_number}</p>
-                      <p className="text-[11px] text-content-secondary">{q.customer?.name || 'Customer'}</p>
+                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">{q.quotation_number}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{q.customer?.name || 'Customer'}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-content-primary">
+                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                         ₱{Number(q.total_amount || 0).toLocaleString()}
                       </span>
                       <StatusBadge status={q.status || 'draft'} />
@@ -1572,7 +1828,7 @@ const Dashboard = () => {
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-content-secondary">
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
                   No recent quotations recorded.
                 </div>
               )}
@@ -1580,36 +1836,37 @@ const Dashboard = () => {
           </div>
 
           {/* Active Construction Projects */}
-          <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md">
-            <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 dark:shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-white/[0.06]">
               <div>
-                <h3 className="text-base font-bold text-content-primary">Active Site Projects</h3>
-                <p className="text-xs text-content-secondary">On-going construction & tower crane installations</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Active Site Projects</h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">On-going construction & tower crane installations</p>
               </div>
-              <Link href="/projects" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
-                View All <ArrowUpRight className="h-3.5 w-3.5" />
+              <Link href="/projects" className="flex items-center gap-1 text-xs font-semibold text-amber-600 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300">
+                <span>View All</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
-            <div className="mt-4 divide-y divide-border-subtle/60">
+            <div className="mt-4 divide-y divide-slate-100 dark:divide-white/[0.04]">
               {(data?.recent_projects && data.recent_projects.length > 0) ? (
                 data.recent_projects.slice(0, 5).map((p: any) => (
-                  <div key={p.id} className="flex items-center justify-between py-3.5 hover:bg-surface-app/40 rounded-xl px-2 transition-colors">
+                  <div key={p.id} className="flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-slate-50/80 dark:hover:bg-white/[0.02]">
                     <div>
-                      <p className="text-xs font-bold text-content-primary">{p.project_name}</p>
-                      <p className="text-[11px] text-content-secondary">{p.customer?.name || 'Construction Client'}</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">{p.project_name}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{p.customer?.name || 'Construction Client'}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-xs font-bold text-content-primary">{p.progress || 0}%</span>
-                        <p className="text-[10px] text-content-muted">Milestone</p>
+                        <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">{p.progress || 0}%</span>
+                        <p className="text-[10px] text-slate-400">Milestone</p>
                       </div>
                       <StatusBadge status={p.status || 'active'} />
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-content-secondary">
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
                   No active projects recorded.
                 </div>
               )}

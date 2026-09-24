@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PasswordResetRequestController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,6 +16,11 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.store');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.store');
+    
+    // Administrator-Assisted Password Reset Routes
+    Route::post('/password/request-reset', [PasswordResetRequestController::class, 'submitRequest'])->middleware('throttle:10,1')->name('password.request');
+    Route::get('/reset-password/{token}', [PasswordResetRequestController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetRequestController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.update');
 });
 
 Route::middleware('auth')->group(function () {

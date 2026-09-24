@@ -16,11 +16,18 @@ class CustomerCommunication extends Model
     protected $fillable = [
         'customer_id',
         'customer_inquiry_id',
+        'quotation_id',
+        'project_id',
         'type',
         'direction',
         'subject',
         'content',
         'outcome',
+        'site_location',
+        'trailer_truck_accessible',
+        'trailer_access_notes',
+        'crane_setup_clearance',
+        'crane_clearance_notes',
         'communicated_at',
         'created_by',
     ];
@@ -37,6 +44,16 @@ class CustomerCommunication extends Model
     public function inquiry(): BelongsTo
     {
         return $this->belongsTo(CustomerInquiry::class, 'customer_inquiry_id');
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function creator(): BelongsTo

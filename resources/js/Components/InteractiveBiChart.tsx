@@ -182,40 +182,40 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
   }, [chartData]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl transition-all duration-300">
+    <div className="relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-6 shadow-sm transition-all duration-300">
       {/* Background glow effects */}
       <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 top-1/2 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
       
       {/* Top Header & Telemetry Badges */}
-      <div className="relative z-10 mb-6 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-6 md:flex-row md:items-center">
+      <div className="relative z-10 mb-6 flex flex-col justify-between gap-4 border-b border-border-subtle/80 pb-6 md:flex-row md:items-center">
         <div>
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
             </span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Intellitrack Telemetry BI</span>
-            <span className="rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Intellitrack Telemetry BI</span>
+            <span className="rounded-full border border-border-default bg-surface-app px-2 py-0.5 text-[11px] font-medium text-content-secondary">
               Live Interactive Curve
             </span>
           </div>
           <div className="mt-1 flex items-baseline gap-3">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <h2 className="text-2xl font-bold tracking-tight text-content-primary sm:text-3xl font-mono">
               {formatPeso(activeItem ? (activeMetric === 'job_orders' ? activeItem.job_orders : activeMetric === 'rentals' ? activeItem.rentals : activeItem.total) : totalPeriodRevenue)}
             </h2>
             {activeItem && (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
                 activeItem.growth_rate >= 0 
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
               }`}>
                 {activeItem.growth_rate >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                 {activeItem.growth_rate > 0 ? `+${activeItem.growth_rate}%` : `${activeItem.growth_rate}%`} vs prev
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-0.5 text-xs text-content-secondary">
             {activeItem ? `Focused on ${activeItem.label} • Hover anywhere along the chart to inspect` : 'Dynamic revenue trajectory across active operational months'}
           </p>
         </div>
@@ -223,7 +223,7 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
         {/* Action Controls: Presets & Display Modes */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Preset Time Range Chips */}
-          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-900/90 p-1">
+          <div className="inline-flex rounded-lg border border-border-default bg-surface-app p-1">
             {(['30D', '90D', '6M', 'YTD', '1Y'] as const).map((preset) => (
               <button
                 key={preset}
@@ -231,7 +231,7 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                   activePreset === preset
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
                 }`}
               >
                 {preset}
@@ -240,14 +240,14 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
           </div>
 
           {/* Mode Switcher */}
-          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-900/90 p-1">
+          <div className="inline-flex rounded-lg border border-border-default bg-surface-app p-1">
             <button
               onClick={() => setChartMode('spline')}
               title="Smooth Bezier Spline Area"
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                 chartMode === 'spline'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
               }`}
             >
               <Activity className="h-3.5 w-3.5" />
@@ -258,8 +258,8 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
               title="Stacked Volume Bars"
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                 chartMode === 'stacked'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
               }`}
             >
               <BarChart2 className="h-3.5 w-3.5" />
@@ -270,8 +270,8 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
               title="Dual Stream (JO vs Rental)"
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                 chartMode === 'split'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -286,47 +286,47 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveMetric('total')}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all cursor-pointer ${
               activeMetric === 'total'
-                ? 'border border-amber-500/40 bg-amber-500/10 text-amber-300'
-                : 'border border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300 font-semibold'
+                : 'border border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
             Total Revenue
           </button>
           <button
             onClick={() => setActiveMetric('job_orders')}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all cursor-pointer ${
               activeMetric === 'job_orders'
-                ? 'border border-blue-500/40 bg-blue-500/10 text-blue-300'
-                : 'border border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-300 font-semibold'
+                : 'border border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-blue-400"></span>
+            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
             Job Orders
           </button>
           <button
             onClick={() => setActiveMetric('rentals')}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition-all cursor-pointer ${
               activeMetric === 'rentals'
-                ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                : 'border border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-semibold'
+                : 'border border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
             Equipment Rentals
           </button>
         </div>
 
         {/* Run-rate & Peak Quick Badges */}
-        <div className="hidden lg:flex items-center gap-4 text-slate-400">
+        <div className="hidden lg:flex items-center gap-4 text-content-secondary">
           <div>
-            Monthly Avg: <strong className="text-slate-200">{formatPeso(avgMonthly)}</strong>
+            Monthly Avg: <strong className="text-content-primary font-mono">{formatPeso(avgMonthly)}</strong>
           </div>
           {peakMonth && (
             <div>
-              Peak: <strong className="text-amber-400">{peakMonth.short_label} ({formatPeso(peakMonth.total)})</strong>
+              Peak: <strong className="text-amber-600 dark:text-amber-400 font-mono">{peakMonth.short_label} ({formatPeso(peakMonth.total)})</strong>
             </div>
           )}
         </div>
@@ -611,18 +611,18 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
               transform: 'translate(-50%, -100%)',
             }}
           >
-            <div className="w-64 rounded-xl border border-slate-700/80 bg-slate-900/95 p-3.5 shadow-2xl backdrop-blur-md ring-1 ring-white/10">
+            <div className="w-64 rounded-xl border border-border-default bg-surface-card/95 p-3.5 shadow-2xl backdrop-blur-md ring-1 ring-border-default/40">
               {/* Tooltip Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                  <Calendar className="h-3.5 w-3.5 text-amber-400" />
+              <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-content-primary">
+                  <Calendar className="h-3.5 w-3.5 text-amber-500" />
                   {activeItem.label}
                 </span>
                 <span
                   className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
                     activeItem.growth_rate >= 0
-                      ? 'bg-emerald-500/20 text-emerald-300'
-                      : 'bg-rose-500/20 text-rose-300'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                   }`}
                 >
                   {activeItem.growth_rate >= 0 ? `+${activeItem.growth_rate}%` : `${activeItem.growth_rate}%`}
@@ -632,31 +632,31 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
               {/* Revenue Breakdown Rows */}
               <div className="mt-2.5 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <DollarSign className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="flex items-center gap-1.5 text-content-secondary">
+                    <DollarSign className="h-3.5 w-3.5 text-amber-500" />
                     Total Revenue:
                   </span>
-                  <span className="font-mono font-bold text-amber-300">
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
                     {formatPeso(activeItem.total)}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <Briefcase className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="flex items-center gap-1.5 text-content-secondary">
+                    <Briefcase className="h-3.5 w-3.5 text-blue-500" />
                     Job Orders:
                   </span>
-                  <span className="font-mono font-medium text-slate-200">
+                  <span className="font-mono font-medium text-content-primary">
                     {formatPeso(activeItem.job_orders)}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <Truck className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="flex items-center gap-1.5 text-content-secondary">
+                    <Truck className="h-3.5 w-3.5 text-emerald-500" />
                     Rentals:
                   </span>
-                  <span className="font-mono font-medium text-slate-200">
+                  <span className="font-mono font-medium text-content-primary">
                     {formatPeso(activeItem.rentals)}
                   </span>
                 </div>
@@ -664,11 +664,11 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
 
               {/* Contribution Share Bar */}
               <div className="mt-3">
-                <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                <div className="flex justify-between text-[10px] text-content-secondary mb-1">
                   <span>JO: {activeItem.total > 0 ? Math.round((activeItem.job_orders / activeItem.total) * 100) : 0}%</span>
                   <span>Rental: {activeItem.total > 0 ? Math.round((activeItem.rentals / activeItem.total) * 100) : 0}%</span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-app border border-border-subtle flex">
                   <div 
                     className="bg-blue-500 transition-all duration-300"
                     style={{ width: `${activeItem.total > 0 ? (activeItem.job_orders / activeItem.total) * 100 : 50}%` }}
@@ -685,24 +685,24 @@ export const InteractiveBiChart: React.FC<InteractiveBiChartProps> = ({
       </div>
 
       {/* Footer Legend */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/80 pt-4 text-xs text-slate-400">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-border-subtle/80 pt-4 text-xs text-content-secondary">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-            <span className="font-medium text-slate-300">Total Trajectory</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+            <span className="font-medium text-content-primary">Total Trajectory</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-            <span className="text-slate-400">Job Orders Share</span>
+            <span className="text-content-secondary">Job Orders Share</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            <span className="text-slate-400">Rental Share</span>
+            <span className="text-content-secondary">Rental Share</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono">
-          <Sparkles className="h-3 w-3 text-amber-400" />
+        <div className="flex items-center gap-1.5 text-[11px] text-content-secondary font-mono">
+          <Sparkles className="h-3 w-3 text-amber-500" />
           <span>Smooth Vector Spline • Hover to probe data</span>
         </div>
       </div>

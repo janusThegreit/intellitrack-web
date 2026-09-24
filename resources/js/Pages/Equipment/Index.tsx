@@ -483,7 +483,7 @@ export default function EquipmentIndex({ defaultStatus }: EquipmentPageProps) {
   return (
     <>
       <Head title="Fleet & Rental Management | IntelliTrack" />
-      <AppLayout dark={true} title="Fleet & Rentals">
+      <AppLayout title="Fleet & Rentals">
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
           
           {/* Top Fleet Navigation Tabs */}
@@ -495,16 +495,16 @@ export default function EquipmentIndex({ defaultStatus }: EquipmentPageProps) {
                   size="sm"
                   onClick={loadEquipment}
                   disabled={loading}
-                  className="border-neutral-700 hover:border-amber-500/60 text-neutral-300"
+                  className="border-border-default hover:border-amber-500 text-content-primary cursor-pointer"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-amber-500' : ''}`} />
                   Refresh
                 </Button>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold shadow-lg shadow-amber-500/20"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 mr-1.5" />
                   Add Equipment
@@ -516,23 +516,23 @@ export default function EquipmentIndex({ defaultStatus }: EquipmentPageProps) {
           {/* Flash Notification */}
           {message && (
             <div
-              className={`p-4 rounded-xl border flex items-center justify-between text-sm transition-all duration-300 shadow-md ${
+              className={`p-4 rounded-xl border flex items-center justify-between text-sm transition-all duration-300 shadow-sm ${
                 message.type === 'success'
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-300'
               }`}
             >
               <div className="flex items-center gap-2.5">
                 {message.type === 'success' ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                  <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
                 )}
                 <span className="font-medium">{message.text}</span>
               </div>
               <button
                 onClick={() => setMessage(null)}
-                className="text-xs opacity-70 hover:opacity-100 uppercase tracking-wider font-semibold"
+                className="text-xs opacity-70 hover:opacity-100 uppercase tracking-wider font-semibold cursor-pointer"
               >
                 Dismiss
               </button>
@@ -542,63 +542,63 @@ export default function EquipmentIndex({ defaultStatus }: EquipmentPageProps) {
           {/* Live Fleet Telemetry Ribbon */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {/* Total Fleet */}
-            <div className="p-3.5 rounded-2xl bg-surface-card border border-border-default dark:bg-neutral-900/80 dark:border-neutral-800 hover:border-amber-500/30 transition-all duration-200 shadow-xs">
-              <div className="flex items-center justify-between text-neutral-400 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wider">Total Fleet</span>
-                <Truck className="w-4 h-4 text-amber-400" />
+            <div className="p-3.5 rounded-2xl bg-surface-card border border-border-default/80 hover:border-amber-500/40 transition-all duration-200 shadow-xs">
+              <div className="flex items-center justify-between text-content-secondary mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider">Total Fleet</span>
+                <Truck className="w-4 h-4 text-amber-500" />
               </div>
-              <div className="text-2xl font-black text-white">{telemetry.total_units}</div>
-              <div className="text-[11px] text-neutral-400 mt-1 truncate">
+              <div className="text-2xl font-black text-content-primary font-mono">{telemetry.total_units}</div>
+              <div className="text-[11px] text-content-secondary mt-1 truncate">
                 Asset Value: {formatPeso(telemetry.total_valuation)}
               </div>
             </div>
 
             {/* Available For Dispatch */}
-            <div className="p-3.5 rounded-2xl bg-surface-card border border-emerald-500/25 dark:bg-neutral-900/80 dark:border-emerald-500/20 hover:border-emerald-500/40 transition-all duration-200 shadow-xs">
-              <div className="flex items-center justify-between text-emerald-400 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wider">Ready / Yard</span>
+            <div className="p-3.5 rounded-2xl bg-surface-card border border-emerald-500/25 hover:border-emerald-500/50 transition-all duration-200 shadow-xs">
+              <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider">Ready / Yard</span>
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
               </div>
-              <div className="text-2xl font-black text-emerald-300">{telemetry.available_units}</div>
-              <div className="text-[11px] text-emerald-500/80 mt-1">Available for dispatch</div>
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-300 font-mono">{telemetry.available_units}</div>
+              <div className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1">Available for dispatch</div>
             </div>
 
             {/* Active on Site / Rented */}
-            <div className="p-3.5 rounded-2xl bg-surface-card border border-amber-500/25 dark:bg-neutral-900/80 dark:border-amber-500/20 hover:border-amber-500/40 transition-all duration-200 shadow-xs">
-              <div className="flex items-center justify-between text-amber-400 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wider">On-Site / Rented</span>
-                <Building2 className="w-4 h-4 text-amber-400" />
+            <div className="p-3.5 rounded-2xl bg-surface-card border border-amber-500/25 hover:border-amber-500/50 transition-all duration-200 shadow-xs">
+              <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider">On-Site / Rented</span>
+                <Building2 className="w-4 h-4 text-amber-500" />
               </div>
-              <div className="text-2xl font-black text-amber-300">{telemetry.rented_units}</div>
-              <div className="text-[11px] text-amber-500/80 mt-1">Mobilized on projects</div>
+              <div className="text-2xl font-black text-amber-600 dark:text-amber-300 font-mono">{telemetry.rented_units}</div>
+              <div className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1">Mobilized on projects</div>
             </div>
 
             {/* Maintenance */}
-            <div className="p-3.5 rounded-2xl bg-surface-card border border-rose-500/25 dark:bg-neutral-900/80 dark:border-rose-500/20 hover:border-rose-500/40 transition-all duration-200 shadow-xs">
-              <div className="flex items-center justify-between text-rose-400 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wider">Maintenance</span>
-                <Wrench className="w-4 h-4 text-rose-400" />
+            <div className="p-3.5 rounded-2xl bg-surface-card border border-rose-500/25 hover:border-rose-500/50 transition-all duration-200 shadow-xs">
+              <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider">Maintenance</span>
+                <Wrench className="w-4 h-4 text-rose-500" />
               </div>
-              <div className="text-2xl font-black text-rose-300">{telemetry.maintenance_units}</div>
-              <div className="text-[11px] text-rose-500/80 mt-1">Inspection & Repair</div>
+              <div className="text-2xl font-black text-rose-600 dark:text-rose-300 font-mono">{telemetry.maintenance_units}</div>
+              <div className="text-[11px] text-rose-600/80 dark:text-rose-400/80 mt-1">Inspection & Repair</div>
             </div>
 
             {/* Fleet Utilization Rate */}
-            <div className="p-3.5 rounded-2xl bg-surface-card border border-border-default dark:bg-neutral-900/80 dark:border-neutral-800 hover:border-amber-500/30 transition-all duration-200 shadow-xs col-span-2 lg:col-span-2">
-              <div className="flex items-center justify-between text-neutral-400 mb-1">
-                <span className="text-xs font-medium uppercase tracking-wider">Utilization Rate</span>
-                <span className="text-xs font-bold text-amber-400">{telemetry.utilization_rate}%</span>
+            <div className="p-3.5 rounded-2xl bg-surface-card border border-border-default/80 hover:border-amber-500/40 transition-all duration-200 shadow-xs col-span-2 lg:col-span-2">
+              <div className="flex items-center justify-between text-content-secondary mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider">Utilization Rate</span>
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">{telemetry.utilization_rate}%</span>
               </div>
-              <div className="w-full bg-neutral-800 rounded-full h-2.5 mt-2 overflow-hidden">
+              <div className="w-full bg-surface-app border border-border-subtle rounded-full h-2.5 mt-2 overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-amber-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, telemetry.utilization_rate)}%` }}
                 ></div>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2">
+              <div className="flex items-center justify-between text-[11px] text-content-secondary mt-2">
                 <span>{telemetry.rented_units} deployed</span>
                 <span>{telemetry.available_units} idle in yard</span>
               </div>
@@ -606,50 +606,50 @@ export default function EquipmentIndex({ defaultStatus }: EquipmentPageProps) {
           </div>
 
           {/* Smart View Bar & Search Filter */}
-          <div className="p-4 rounded-2xl bg-surface-card border border-border-default dark:bg-neutral-900/90 dark:border-neutral-800/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="p-4 rounded-2xl bg-surface-card border border-border-default/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Status Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-surface-app/80 border border-border-default dark:bg-neutral-950/70 dark:border-neutral-800">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-surface-app border border-border-default">
               <button
                 onClick={() => setStatusFilter('all')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   statusFilter === 'all'
-                    ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
                 }`}
               >
                 All Assets ({records.length})
               </button>
               <button
                 onClick={() => setStatusFilter('available')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   statusFilter === 'available'
-                    ? 'bg-emerald-500 text-neutral-950 font-bold shadow-md shadow-emerald-500/20'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                 Ready for Dispatch ({telemetry.available_units})
               </button>
               <button
                 onClick={() => setStatusFilter('rented')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   statusFilter === 'rented'
-                    ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                 On-Site / Rented ({telemetry.rented_units})
               </button>
               <button
                 onClick={() => setStatusFilter('maintenance')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   statusFilter === 'maintenance'
-                    ? 'bg-rose-500 text-white font-bold shadow-md shadow-rose-500/20'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                    ? 'bg-rose-500 text-white font-bold shadow-xs'
+                    : 'text-content-secondary hover:text-content-primary hover:bg-surface-card'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
                 In Maintenance ({telemetry.maintenance_units})
               </button>
             </div>

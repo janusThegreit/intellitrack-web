@@ -33,6 +33,133 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [aiSource, setAiSource] = useState<string>('Google Gemini AI (Active)');
 
+  // Floating Chat Head Draggable Position (Messenger Chat Head motion)
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isMounted, setIsMounted] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isSnapping, setIsSnapping] = useState(false);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+    hasMoved: boolean;
+  }>({
+    startX: 0,
+    startY: 0,
+    startPosX: 0,
+    startPosY: 0,
+    hasMoved: false,
+  });
+
+  // Initialize position and restore saved position from localStorage
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem('intellitrack_chathead_pos');
+    const maxX = window.innerWidth - 72;
+    const maxY = window.innerHeight - 76;
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          setPosition({
+            x: Math.min(Math.max(16, parsed.x), maxX),
+            y: Math.min(Math.max(16, parsed.y), maxY),
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+    // Default: bottom-right corner
+    setPosition({
+      x: Math.max(16, window.innerWidth - 76),
+      y: Math.max(16, window.innerHeight - 80),
+    });
+  }, []);
+
+  // Update on window resize so chat head stays within viewport
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) => {
+        const isLeft = prev.x < window.innerWidth / 2;
+        const buttonSize = 56;
+        return {
+          x: isLeft ? 16 : Math.max(16, window.innerWidth - buttonSize - 16),
+          y: Math.min(Math.max(16, prev.y), window.innerHeight - buttonSize - 16),
+        };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    // Only primary mouse button or touch
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: position.x,
+      startPosY: position.y,
+      hasMoved: false,
+    };
+
+    setIsDragging(true);
+    setIsSnapping(false);
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - dragRef.current.startX;
+      const deltaY = moveEvent.clientY - dragRef.current.startY;
+      const dist = Math.hypot(deltaX, deltaY);
+
+      if (dist > 6) {
+        dragRef.current.hasMoved = true;
+      }
+
+      const buttonSize = 56;
+      const newX = Math.max(8, Math.min(window.innerWidth - buttonSize - 8, dragRef.current.startPosX + deltaX));
+      const newY = Math.max(8, Math.min(window.innerHeight - buttonSize - 8, dragRef.current.startPosY + deltaY));
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      setIsDragging(false);
+
+      if (dragRef.current.hasMoved) {
+        // Snap to nearest edge like Messenger Chat Heads
+        const buttonSize = 56;
+        const middle = window.innerWidth / 2;
+        const currentX = Math.max(8, Math.min(window.innerWidth - buttonSize - 8, dragRef.current.startPosX + (upEvent.clientX - dragRef.current.startX)));
+        const currentY = Math.max(16, Math.min(window.innerHeight - buttonSize - 16, dragRef.current.startPosY + (upEvent.clientY - dragRef.current.startY)));
+
+        const snapX = currentX < middle ? 16 : window.innerWidth - buttonSize - 16;
+        
+        setIsSnapping(true);
+        setPosition({ x: snapX, y: currentY });
+
+        try {
+          localStorage.setItem('intellitrack_chathead_pos', JSON.stringify({ x: snapX, y: currentY }));
+        } catch (err) {}
+
+        setTimeout(() => setIsSnapping(false), 350);
+      } else {
+        // Just a tap/click -> toggle open/close
+        setIsOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  };
+
   // Chat message history
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     return [
@@ -197,13 +324,57 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
     return formatted;
   };
 
+  if (!isMounted) return null;
+
+  const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const isMobile = screenW < 640;
+  const isLeft = position.x < screenW / 2;
+  const buttonSize = 56;
+
+  let winStyle: React.CSSProperties = {};
+  if (isMobile) {
+    winStyle = {
+      position: 'fixed',
+      left: '12px',
+      right: '12px',
+      bottom: `${Math.max(12, screenH - position.y + 12)}px`,
+      maxHeight: 'calc(100vh - 100px)',
+      zIndex: 50,
+    };
+  } else {
+    const winWidth = isExpanded ? 580 : 440;
+    const estHeight = isExpanded ? 720 : 560;
+
+    let computedLeft = isLeft
+      ? Math.max(16, Math.min(position.x, screenW - winWidth - 16))
+      : Math.max(16, Math.min(position.x + buttonSize - winWidth, screenW - winWidth - 16));
+
+    let computedTop = position.y - estHeight - 12;
+    if (computedTop < 20) {
+      if (position.y + buttonSize + estHeight + 20 <= screenH) {
+        computedTop = position.y + buttonSize + 12;
+      } else {
+        computedTop = Math.max(20, screenH - estHeight - 20);
+      }
+    }
+
+    winStyle = {
+      position: 'fixed',
+      left: `${computedLeft}px`,
+      top: `${computedTop}px`,
+      zIndex: 50,
+    };
+  }
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end print:hidden">
+    <>
       {/* Expanded Messenger Window */}
       {isOpen && (
         <div
+          style={winStyle}
           className={clsx(
-            'mb-3 flex flex-col overflow-hidden rounded-2xl border border-neutral-700/70 bg-neutral-950/95 text-neutral-100 shadow-2xl shadow-black/80 backdrop-blur-2xl transition-all duration-300',
+            'flex flex-col overflow-hidden rounded-2xl border border-neutral-700/70 bg-neutral-950/95 text-neutral-100 shadow-2xl shadow-black/80 backdrop-blur-2xl transition-all duration-300 print:hidden',
             isExpanded
               ? 'w-[95vw] sm:w-[580px] h-[86vh] max-h-[780px]'
               : 'w-[92vw] sm:w-[440px] h-[75vh] max-h-[600px]'
@@ -239,7 +410,7 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
                 title={isExpanded ? 'Restore window size' : 'Expand window'}
-                className="rounded-lg p-1.5 hover:bg-neutral-800 hover:text-white transition"
+                className="rounded-lg p-1.5 hover:bg-neutral-800 hover:text-white transition cursor-pointer"
               >
                 {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </button>
@@ -247,7 +418,7 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
                 type="button"
                 onClick={() => setIsOpen(false)}
                 title="Close chat"
-                className="rounded-lg p-1.5 hover:bg-red-500/20 hover:text-red-400 transition"
+                className="rounded-lg p-1.5 hover:bg-red-500/20 hover:text-red-400 transition cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -265,7 +436,7 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
                 type="button"
                 onClick={() => handleSendMessage(qp.prompt)}
                 disabled={loading}
-                className="shrink-0 rounded-full border border-neutral-700/80 bg-neutral-800/60 hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-300 text-[11px] text-neutral-300 px-2.5 py-1 transition disabled:opacity-50"
+                className="shrink-0 rounded-full border border-neutral-700/80 bg-neutral-800/60 hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-300 text-[11px] text-neutral-300 px-2.5 py-1 transition disabled:opacity-50 cursor-pointer"
               >
                 {qp.label}
               </button>
@@ -307,7 +478,7 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
                             type="button"
                             onClick={() => handleCopyText(msg.id, msg.text)}
                             title="Copy response"
-                            className="text-neutral-400 hover:text-white transition"
+                            className="text-neutral-400 hover:text-white transition cursor-pointer"
                           >
                             {copiedId === msg.id ? (
                               <Check className="h-3 w-3 text-emerald-400" />
@@ -368,7 +539,7 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
               <button
                 type="submit"
                 disabled={!inputPrompt.trim() || loading}
-                className="absolute right-1.5 rounded-lg bg-amber-500 p-2 text-neutral-950 hover:bg-amber-400 disabled:opacity-40 transition font-bold"
+                className="absolute right-1.5 rounded-lg bg-amber-500 p-2 text-neutral-950 hover:bg-amber-400 disabled:opacity-40 transition font-bold cursor-pointer"
                 title="Send Message"
               >
                 <Send className="h-3.5 w-3.5" />
@@ -378,42 +549,69 @@ export const SalesAiFloatingChatbot: React.FC<SalesAiFloatingChatbotProps> = ({ 
         </div>
       )}
 
-      {/* Floating Messenger Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
+      {/* Floating Messenger Draggable Trigger Button (Messenger Chat Head motion) */}
+      <div
+        style={{
+          position: 'fixed',
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          touchAction: 'none',
+          userSelect: 'none',
+          zIndex: 51,
+        }}
         className={clsx(
-          'group relative flex items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95',
-          isOpen
-            ? 'h-14 w-14 bg-neutral-900 border-2 border-amber-500/80 text-amber-400 shadow-amber-500/20'
-            : 'h-14 w-14 bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-400 text-neutral-950 shadow-amber-500/40 ring-4 ring-amber-400/20'
+          'print:hidden',
+          isSnapping && 'transition-all duration-350 ease-[cubic-bezier(0.18,0.89,0.32,1.28)]'
         )}
-        title="Open IntelliTrack AI Copilot"
       >
-        {/* Glow Ring */}
-        <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 opacity-30 blur-sm group-hover:opacity-60 transition duration-300"></span>
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          className={clsx(
+            'group relative flex items-center justify-center rounded-2xl backdrop-blur-xl select-none',
+            isDragging
+              ? 'cursor-grabbing scale-110 rotate-3 shadow-2xl shadow-amber-500/40 ring-4 ring-amber-500/50'
+              : 'cursor-grab hover:scale-105 active:scale-95 transition-transform duration-200 shadow-xl',
+            isOpen
+              ? 'h-14 w-14 bg-white border-2 border-amber-500 text-amber-600 shadow-amber-500/20 dark:bg-slate-900 dark:border-amber-500/60 dark:text-amber-400 dark:shadow-amber-500/10'
+              : 'h-14 w-14 bg-white border border-slate-200 hover:border-amber-400 text-amber-600 hover:shadow-amber-500/10 dark:bg-slate-900/95 dark:border-white/10 dark:hover:border-amber-500/40 dark:text-amber-400 dark:shadow-2xl dark:hover:shadow-amber-500/15'
+          )}
+          title="Drag to reposition or click to toggle IntelliTrack AI Copilot"
+        >
+          {/* Subtle Ambient Glow */}
+          <span className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 opacity-0 group-hover:opacity-100 blur-sm transition duration-300 pointer-events-none" />
 
-        {isOpen ? (
-          <X className="relative h-6 w-6" />
-        ) : (
-          <>
-            <Bot className="relative h-7 w-7 transition-transform group-hover:rotate-12" />
-            {/* Sparkle micro badge */}
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-black text-white border-2 border-neutral-950">
-              AI
-            </span>
-          </>
-        )}
-      </button>
+          {isOpen ? (
+            <X className="relative h-5 w-5 text-slate-700 dark:text-slate-300 pointer-events-none" />
+          ) : (
+            <>
+              <Bot className="relative h-6 w-6 transition-transform group-hover:scale-110 text-amber-500 dark:text-amber-400 pointer-events-none" />
+              {/* Sparkle micro badge */}
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-slate-950 ring-2 ring-white dark:ring-slate-950 pointer-events-none">
+                <Sparkles className="h-2.5 w-2.5" />
+              </span>
+            </>
+          )}
 
-      {/* Tooltip callout when closed */}
-      {!isOpen && (
-        <div className="absolute bottom-16 right-0 mb-1 hidden sm:flex items-center gap-1.5 rounded-xl border border-neutral-700/80 bg-neutral-900/95 px-3 py-1.5 text-xs text-neutral-200 shadow-xl backdrop-blur-md whitespace-nowrap pointer-events-none animate-bounce">
-          <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-          <span>Ask Sales Intelligence Copilot</span>
-        </div>
-      )}
-    </div>
+          {/* High-End Hover Tooltip - smart orientation based on position */}
+          {!isOpen && !isDragging && (
+            <div
+              className={clsx(
+                'absolute hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow-xl backdrop-blur-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none',
+                isLeft
+                  ? 'left-16 translate-x-[-4px] group-hover:translate-x-0'
+                  : 'right-16 translate-x-1 group-hover:translate-x-0',
+                'dark:border-white/10 dark:bg-slate-900/95 dark:text-slate-200'
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
+              <span>IntelliTrack Copilot</span>
+              <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">AI</kbd>
+            </div>
+          )}
+        </button>
+      </div>
+    </>
   );
 };
 

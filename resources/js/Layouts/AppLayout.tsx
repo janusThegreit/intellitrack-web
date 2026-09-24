@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 
 import SalesAiFloatingChatbot from '../Components/SalesAiFloatingChatbot';
+import SessionTimeoutManager from '../Components/SessionTimeoutManager';
 
 // Inline Intelitrack logo icon (compact mode — small square)
 const IntelitrackIcon = () => (
@@ -311,18 +312,24 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
       >
         {/* Top Branding */}
         <div className={clsx('flex items-center border-b border-border-default/80 py-4', isCompact ? 'justify-center px-3' : 'justify-between px-5')}>
-          {isCompact ? (
-            <IntelitrackIcon />
-          ) : (
-            <img
-              src="/images/intellitrack-logo.png"
-              alt="IntelliTrack"
-              className="h-7 w-auto object-contain dark:brightness-0 dark:invert"
-            />
-          )}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 group transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer"
+            title="Go to Executive Overview / Dashboard"
+          >
+            {isCompact ? (
+              <IntelitrackIcon />
+            ) : (
+              <img
+                src="/images/intellitrack-logo.png"
+                alt="IntelliTrack"
+                className="h-7 w-auto object-contain dark:brightness-0 dark:invert transition-transform duration-200 group-hover:scale-[1.02]"
+              />
+            )}
+          </Link>
           <button
             onClick={onClose}
-            className="ml-auto p-1 text-content-secondary hover:text-content-primary lg:hidden rounded-lg"
+            className="ml-auto p-1 text-content-secondary hover:text-content-primary lg:hidden rounded-lg cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -492,11 +499,17 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
           </button>
 
           <div className="flex items-center gap-2 text-sm">
-            <img
-              src="/images/intellitrack-logo.png"
-              alt="IntelliTrack"
-              className="hidden h-6 w-auto object-contain dark:brightness-0 dark:invert sm:block"
-            />
+            <Link
+              href="/dashboard"
+              className="flex items-center group transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer"
+              title="Go to Executive Overview / Dashboard"
+            >
+              <img
+                src="/images/intellitrack-logo.png"
+                alt="IntelliTrack"
+                className="hidden h-6 w-auto object-contain dark:brightness-0 dark:invert sm:block transition-transform duration-200 group-hover:scale-[1.02]"
+              />
+            </Link>
             {title && (
               <>
                 <ChevronRight className="h-3.5 w-3.5 text-content-muted" />
@@ -805,6 +818,9 @@ const AppLayout = ({ children, title, headerAction, dark = false, showHeader = t
 
       {/* Floating Messenger-style AI Sales Intelligence Chatbot */}
       <SalesAiFloatingChatbot userRole={userRole} />
+
+      {/* Enterprise 5-Minute Inactivity Session Timeout Manager */}
+      <SessionTimeoutManager timeoutMs={5 * 60 * 1000} warningDurationMs={60 * 1000} />
     </div>
   );
 };

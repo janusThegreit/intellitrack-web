@@ -49,7 +49,6 @@ const RentalRequirements = () => {
     <>
       <Head title="Rental Requirements & Assessments" />
       <AppLayout
-        dark={true}
         title="Fleet & Rentals"
       >
         <div className="space-y-4">

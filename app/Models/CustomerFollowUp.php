@@ -16,12 +16,16 @@ class CustomerFollowUp extends Model
     protected $fillable = [
         'customer_id',
         'customer_inquiry_id',
+        'equipment_id',
+        'project_id',
         'title',
         'notes',
         'scheduled_date',
         'due_time',
         'status',
         'priority',
+        'category',
+        'is_permit_critical',
         'assigned_to',
         'created_by',
         'completed_at',
@@ -29,6 +33,7 @@ class CustomerFollowUp extends Model
 
     protected $casts = [
         'scheduled_date' => 'date',
+        'is_permit_critical' => 'boolean',
         'completed_at' => 'datetime',
     ];
 
@@ -40,6 +45,16 @@ class CustomerFollowUp extends Model
     public function inquiry(): BelongsTo
     {
         return $this->belongsTo(CustomerInquiry::class, 'customer_inquiry_id');
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(Equipment::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function assignee(): BelongsTo

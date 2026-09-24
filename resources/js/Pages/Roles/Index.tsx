@@ -405,7 +405,7 @@ export default function RolesIndex() {
   });
 
   return (
-    <AppLayout dark={true} showHeader={false}>
+    <AppLayout showHeader={false}>
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/90 px-4 py-3 text-sm font-medium text-emerald-200 shadow-2xl backdrop-blur-md transition-all">
@@ -422,7 +422,7 @@ export default function RolesIndex() {
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+              <h1 className="text-xl font-bold tracking-tight text-content-primary sm:text-2xl">
                 Roles & Access Governance (IAM)
               </h1>
               <p className="text-xs text-content-secondary">
@@ -441,7 +441,7 @@ export default function RolesIndex() {
                 "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition",
                 activeTab === 'inspector' 
                   ? "bg-amber-400 text-black shadow-md font-bold" 
-                  : "text-content-secondary hover:text-white"
+                  : "text-content-secondary hover:text-content-primary"
               )}
             >
               <Sliders className="h-3.5 w-3.5" />
@@ -453,7 +453,7 @@ export default function RolesIndex() {
                 "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition",
                 activeTab === 'matrix' 
                   ? "bg-amber-400 text-black shadow-md font-bold" 
-                  : "text-content-secondary hover:text-white"
+                  : "text-content-secondary hover:text-content-primary"
               )}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -464,7 +464,7 @@ export default function RolesIndex() {
           <button
             onClick={exportMatrixCsv}
             title="Export full permission matrix"
-            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs font-semibold text-content-secondary hover:border-zinc-500 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-xs font-semibold text-content-secondary hover:border-amber-500/40 hover:text-content-primary"
           >
             <Download className="h-3.5 w-3.5" />
             Export Matrix
@@ -477,11 +477,11 @@ export default function RolesIndex() {
         <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-surface-card p-5 shadow-lg">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">Defined IAM Roles</p>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-content-secondary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-input text-content-secondary">
               <Shield className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-white">{roles.length || 6}</p>
+          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">{roles.length || 6}</p>
           <p className="mt-1 text-[11px] text-content-secondary">Configured role classifications</p>
         </div>
 
@@ -492,7 +492,7 @@ export default function RolesIndex() {
               <Users className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-400">{totalUsers}</p>
+          <p className="mt-3 text-3xl font-extrabold text-emerald-400 font-mono">{totalUsers}</p>
           <p className="mt-1 text-[11px] text-emerald-400/80">Active user accounts provisioned</p>
         </div>
 
@@ -503,7 +503,7 @@ export default function RolesIndex() {
               <FileCheck className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-white">{PERMISSIONS.length}</p>
+          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">{PERMISSIONS.length}</p>
           <p className="mt-1 text-[11px] text-content-secondary">Across 6 operational modules</p>
         </div>
 
@@ -514,7 +514,7 @@ export default function RolesIndex() {
               <Lock className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-xl font-bold text-white">Tier 1 Superadmin</p>
+          <p className="mt-3 text-xl font-bold text-content-primary">Tier 1 Superadmin</p>
           <p className="mt-1 text-[11px] text-purple-400/80">Strict zero-trust root protection</p>
         </div>
       </div>

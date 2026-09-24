@@ -155,14 +155,14 @@ const Opportunities = () => {
   return (
     <>
       <Head title="Commercial Sales Pipeline & Opportunities" />
-      <AppLayout dark={true} title="CRM & Client Management">
+      <AppLayout title="CRM & Client Management">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 space-y-6">
           <CrmNavTabs />
 
           {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border-subtle pb-5">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Commercial Sales Pipeline</h1>
+              <h1 className="text-2xl font-bold text-content-primary tracking-tight">Commercial Sales Pipeline</h1>
               <p className="text-sm text-content-secondary mt-0.5">
                 End-to-end visibility from prospect inquiry to commercial proposal approval, customer acceptance, and job order dispatch.
               </p>
@@ -188,53 +188,53 @@ const Opportunities = () => {
 
           {/* Metric KPIs Summary Grid */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-border-default/80 bg-surface-card/90 p-5 backdrop-blur-md">
+            <div className="rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Pipeline Value</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
                   <DollarSign className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-black text-amber-400 font-mono">
+              <p className="mt-3 text-2xl font-black text-amber-500 dark:text-amber-400 font-mono">
                 {formatPeso(totalPipelineValue)}
               </p>
               <p className="mt-1 text-xs text-content-secondary">Across {quotes.length} active deals</p>
             </div>
 
-            <div className="rounded-2xl border border-border-default/80 bg-surface-card/90 p-5 backdrop-blur-md">
+            <div className="rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Awaiting Manager Sign-Off</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
                   <Clock className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-black text-white font-mono">
-                {awaitingReviewCount} <span className="text-xs text-amber-400 font-normal">proposals</span>
+              <p className="mt-3 text-2xl font-black text-content-primary font-mono">
+                {awaitingReviewCount} <span className="text-xs text-amber-500 font-normal">proposals</span>
               </p>
               <p className="mt-1 text-xs text-content-secondary">Pending review or revision</p>
             </div>
 
-            <div className="rounded-2xl border border-border-default/80 bg-surface-card/90 p-5 backdrop-blur-md">
+            <div className="rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Closed Won Revenue</span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-black text-emerald-400 font-mono">
+              <p className="mt-3 text-2xl font-black text-emerald-500 dark:text-emerald-400 font-mono">
                 {formatPeso(closedWonValue)}
               </p>
               <p className="mt-1 text-xs text-content-secondary">Accepted & contracted</p>
             </div>
 
-            <div className="rounded-2xl border border-border-default/80 bg-surface-card/90 p-5 backdrop-blur-md">
+            <div className="rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Closing Win Rate</span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 border border-violet-500/20">
                   <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-black text-violet-300 font-mono">
+              <p className="mt-3 text-2xl font-black text-violet-500 dark:text-violet-400 font-mono">
                 {winRate}%
               </p>
               <p className="mt-1 text-xs text-content-secondary">Conversion benchmark</p>
@@ -249,7 +249,7 @@ const Opportunities = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by quote number, client, project, or description..."
-              className="w-full rounded-xl border border-border-default bg-surface-card pl-10 pr-4 py-2.5 text-xs text-content-primary focus:border-amber-500 focus:outline-none placeholder:text-content-muted shadow-sm"
+              className="w-full rounded-xl border border-border-default bg-surface-card pl-10 pr-4 py-2.5 text-xs text-content-primary focus:border-amber-500 focus:outline-none placeholder:text-content-muted shadow-xs"
             />
           </div>
 
@@ -257,11 +257,11 @@ const Opportunities = () => {
           <div className="overflow-x-auto pb-4">
             <div className="grid min-w-[1200px] grid-cols-5 gap-4">
               {columns.map((col) => (
-                <div key={col.id} className="flex flex-col rounded-2xl border border-border-default/80 bg-surface-card/50 p-3.5 backdrop-blur-sm">
+                <div key={col.id} className="flex flex-col rounded-2xl border border-border-default/80 bg-surface-card/60 p-3.5 backdrop-blur-xs">
                   {/* Column Header */}
                   <div className="flex items-center justify-between border-b border-border-subtle/80 pb-3 mb-3">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xs font-bold text-white tracking-wide">{col.title}</h2>
+                      <h2 className="text-xs font-bold text-content-primary tracking-wide">{col.title}</h2>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${col.badge}`}>
                         {col.count}
                       </span>
@@ -298,13 +298,13 @@ const Opportunities = () => {
                                 <span>{item.company_name || 'Individual'}</span>
                               </p>
                               {item.project_name && (
-                                <p className="mt-2 text-[11px] text-slate-300 font-medium line-clamp-1">
+                                <p className="mt-2 text-[11px] text-content-primary/90 font-medium line-clamp-1">
                                   {item.project_name}
                                 </p>
                               )}
                               <div className="mt-3 pt-2 border-t border-border-subtle/50 flex items-center justify-between text-[10px] text-content-muted">
                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                                <span className="text-blue-400 font-semibold group-hover:underline flex items-center gap-0.5">
+                                <span className="text-blue-500 font-semibold group-hover:underline flex items-center gap-0.5">
                                   Open <ArrowRight className="h-3 w-3" />
                                 </span>
                               </div>
@@ -327,7 +327,7 @@ const Opportunities = () => {
                               {item.customer?.company_name || item.customer?.name || 'Customer'}
                             </h3>
 
-                            <p className="mt-2 text-sm font-black font-mono text-white">
+                            <p className="mt-2 text-sm font-black font-mono text-content-primary">
                               {formatPeso(Number(item.total_amount || 0))}
                             </p>
 

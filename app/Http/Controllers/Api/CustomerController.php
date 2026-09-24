@@ -58,6 +58,72 @@ class CustomerController extends Controller
             $query->where('source', $request->input('source'));
         }
 
+        // Filter by location / region
+        if ($request->filled('location') && $request->input('location') !== 'all') {
+            $loc = strtolower($request->input('location'));
+            if ($loc === 'metro_manila' || $loc === 'ncr') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%manila%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%taguig%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%makati%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%quezon%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%pasig%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%manila%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%bgc%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%manila%');
+                });
+            } elseif ($loc === 'cebu' || $loc === 'visayas') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%cebu%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%cebu%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%cebu%');
+                });
+            } elseif ($loc === 'central_luzon') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%pampanga%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%bulacan%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%zambales%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%subic%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%subic%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%clark%');
+                });
+            } elseif ($loc === 'calabarzon') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%laguna%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%batangas%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%cavite%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%rizal%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%calamba%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%calamba%');
+                });
+            } elseif ($loc === 'davao' || $loc === 'mindanao') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%davao%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%davao%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%davao%');
+                });
+            } elseif ($loc === 'international' || $loc === 'other') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%manila%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%cebu%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%pampanga%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%bulacan%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%makati%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%taguig%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%cebu%');
+                });
+            }
+        }
+
+        $query->with([
+            'rentals.equipment',
+            'jobOrders.jobOrderItems.equipment',
+            'projects',
+            'followUps',
+            'communications',
+            'quotations',
+        ]);
+
         $customers = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 15));
 
         return response()->json($customers);
@@ -98,7 +164,74 @@ class CustomerController extends Controller
             $query->where('customer_type', $request->input('type'));
         }
 
-        $customers = $query->orderBy('id', 'asc')->get();
+        if ($request->filled('source') && $request->input('source') !== 'all') {
+            $query->where('source', $request->input('source'));
+        }
+
+        if ($request->filled('location') && $request->input('location') !== 'all') {
+            $loc = strtolower($request->input('location'));
+            if ($loc === 'metro_manila' || $loc === 'ncr') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%manila%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%taguig%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%makati%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%quezon%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%pasig%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%manila%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%bgc%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%manila%');
+                });
+            } elseif ($loc === 'cebu' || $loc === 'visayas') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%cebu%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%cebu%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%cebu%');
+                });
+            } elseif ($loc === 'central_luzon') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%pampanga%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%bulacan%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%zambales%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%subic%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%subic%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%clark%');
+                });
+            } elseif ($loc === 'calabarzon') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%laguna%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%batangas%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%cavite%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%rizal%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%calamba%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%calamba%');
+                });
+            } elseif ($loc === 'davao' || $loc === 'mindanao') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'like', '%davao%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'like', '%davao%')
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(project_location, ""))'), 'like', '%davao%');
+                });
+            } elseif ($loc === 'international' || $loc === 'other') {
+                $query->where(function ($q) {
+                    $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%manila%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%cebu%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%pampanga%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(province, ""))'), 'not like', '%bulacan%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%makati%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%taguig%')
+                      ->where(\Illuminate\Support\Facades\DB::raw('LOWER(COALESCE(city, ""))'), 'not like', '%cebu%');
+                });
+            }
+        }
+
+        $customers = $query->with([
+            'rentals.equipment',
+            'jobOrders.jobOrderItems.equipment',
+            'projects',
+            'followUps',
+            'communications',
+            'quotations',
+        ])->orderBy('id', 'asc')->get();
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -116,6 +249,10 @@ class CustomerController extends Controller
             fputcsv($handle, [
                 'Customer ID',
                 'Customer / Company',
+                'Region / Location',
+                'Active Project / Lease',
+                'Total Contract Value (PHP)',
+                'Last Interaction Date',
                 'Contact Person',
                 'Position',
                 'Contact No.',
@@ -139,6 +276,10 @@ class CustomerController extends Controller
                 fputcsv($handle, [
                     $c->customer_code ?? ('CUS-' . str_pad($c->id, 4, '0', STR_PAD_LEFT)),
                     $c->company_name ?: $c->name,
+                    $c->region ?? '—',
+                    $c->active_lease_summary . ($c->active_project_name ? ' (' . $c->active_project_name . ')' : ''),
+                    number_format($c->total_contract_value ?? 0, 2, '.', ''),
+                    $c->last_interaction_date ? ($c->last_interaction_date . ' [' . ($c->last_interaction_type ?? 'Interaction') . ']') : '—',
                     $c->contact_person ?? '—',
                     $c->position ?? '—',
                     $c->phone ?? '—',

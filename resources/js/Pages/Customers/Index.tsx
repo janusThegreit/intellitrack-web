@@ -235,9 +235,15 @@ interface Customer {
   quotations?: Quotation[];
 
   /*
-   * Enterprise Relational Telemetry
+   * Enterprise Relational Telemetry & Crane Leasing Operations
    */
   lifetime_value?: number;
+  total_contract_value?: number;
+  active_lease_summary?: string;
+  active_project_name?: string;
+  last_interaction_date?: string;
+  last_interaction_type?: string;
+  region?: string;
   active_job_orders_count?: number;
   active_rentals_count?: number;
   deployed_cranes?: DeployedCrane[];
@@ -448,6 +454,7 @@ const CustomersList = ({
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
 
   const [records, setRecords] =
@@ -516,10 +523,14 @@ const CustomersList = ({
 
   const loadCustomers = async () => {
     try {
+      const params = new URLSearchParams({
+        per_page: '100',
+        ...(showArchived ? { archived: '1' } : {}),
+        ...(locationFilter !== 'all' ? { location: locationFilter } : {}),
+      });
+
       const response = await fetch(
-        `/api/customers?per_page=100${
-          showArchived ? '&archived=1' : ''
-        }`,
+        `/api/customers?${params.toString()}`,
         {
           headers: {
             Accept: 'application/json',
@@ -544,7 +555,7 @@ const CustomersList = ({
 
   useEffect(() => {
     loadCustomers();
-  }, [showArchived]);
+  }, [showArchived, locationFilter]);
 
   /*
    * ------------------------------------------------------------
@@ -626,6 +637,39 @@ const CustomersList = ({
     }
 
     /*
+     * Project Location / Region filter
+     */
+    if (locationFilter !== 'all') {
+      result = result.filter(customer => {
+        const region = (customer.region || '').toLowerCase();
+        const city = (customer.city || '').toLowerCase();
+        const prov = (customer.province || '').toLowerCase();
+        const loc = (customer.project_location || '').toLowerCase();
+        const filterVal = locationFilter.toLowerCase();
+
+        if (filterVal === 'metro_manila' || filterVal === 'ncr') {
+          return region.includes('manila') || prov.includes('manila') || city.includes('taguig') || city.includes('makati') || city.includes('quezon') || city.includes('pasig') || loc.includes('bgc') || loc.includes('manila');
+        }
+        if (filterVal === 'cebu' || filterVal === 'visayas') {
+          return region.includes('cebu') || prov.includes('cebu') || city.includes('cebu') || loc.includes('cebu');
+        }
+        if (filterVal === 'central_luzon') {
+          return region.includes('central luzon') || prov.includes('pampanga') || prov.includes('bulacan') || prov.includes('zambales') || city.includes('subic') || loc.includes('subic') || loc.includes('clark');
+        }
+        if (filterVal === 'calabarzon') {
+          return region.includes('calabarzon') || prov.includes('laguna') || prov.includes('batangas') || prov.includes('cavite') || prov.includes('rizal') || city.includes('calamba') || loc.includes('calamba');
+        }
+        if (filterVal === 'davao' || filterVal === 'mindanao') {
+          return region.includes('davao') || prov.includes('davao') || city.includes('davao') || loc.includes('davao');
+        }
+        if (filterVal === 'other' || filterVal === 'international') {
+          return region === 'other' || (!prov.includes('manila') && !city.includes('taguig') && !city.includes('makati') && !prov.includes('cebu') && !prov.includes('pampanga') && !prov.includes('bulacan'));
+        }
+        return region.includes(filterVal) || prov.includes(filterVal) || city.includes(filterVal) || loc.includes(filterVal);
+      });
+    }
+
+    /*
      * Sort
      */
     result.sort((a, b) => {
@@ -661,6 +705,7 @@ const CustomersList = ({
     statusFilter,
     typeFilter,
     sourceFilter,
+    locationFilter,
     sortBy,
     sortOrder,
   ]);
@@ -973,6 +1018,7 @@ const CustomersList = ({
       ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
       ...(typeFilter !== 'all' ? { type: typeFilter } : {}),
       ...(sourceFilter !== 'all' ? { source: sourceFilter } : {}),
+      ...(locationFilter !== 'all' ? { location: locationFilter } : {}),
       ...(showArchived ? { archived: '1' } : {}),
     });
     window.location.href = `/api/customers/export?${query.toString()}`;
@@ -980,9 +1026,8 @@ const CustomersList = ({
 
   /*
    * ------------------------------------------------------------
-   * TABLE COLUMNS (CAPSTONE SPECIFICATION)
+   * TABLE COLUMNS (HEAVY CRANE LEASING & CRM SPECIFICATION)
    * ------------------------------------------------------------
-   * Columns: Customer ID | Customer | Contact Person | Contact No. | Type | Status | Actions
    */
 
   const columns: TableColumn<Customer>[] = [
@@ -990,7 +1035,7 @@ const CustomersList = ({
       key: 'customer_code',
       label: 'CUSTOMER ID',
       sortable: true,
-      width: '12%',
+      width: '10%',
       render: (value, row) => (
         <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
           {value || row.customer_reference || `CUS-${String(row.id).padStart(4, '0')}`}
@@ -999,63 +1044,127 @@ const CustomersList = ({
     },
     {
       key: 'company_name',
-      label: 'CUSTOMER',
+      label: 'CUSTOMER / CLIENT',
       sortable: true,
-      width: '21%',
+      width: '20%',
       render: (value, row) => (
         <div>
           <p className="font-bold text-content-primary">
             {value || row.name}
           </p>
-          {(row.industry || row.city) && (
-            <p className="text-xs text-content-secondary mt-0.5 font-medium">
-              {[row.industry, row.city].filter(Boolean).join(' • ')}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-content-secondary font-medium">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-app text-[11px] text-content-secondary border border-border-subtle">
+              <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+              <span>{row.region || row.city || 'NCR'}</span>
+            </span>
+            {row.industry && (
+              <span className="text-[11px] text-content-secondary truncate max-w-[130px]">
+                • {row.industry}
+              </span>
+            )}
+          </div>
+          {row.contact_person && (
+            <p className="text-[11px] text-content-secondary mt-0.5 truncate max-w-[180px]">
+              Attn: {row.contact_person}
             </p>
           )}
         </div>
       ),
     },
     {
-      key: 'contact_person',
-      label: 'CONTACT PERSON',
+      key: 'active_lease_summary',
+      label: 'ACTIVE PROJECT / LEASE',
       sortable: true,
-      width: '17%',
-      render: (value, row) => (
-        <div>
-          <p className="font-semibold text-content-primary">
-            {value || '—'}
-          </p>
-          {row.position && (
-            <p className="text-xs text-content-secondary mt-0.5">
-              {row.position}
-            </p>
-          )}
-        </div>
-      ),
+      width: '21%',
+      render: (_value, row) => {
+        const hasLease = row.active_lease_summary && row.active_lease_summary !== 'No Active Lease';
+
+        return (
+          <div className="space-y-1">
+            {hasLease ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold shadow-xs">
+                <Truck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                <span>{row.active_lease_summary}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs text-content-secondary/70 italic px-2 py-0.5 rounded bg-surface-app/40 border border-border-subtle/50">
+                No Active Lease
+              </span>
+            )}
+
+            {row.active_project_name && (
+              <p className="text-xs text-content-secondary truncate max-w-[210px] font-medium" title={row.active_project_name}>
+                {row.active_project_name}
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
-      key: 'phone',
-      label: 'CONTACT NO.',
+      key: 'total_contract_value',
+      label: 'TOTAL VALUE / LTV',
       sortable: true,
-      width: '15%',
-      render: (value, row) => (
-        <div>
-          <p className="font-mono text-sm font-semibold text-content-primary">
-            {value || row.mobile_number || '—'}
-          </p>
-          {row.email && (
-            <p className="text-xs text-content-secondary truncate max-w-[160px]">
-              {row.email}
+      width: '13%',
+      render: (_value, row) => {
+        const amount = row.total_contract_value || row.lifetime_value || row.total_spending || 0;
+        const isEnterprise = amount >= 4000000;
+
+        return (
+          <div>
+            <p className="font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
+              {formatPeso(amount)}
             </p>
-          )}
-        </div>
-      ),
+            {isEnterprise ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 mt-0.5">
+                Enterprise Account
+              </span>
+            ) : (
+              <span className="text-[11px] text-content-secondary mt-0.5 block">
+                Contract LTV
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'last_interaction_date',
+      label: 'LAST INTERACTION',
+      sortable: true,
+      width: '13%',
+      render: (_value, row) => {
+        if (!row.last_interaction_date) {
+          return <span className="text-xs text-content-secondary font-mono">—</span>;
+        }
+
+        const type = (row.last_interaction_type || 'Follow-Up').toLowerCase();
+        const badgeColor = type.includes('site')
+          ? 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20'
+          : type.includes('call')
+          ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20'
+          : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
+
+        return (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-content-secondary shrink-0" />
+              <span className="font-mono text-xs font-semibold text-content-primary">
+                {row.last_interaction_date}
+              </span>
+            </div>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border mt-1 ${badgeColor}`}>
+              {row.last_interaction_type || 'Follow-Up'}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'customer_type',
       label: 'TYPE',
       sortable: true,
-      width: '11%',
+      width: '8%',
       render: (value) => {
         const type = String(value || 'corporate').toLowerCase();
         const displayType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -1077,13 +1186,13 @@ const CustomersList = ({
       key: 'status',
       label: 'STATUS',
       sortable: true,
-      width: '11%',
+      width: '7%',
       render: (status) => <StatusBadge status={status || 'active'} />,
     },
     {
       key: 'id',
       label: 'ACTIONS',
-      width: '13%',
+      width: '8%',
       render: (_id, row) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
@@ -2232,7 +2341,7 @@ const CustomersList = ({
     <>
       <Head title="Customer & Client Management" />
 
-      <AppLayout dark={true} title="CRM & Client Management">
+      <AppLayout title="CRM & Client Management">
         <div className="space-y-4">
           <CrmNavTabs
             actionButton={
@@ -2372,11 +2481,28 @@ const CustomersList = ({
                       ))}
                     </select>
 
+                    {/* Project Location / Region Filter */}
+                    <select
+                      value={locationFilter}
+                      onChange={e => setLocationFilter(e.target.value)}
+                      className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-semibold text-content-primary outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 shadow-xs"
+                      title="Filter by Project Location / Region"
+                    >
+                      <option value="all">All Locations</option>
+                      <option value="metro_manila">Metro Manila (NCR)</option>
+                      <option value="cebu">Cebu (Visayas)</option>
+                      <option value="central_luzon">Central Luzon</option>
+                      <option value="calabarzon">Calabarzon</option>
+                      <option value="davao">Davao (Mindanao)</option>
+                      <option value="other">Other / International</option>
+                    </select>
+
                     <button
                       onClick={() => {
                         setStatusFilter('all');
                         setTypeFilter('all');
                         setSourceFilter('all');
+                        setLocationFilter('all');
                         setSearchQuery('');
                       }}
                       className="flex items-center justify-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-semibold text-content-secondary hover:text-content-primary hover:border-amber-500/40 hover:bg-surface-app transition-all shadow-xs cursor-pointer"

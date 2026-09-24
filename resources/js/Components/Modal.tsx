@@ -44,7 +44,7 @@ const Modal = ({
       />
 
       {/* Modal */}
-      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-border-default bg-surface-card shadow-2xl', sizes[size])} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={clsx('relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-border-default bg-surface-card shadow-2xl', sizes[size])} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         {/* Header */}
         {(title || closeButton) && (
           <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-4">

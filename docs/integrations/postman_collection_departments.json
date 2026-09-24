@@ -1,0 +1,406 @@
+{
+	"info": {
+		"_postman_id": "bpa-level-1-intellitrack-departments",
+		"name": "IntelliTrack - BPA Level 1 Inter-Departmental HTTP APIs",
+		"description": "Postman Collection for HTTP API integrations between IntelliTrack (CRM & Job Order System) and the 8 external departments based on BPA Level 1 Architecture.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "intellitrack_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "webhook_secret",
+			"value": "intellitrack-bpa-secret-key-2026",
+			"type": "string"
+		},
+		{
+			"key": "crane_url",
+			"value": "http://127.0.0.1:8011",
+			"type": "string"
+		},
+		{
+			"key": "manpower_url",
+			"value": "http://127.0.0.1:8012",
+			"type": "string"
+		},
+		{
+			"key": "dispatch_url",
+			"value": "http://127.0.0.1:8013",
+			"type": "string"
+		},
+		{
+			"key": "fleet_url",
+			"value": "http://127.0.0.1:8014",
+			"type": "string"
+		},
+		{
+			"key": "ar_url",
+			"value": "http://127.0.0.1:8015",
+			"type": "string"
+		},
+		{
+			"key": "billing_url",
+			"value": "http://127.0.0.1:8016",
+			"type": "string"
+		},
+		{
+			"key": "contract_url",
+			"value": "http://127.0.0.1:8017",
+			"type": "string"
+		},
+		{
+			"key": "asset_url",
+			"value": "http://127.0.0.1:8018",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Crane and Equipment Management",
+			"item": [
+				{
+					"name": "Outbound: Send Rental/Equipment Requirements to Crane Dept",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-crane-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"customer_name\": \"Megaworld Construction\",\n  \"site_location\": \"BGC Taguig Site 4\",\n  \"requirements\": [\n    {\n      \"category\": \"Tower Crane\",\n      \"model\": \"Zoomlion TC7035\",\n      \"capacity\": \"16 Tons\",\n      \"quantity\": 1\n    }\n  ],\n  \"scheduled_date\": \"2026-10-01T08:00:00Z\",\n  \"due_date\": \"2026-12-31T17:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{crane_url}}/api/v1/equipment-requests",
+							"host": ["{{crane_url}}"],
+							"path": ["api", "v1", "equipment-requests"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Crane Dept Updates Equipment Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"equipment_code\": \"CRN-TC-004\",\n  \"status\": \"rented\",\n  \"inspection_passed\": true,\n  \"pemea_safety_cert_no\": \"DOLE-NCR-2026-8812\",\n  \"notes\": \"Load test passed at 16.5 metric tons. Safe for full site mobilization.\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/crane/status-update",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "crane", "status-update"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Assign Driver/Operator and Equipment",
+			"item": [
+				{
+					"name": "Outbound: Request Certified Operator & Riggers",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-manpower-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"site_location\": \"BGC Taguig Site 4\",\n  \"start_date\": \"2026-10-01T08:00:00Z\",\n  \"crew_requirements\": [\n    {\n      \"role\": \"Tower Crane Operator\",\n      \"count\": 1,\n      \"certifications\": [\"TESDA NC II Tower Crane\"]\n    },\n    {\n      \"role\": \"Certified Rigger\",\n      \"count\": 2,\n      \"certifications\": [\"Rigging & Slinging NC I\"]\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{manpower_url}}/api/v1/operator-requests",
+							"host": ["{{manpower_url}}"],
+							"path": ["api", "v1", "operator-requests"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Manpower Dept Submits Assigned Crew",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"assigned_crew\": [\n    {\n      \"role\": \"Tower Crane Operator\",\n      \"full_name\": \"Juan Dela Cruz\",\n      \"mobile\": \"+639171234567\",\n      \"employee_id\": \"EMP-1049\"\n    },\n    {\n      \"role\": \"Rigger\",\n      \"full_name\": \"Mario Santos\",\n      \"mobile\": \"+639189876543\",\n      \"employee_id\": \"EMP-2081\"\n    }\n  ],\n  \"assignment_status\": \"confirmed\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/manpower/assignment",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "manpower", "assignment"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Dispatch Job and Scheduling",
+			"item": [
+				{
+					"name": "Outbound: Send Job Order Information to Dispatch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-dispatch-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"customer\": {\n    \"name\": \"Megaworld Construction\",\n    \"phone\": \"+639170001122\"\n  },\n  \"destination_site\": {\n    \"address\": \"Skyline Tower, 7th Ave BGC Taguig\",\n    \"scheduled_date\": \"2026-10-01T06:00:00Z\"\n  },\n  \"items\": [\n    { \"equipment_name\": \"Zoomlion TC7035\", \"quantity\": 1 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{dispatch_url}}/api/v1/dispatches",
+							"host": ["{{dispatch_url}}"],
+							"path": ["api", "v1", "dispatches"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Dispatch Dept Updates Dispatch Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"status\": \"arrived_on_site\",\n  \"remarks\": \"Cranes and trailers staged on designated pad. Rigging underway.\",\n  \"arrived_at\": \"2026-10-01T07:15:00Z\",\n  \"live_tracking_url\": \"https://dispatch.local/track/DSP-9912\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/dispatch/status",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "dispatch", "status"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Fleet Management",
+			"item": [
+				{
+					"name": "Outbound: Send Trip/Hauling Information to Fleet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-fleet-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"origin\": \"Bulacan Depot\",\n  \"destination\": \"BGC Site\",\n  \"hauling_specs\": \"3x 50-Ton Lowbed Trailers with escort vehicle\",\n  \"departure_target\": \"2026-09-30T22:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{fleet_url}}/api/v1/trips",
+							"host": ["{{fleet_url}}"],
+							"path": ["api", "v1", "trips"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Fleet Dept Updates Trip Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"trip_id\": \"TRP-4019\",\n  \"vehicle_plate\": \"NCB-4921\",\n  \"driver_name\": \"Danilo Cruz\",\n  \"status\": \"in_transit\",\n  \"gps_coordinates\": { \"latitude\": 14.6507, \"longitude\": 121.0354 },\n  \"estimated_arrival\": \"2026-09-30T23:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/fleet/trip-status",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "fleet", "trip-status"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Accounts Receivable (AR)",
+			"item": [
+				{
+					"name": "Outbound: Send Job Billing Details for Credit Check",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-ar-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"customer\": {\n    \"name\": \"Megaworld Construction\",\n    \"tin\": \"123-456-789-000\",\n    \"credit_terms\": \"30 Days\"\n  },\n  \"total_amount\": 450000.00,\n  \"currency\": \"PHP\",\n  \"verification_required\": true\n}"
+						},
+						"url": {
+							"raw": "{{ar_url}}/api/v1/job-billing-records",
+							"host": ["{{ar_url}}"],
+							"path": ["api", "v1", "job-billing-records"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: AR Credit Clearance",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"credit_status\": \"cleared\",\n  \"downpayment_received\": 90000.00,\n  \"or_number\": \"OR-2026-7894\",\n  \"approved_by\": \"Finance Specialist - AR\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/ar/credit-clearance",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "ar", "credit-clearance"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Billing and Invoicing Module",
+			"item": [
+				{
+					"name": "Outbound: Send Job Completion for Invoice Generation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-billing-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"completion_date\": \"2026-12-31T17:00:00Z\",\n  \"operating_hours\": 640.0,\n  \"overtime_hours\": 24.5,\n  \"actual_cost\": 485000.00,\n  \"total_amount\": 520000.00,\n  \"signed_ticket_url\": \"https://storage.intellitrack.local/tickets/signed-ticket-994.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{billing_url}}/api/v1/invoices/generate-from-job",
+							"host": ["{{billing_url}}"],
+							"path": ["api", "v1", "invoices", "generate-from-job"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Billing Dept Sends Generated Invoice",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_order_number\": \"JO-20260924-AB12CD\",\n  \"invoice_number\": \"INV-2027-0104\",\n  \"status\": \"posted\",\n  \"grand_total\": 520000.00,\n  \"invoice_pdf_url\": \"https://billing.local/invoices/INV-2027-0104.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/billing/invoice-status",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "billing", "invoice-status"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Contract and Permit Management",
+			"item": [
+				{
+					"name": "Outbound: Send Client & Project Information",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-contract-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"client_id\": 1,\n  \"client_name\": \"Megaworld Construction Inc.\",\n  \"company_name\": \"Megaworld Construction\",\n  \"project\": {\n    \"name\": \"Skyline Tower Phase 2\",\n    \"location\": \"BGC Taguig\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{contract_url}}/api/v1/contracts/client-project-info",
+							"host": ["{{contract_url}}"],
+							"path": ["api", "v1", "contracts", "client-project-info"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Contract & Permit Dept Updates Legal Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"client_id\": 1,\n  \"contract_number\": \"CNT-2026-MGW-009\",\n  \"contract_status\": \"signed\",\n  \"contract_file_url\": \"https://legal.local/contracts/CNT-2026-MGW-009.pdf\",\n  \"permits\": [\n    {\n      \"type\": \"LGU Road Occupancy\",\n      \"status\": \"approved\",\n      \"valid_until\": \"2026-10-10\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/contracts/update-status",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "contracts", "update-status"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Asset Management",
+			"item": [
+				{
+					"name": "Outbound: Send Asset Staging Requirements",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer token-asset-dept" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rental_id\": 1,\n  \"rental_code\": \"RNT-2026-001\",\n  \"equipment_name\": \"Potain MC235B\",\n  \"category\": \"Tower Crane\"\n}"
+						},
+						"url": {
+							"raw": "{{asset_url}}/api/v1/assets/requirements",
+							"host": ["{{asset_url}}"],
+							"path": ["api", "v1", "assets", "requirements"]
+						}
+					}
+				},
+				{
+					"name": "Inbound Webhook: Asset Dept Updates Availability & Condition",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "X-Department-Key", "value": "{{webhook_secret}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rental_id\": 1,\n  \"asset_tag\": \"AST-TC-2022-01\",\n  \"availability_status\": \"ready_for_dispatch\",\n  \"asset_condition\": \"Excellent\"\n}"
+						},
+						"url": {
+							"raw": "{{intellitrack_url}}/api/v1/integrations/assets/availability-status",
+							"host": ["{{intellitrack_url}}"],
+							"path": ["api", "v1", "integrations", "assets", "availability-status"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

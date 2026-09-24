@@ -74,13 +74,13 @@ interface ReportResponse<T> {
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatCurrency = (value: number) => formatPeso(value);
 
-const MetricRow = ({ label, value, valueClassName = 'text-neutral-900' }: {
+const MetricRow = ({ label, value, valueClassName = 'text-content-primary' }: {
   label: string;
   value: React.ReactNode;
   valueClassName?: string;
 }) => (
-  <div className="flex items-center justify-between gap-4 border-b border-neutral-200/80 py-2.5 last:border-b-0">
-    <span className="text-sm text-neutral-600">{label}</span>
+  <div className="flex items-center justify-between gap-4 border-b border-border-subtle/80 py-2.5 last:border-b-0">
+    <span className="text-sm text-content-secondary">{label}</span>
     <span className={`text-sm font-semibold ${valueClassName}`}>{value}</span>
   </div>
 );
@@ -227,16 +227,16 @@ const Reports = () => {
       <AppLayout title="Executive Reports & Business Intelligence">
         <div className="space-y-6">
           {/* Top Period Selector Bar */}
-          <Card className="border border-neutral-200/80 shadow-sm">
+          <Card className="border border-border-default/80 bg-surface-card shadow-sm">
             <CardBody>
               <div className="flex flex-col items-end gap-4 lg:flex-row lg:justify-between">
                 <div className="w-full lg:max-w-xl">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-semibold text-neutral-800" htmlFor="report-start-date">
-                      <Calendar className="mr-2 inline h-4 w-4 text-amber-600" />
+                    <label className="flex items-center text-sm font-semibold text-content-primary" htmlFor="report-start-date">
+                      <Calendar className="mr-2 h-4 w-4 text-amber-500" />
                       Date Filtering & Telemetry Scope
                     </label>
-                    <span className="text-xs text-neutral-500 font-mono">
+                    <span className="text-xs text-content-secondary font-mono">
                       Active: {dateRange.start} → {dateRange.end}
                     </span>
                   </div>
@@ -247,7 +247,7 @@ const Reports = () => {
                       value={dateRange.start} 
                       max={dateRange.end}
                       onChange={(event) => setDateRange({ ...dateRange, start: event.target.value })}
-                      className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3.5 py-2 text-sm text-neutral-800 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500" 
+                      className="min-w-0 flex-1 rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-sm text-content-primary focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-xs" 
                     />
                     <input 
                       id="report-end-date" 
@@ -255,7 +255,7 @@ const Reports = () => {
                       value={dateRange.end} 
                       min={dateRange.start}
                       onChange={(event) => setDateRange({ ...dateRange, end: event.target.value })}
-                      className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3.5 py-2 text-sm text-neutral-800 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500" 
+                      className="min-w-0 flex-1 rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-sm text-content-primary focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-xs" 
                     />
                   </div>
                 </div>
@@ -264,7 +264,7 @@ const Reports = () => {
                     variant="primary" 
                     onClick={() => void loadReports()} 
                     loading={loading} 
-                    className="flex-1 sm:flex-none shadow-sm"
+                    className="flex-1 sm:flex-none shadow-sm cursor-pointer"
                   >
                     <RefreshCw className="h-4 w-4 mr-1.5" />
                     Query Telemetry
@@ -273,7 +273,7 @@ const Reports = () => {
                     variant="outline" 
                     onClick={exportReport} 
                     disabled={loading || !revenue} 
-                    className="flex-1 sm:flex-none border-neutral-300 hover:bg-neutral-50"
+                    className="flex-1 sm:flex-none border-border-default hover:bg-surface-app text-content-primary cursor-pointer"
                   >
                     <Download className="h-4 w-4 mr-1.5" />
                     Export CSV
@@ -293,19 +293,19 @@ const Reports = () => {
           {/* High-End Enterprise Executive KPI Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-live="polite">
             {/* Total Revenue */}
-            <div className="group relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Gross Period Revenue</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition-colors group-hover:bg-amber-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Gross Period Revenue</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 transition-colors group-hover:scale-105">
                   <DollarSign className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
-                <span className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl font-mono">
+                <span className="text-2xl font-black tracking-tight text-content-primary sm:text-3xl font-mono">
                   {formatCurrency(revenue?.total_revenue ?? 0)}
                 </span>
               </div>
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span>Synchronized with actual completed bills</span>
               </div>
@@ -313,67 +313,67 @@ const Reports = () => {
             </div>
 
             {/* Completed Job Orders */}
-            <div className="group relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Job Orders Executed</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Job Orders Executed</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 transition-colors group-hover:scale-105">
                   <Briefcase className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
-                <span className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl font-mono">
+                <span className="text-2xl font-black tracking-tight text-content-primary sm:text-3xl font-mono">
                   {jobOrders?.summary.total_orders ?? 0}
                 </span>
-                <span className="ml-2 text-xs font-normal text-neutral-500">
+                <span className="ml-2 text-xs font-normal text-content-secondary">
                   ({jobOrders?.summary.completed_orders ?? 0} completed)
                 </span>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+              <div className="mt-3 flex items-center justify-between text-xs text-content-secondary">
                 <span>Revenue Share:</span>
-                <strong className="text-blue-600 font-mono">{formatCurrency(revenue?.job_order_revenue ?? 0)}</strong>
+                <strong className="text-blue-600 dark:text-blue-400 font-mono">{formatCurrency(revenue?.job_order_revenue ?? 0)}</strong>
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-blue-600" />
             </div>
 
             {/* Active Rentals */}
-            <div className="group relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Active Fleet Deployments</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Fleet Deployments</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 transition-colors group-hover:scale-105">
                   <Truck className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
-                <span className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl font-mono">
+                <span className="text-2xl font-black tracking-tight text-content-primary sm:text-3xl font-mono">
                   {rentals?.summary.active_rentals ?? 0}
                 </span>
-                <span className="ml-2 text-xs font-normal text-neutral-500">
+                <span className="ml-2 text-xs font-normal text-content-secondary">
                   / {rentals?.summary.total_rentals ?? 0} contracts
                 </span>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+              <div className="mt-3 flex items-center justify-between text-xs text-content-secondary">
                 <span>Rental Revenue:</span>
-                <strong className="text-emerald-600 font-mono">{formatCurrency(revenue?.rental_revenue ?? 0)}</strong>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{formatCurrency(revenue?.rental_revenue ?? 0)}</strong>
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600" />
             </div>
 
             {/* Average Job Order Value */}
-            <div className="group relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Mean Ticket Size</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 transition-colors group-hover:bg-purple-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Mean Ticket Size</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 transition-colors group-hover:scale-105">
                   <BarChart3 className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
-                <span className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl font-mono">
+                <span className="text-2xl font-black tracking-tight text-content-primary sm:text-3xl font-mono">
                   {formatCurrency(jobOrders?.summary.average_order_value ?? 0)}
                 </span>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+              <div className="mt-3 flex items-center justify-between text-xs text-content-secondary">
                 <span>Active Clients:</span>
-                <strong className="text-neutral-800">{customers?.summary.active_customers ?? 0} accounts</strong>
+                <strong className="text-content-primary">{customers?.summary.active_customers ?? 0} accounts</strong>
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-purple-600" />
             </div>
@@ -391,7 +391,7 @@ const Reports = () => {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Equipment Category Revenue Breakdown */}
             <div className="lg:col-span-7">
-              <Card className="h-full border border-neutral-200/80 shadow-sm">
+              <Card className="h-full border border-border-default/80 bg-surface-card shadow-sm">
                 <CardHeader 
                   title="Equipment Category Revenue Telemetry" 
                   subtitle="Contribution by machinery classification (Cranes, Hoists, Earthmoving, Rigging)" 
@@ -400,36 +400,36 @@ const Reports = () => {
                   <div className="space-y-4">
                     {categories.map((cat, index) => {
                       const colorMap = [
-                        { bar: 'bg-amber-500', text: 'text-amber-600', badge: 'bg-amber-50 text-amber-700' },
-                        { bar: 'bg-blue-500', text: 'text-blue-600', badge: 'bg-blue-50 text-blue-700' },
-                        { bar: 'bg-emerald-500', text: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700' },
-                        { bar: 'bg-indigo-500', text: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700' },
-                        { bar: 'bg-rose-500', text: 'text-rose-600', badge: 'bg-rose-50 text-rose-700' },
+                        { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' },
+                        { bar: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400', badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' },
+                        { bar: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' },
+                        { bar: 'bg-indigo-500', text: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20' },
+                        { bar: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400', badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' },
                       ];
                       const style = colorMap[index % colorMap.length];
 
                       return (
-                        <div key={cat.name} className="group rounded-xl border border-neutral-100 bg-neutral-50/50 p-3.5 transition-all hover:bg-neutral-50 hover:border-neutral-200">
+                        <div key={cat.name} className="group rounded-xl border border-border-subtle/80 bg-surface-app/60 p-3.5 transition-all hover:bg-surface-app hover:border-border-default">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                               <div className={`h-2.5 w-2.5 rounded-full ${style.bar}`} />
-                              <span className="text-sm font-bold text-neutral-900">{cat.name}</span>
+                              <span className="text-sm font-bold text-content-primary">{cat.name}</span>
                               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
                                 {cat.units} units active
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-sm font-bold font-mono text-neutral-900">
+                              <span className="text-sm font-bold font-mono text-content-primary">
                                 {formatCurrency(cat.estimated_revenue)}
                               </span>
-                              <span className="ml-2 text-xs font-semibold text-neutral-500">
+                              <span className="ml-2 text-xs font-semibold text-content-secondary">
                                 ({cat.percentage}%)
                               </span>
                             </div>
                           </div>
 
                           {/* Progress bar */}
-                          <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                          <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-surface-input border border-border-subtle">
                             <div
                               className={`h-full rounded-full ${style.bar} transition-all duration-700`}
                               style={{ width: `${Math.max(cat.percentage, 4)}%` }}
@@ -445,38 +445,38 @@ const Reports = () => {
 
             {/* Strategic Accounts / Top Revenue Drivers */}
             <div className="lg:col-span-5">
-              <Card className="h-full border border-neutral-200/80 shadow-sm">
+              <Card className="h-full border border-border-default/80 bg-surface-card shadow-sm">
                 <CardHeader 
                   title="Top Strategic Client Accounts" 
                   subtitle="Enterprise contractors generating the highest contract volume" 
                 />
                 <CardBody>
-                  <div className="divide-y divide-neutral-100">
+                  <div className="divide-y divide-border-subtle/80">
                     {topDrivers.map((driver, index) => (
-                      <div key={driver.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:bg-neutral-50/80 px-2 rounded-lg transition-colors">
+                      <div key={driver.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:bg-surface-app/70 px-2 rounded-lg transition-colors">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                            index === 0 ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400' :
-                            index === 1 ? 'bg-slate-200 text-slate-800' :
-                            index === 2 ? 'bg-orange-100 text-orange-800' :
-                            'bg-neutral-100 text-neutral-600'
+                            index === 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 ring-2 ring-amber-400/40' :
+                            index === 1 ? 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200' :
+                            index === 2 ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400' :
+                            'bg-surface-input text-content-secondary'
                           }`}>
                             {index === 0 ? '👑' : `#${index + 1}`}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-neutral-900 truncate">
+                            <h4 className="text-sm font-bold text-content-primary truncate">
                               {driver.company_name || driver.name}
                             </h4>
-                            <p className="text-xs text-neutral-500 truncate">
+                            <p className="text-xs text-content-secondary truncate">
                               {driver.name} • {driver.total_job_orders} orders completed
                             </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0 pl-3">
-                          <span className="text-sm font-bold font-mono text-neutral-900">
+                          <span className="text-sm font-bold font-mono text-content-primary">
                             {formatCurrency(driver.total_spending)}
                           </span>
-                          <span className="block text-[10px] text-emerald-600 font-medium">
+                          <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                             Tier 1 Account
                           </span>
                         </div>
@@ -490,54 +490,54 @@ const Reports = () => {
 
           {/* Section 3: Operational Drilldown Grids */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card className="border border-neutral-200/80 shadow-sm">
+            <Card className="border border-border-default/80 bg-surface-card shadow-sm">
               <CardHeader 
                 title="Job Orders Status Pipeline" 
                 subtitle="Lifecycle distribution of specialized lifting & crane contracts" 
               />
               <CardBody>
                 <MetricRow label="Total contracts issued" value={jobOrders?.summary.total_orders ?? 0} />
-                <MetricRow label="Successfully fulfilled" value={jobOrders?.summary.completed_orders ?? 0} valueClassName="text-emerald-600 font-bold" />
-                <MetricRow label="Active in execution" value={jobOrders?.summary.by_status['in-progress'] ?? 0} valueClassName="text-blue-600 font-bold" />
-                <MetricRow label="Pending mobilization" value={jobOrders?.summary.by_status.pending ?? 0} valueClassName="text-amber-600 font-bold" />
-                <MetricRow label="Total pipeline gross valuation" value={formatCurrency(jobOrders?.summary.total_value ?? 0)} valueClassName="font-mono font-bold text-neutral-900" />
+                <MetricRow label="Successfully fulfilled" value={jobOrders?.summary.completed_orders ?? 0} valueClassName="text-emerald-600 dark:text-emerald-400 font-bold" />
+                <MetricRow label="Active in execution" value={jobOrders?.summary.by_status['in-progress'] ?? 0} valueClassName="text-blue-600 dark:text-blue-400 font-bold" />
+                <MetricRow label="Pending mobilization" value={jobOrders?.summary.by_status.pending ?? 0} valueClassName="text-amber-600 dark:text-amber-400 font-bold" />
+                <MetricRow label="Total pipeline gross valuation" value={formatCurrency(jobOrders?.summary.total_value ?? 0)} valueClassName="font-mono font-bold text-content-primary" />
               </CardBody>
             </Card>
 
-            <Card className="border border-neutral-200/80 shadow-sm">
+            <Card className="border border-border-default/80 bg-surface-card shadow-sm">
               <CardHeader 
                 title="Equipment Rentals Logistics" 
                 subtitle="Telemetry on active leases, turnarounds, and return schedules" 
               />
               <CardBody>
                 <MetricRow label="Total rental contracts" value={rentals?.summary.total_rentals ?? 0} />
-                <MetricRow label="Currently deployed on-site" value={rentals?.summary.active_rentals ?? 0} valueClassName="text-blue-600 font-bold" />
-                <MetricRow label="Overdue / Pending turnaround" value={rentals?.summary.overdue_rentals ?? 0} valueClassName="text-rose-600 font-bold" />
-                <MetricRow label="Average rental contract value" value={formatCurrency(rentals?.summary.average_rental_value ?? 0)} valueClassName="font-mono font-bold text-neutral-900" />
+                <MetricRow label="Currently deployed on-site" value={rentals?.summary.active_rentals ?? 0} valueClassName="text-blue-600 dark:text-blue-400 font-bold" />
+                <MetricRow label="Overdue / Pending turnaround" value={rentals?.summary.overdue_rentals ?? 0} valueClassName="text-rose-600 dark:text-rose-400 font-bold" />
+                <MetricRow label="Average rental contract value" value={formatCurrency(rentals?.summary.average_rental_value ?? 0)} valueClassName="font-mono font-bold text-content-primary" />
               </CardBody>
             </Card>
 
-            <Card className="border border-neutral-200/80 shadow-sm">
+            <Card className="border border-border-default/80 bg-surface-card shadow-sm">
               <CardHeader 
                 title="Client Portfolio Demographics" 
                 subtitle="Customer acquisition, retention, and mean spend profiles" 
               />
               <CardBody>
                 <MetricRow label="Registered commercial entities" value={customers?.summary.total_customers ?? 0} />
-                <MetricRow label="Active contracting entities" value={customers?.summary.active_customers ?? 0} valueClassName="text-emerald-600 font-bold" />
-                <MetricRow label="Cumulative historical billing" value={formatCurrency(customers?.summary.total_spending ?? 0)} valueClassName="font-mono font-bold text-neutral-900" />
-                <MetricRow label="Average expenditure per entity" value={formatCurrency(customers?.summary.average_spending ?? 0)} valueClassName="font-mono font-bold text-neutral-900" />
+                <MetricRow label="Active contracting entities" value={customers?.summary.active_customers ?? 0} valueClassName="text-emerald-600 dark:text-emerald-400 font-bold" />
+                <MetricRow label="Cumulative historical billing" value={formatCurrency(customers?.summary.total_spending ?? 0)} valueClassName="font-mono font-bold text-content-primary" />
+                <MetricRow label="Average expenditure per entity" value={formatCurrency(customers?.summary.average_spending ?? 0)} valueClassName="font-mono font-bold text-content-primary" />
               </CardBody>
             </Card>
 
-            <Card className="border border-neutral-200/80 shadow-sm">
+            <Card className="border border-border-default/80 bg-surface-card shadow-sm">
               <CardHeader 
                 title="Revenue Stream Synthesis" 
                 subtitle="Comparative breakdown between service jobs vs pure machinery rental" 
               />
               <CardBody>
-                <MetricRow label="Job order service revenue" value={formatCurrency(revenue?.job_order_revenue ?? 0)} valueClassName="font-mono font-bold text-blue-600" />
-                <MetricRow label="Equipment rental revenue" value={formatCurrency(revenue?.rental_revenue ?? 0)} valueClassName="font-mono font-bold text-emerald-600" />
+                <MetricRow label="Job order service revenue" value={formatCurrency(revenue?.job_order_revenue ?? 0)} valueClassName="font-mono font-bold text-blue-600 dark:text-blue-400" />
+                <MetricRow label="Equipment rental revenue" value={formatCurrency(revenue?.rental_revenue ?? 0)} valueClassName="font-mono font-bold text-emerald-600 dark:text-emerald-400" />
                 <MetricRow label="Completed job operations" value={revenue?.job_order_count ?? 0} />
                 <MetricRow label="Completed rental terms" value={revenue?.rental_count ?? 0} />
               </CardBody>
