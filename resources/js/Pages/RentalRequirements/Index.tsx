@@ -22,7 +22,7 @@ import {
 import AppLayout from '../../Layouts/AppLayout';
 import { Card, CardBody } from '../../Components/Card';
 import Button from '../../Components/Button';
-import ClientNavTabs from '../../Components/ClientNavTabs';
+import FleetNavTabs from '../../Components/FleetNavTabs';
 import Modal from '../../Components/Modal';
 
 interface Requirement {
@@ -308,10 +308,10 @@ const RentalRequirements: React.FC = () => {
 
   return (
     <>
-      <Head title="Client Technical Requirements & KYC Scoping | IntelliTrack" />
-      <AppLayout title="Client Management">
+      <Head title="Rental Requirements & Equipment Specs | IntelliTrack" />
+      <AppLayout title="Rental Management">
         <div className="space-y-4">
-          <ClientNavTabs
+          <FleetNavTabs
             actionButton={
               <div className="flex items-center gap-2">
                 <Button variant="secondary" onClick={loadData} loading={loading}>

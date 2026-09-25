@@ -2,9 +2,7 @@ import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
   Building2,
-  FileCheck2,
   ShieldCheck,
-  Plus,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -14,22 +12,24 @@ interface ClientNavTabsProps {
 
 export const ClientNavTabs: React.FC<ClientNavTabsProps> = ({ actionButton }) => {
   const { url } = usePage();
-  const currentPath = url || window.location.pathname;
+  const currentPath = url || (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '');
+
+  const isAccreditation = currentPath.includes('tab=accreditation');
 
   const tabs = [
     {
       label: 'Client Directory & Dossier',
       href: '/clients',
       icon: <Building2 className="h-4 w-4" />,
-      active: currentPath === '/clients' || currentPath === '/customers' || currentPath.startsWith('/clients/'),
-      description: 'Corporate profiles, SEC/TIN, credit terms & accreditation',
+      active: !isAccreditation,
+      description: 'Corporate profiles, contact persons & account directory',
     },
     {
-      label: 'Technical Requirements & Scoping',
-      href: '/rental-requirements',
-      icon: <FileCheck2 className="h-4 w-4" />,
-      active: currentPath === '/rental-requirements' || currentPath.startsWith('/rental-requirements/'),
-      description: 'Crane capacity, radius, height & site engineering specs',
+      label: 'Accreditation & Credit Facility',
+      href: '/clients?tab=accreditation',
+      icon: <ShieldCheck className="h-4 w-4" />,
+      active: isAccreditation,
+      description: 'SEC/TIN KYC, credit limits, payment terms & standing',
     },
   ];
 
@@ -42,7 +42,7 @@ export const ClientNavTabs: React.FC<ClientNavTabsProps> = ({ actionButton }) =>
             key={tab.href}
             href={tab.href}
             className={clsx(
-              'flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 select-none',
+              'flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 select-none cursor-pointer',
               tab.active
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-neutral-950 shadow-md shadow-amber-500/20 font-bold'
                 : 'text-content-secondary hover:text-content-primary hover:bg-surface-elevated/70'

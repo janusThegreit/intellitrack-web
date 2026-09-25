@@ -578,6 +578,15 @@ const CustomersList = ({
     loadCustomers();
   }, [showArchived, locationFilter]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'accreditation') {
+        setAccreditationFilter('accredited');
+      }
+    }
+  }, []);
+
   /*
    * ------------------------------------------------------------
    * FILTERED RECORDS

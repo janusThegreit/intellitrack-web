@@ -23,6 +23,8 @@ import {
   Moon,
   Sun,
   Shield,
+  ShieldCheck,
+  ClipboardList,
   History,
   PhoneCall,
   Mail,
@@ -81,8 +83,8 @@ const navItems: NavItem[] = [
     href: '/clients',
     roles: ['sales_manager', 'sales_business_development', 'administrator'],
     children: [
-      { label: 'All Clients', icon: <Users className="w-3.5 h-3.5" />, href: '/clients' },
-      { label: 'Client Requirements', icon: <FileText className="w-3.5 h-3.5" />, href: '/rental-requirements' },
+      { label: 'Client Directory', icon: <Users className="w-3.5 h-3.5" />, href: '/clients' },
+      { label: 'Accreditation & Credit', icon: <ShieldCheck className="w-3.5 h-3.5" />, href: '/clients?tab=accreditation' },
     ],
   },
   {
@@ -105,6 +107,7 @@ const navItems: NavItem[] = [
     roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
     children: [
       { label: 'Rental Agreements', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals' },
+      { label: 'Rental Requirements', icon: <ClipboardList className="w-3.5 h-3.5" />, href: '/rental-requirements' },
       { label: 'Equipment Catalog', icon: <Truck className="w-3.5 h-3.5" />, href: '/equipment' },
       { label: 'Rental Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability' },
     ],
