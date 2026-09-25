@@ -31,6 +31,10 @@ class Customer extends Model
         'customer_type',
         'source',
         'status',
+        'payment_terms',
+        'credit_limit',
+        'accreditation_status',
+        'accreditation_valid_until',
         'notes',
         'project_location',
         'technical_requirements',
@@ -65,6 +69,8 @@ class Customer extends Model
         'archived_at' => 'datetime',
         'total_spending' => 'decimal:2',
         'estimated_budget' => 'decimal:2',
+        'credit_limit' => 'decimal:2',
+        'accreditation_valid_until' => 'date',
     ];
 
     protected $appends = [
@@ -84,6 +90,11 @@ class Customer extends Model
     public function rentals(): HasMany
     {
         return $this->hasMany(Rental::class);
+    }
+
+    public function rentalRequirements(): HasMany
+    {
+        return $this->hasMany(RentalRequirement::class);
     }
 
     public function quotations(): HasMany

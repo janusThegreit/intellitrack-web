@@ -7,7 +7,7 @@ import Button from '../../Components/Button';
 import { Input } from '../../Components/Form';
 import { StatusBadge } from '../../Components/Badge';
 import Modal from '../../Components/Modal';
-import CrmNavTabs from '../../Components/CrmNavTabs';
+import ClientNavTabs from '../../Components/ClientNavTabs';
 
 import {
   Plus,
@@ -38,6 +38,10 @@ import {
   TrendingUp,
   UserCheck,
   Users,
+  BadgeCheck,
+  ClipboardCheck,
+  CreditCard,
+  FileCheck2,
 } from 'lucide-react';
 
 import { formatPeso } from '../../Utils/currency';
@@ -205,9 +209,14 @@ interface Customer {
   customer_reference?: string;
 
   /*
-   * Client status
+   * Client status & Accreditation
    */
   status: string;
+  payment_terms?: string;
+  credit_limit?: number;
+  accreditation_status?: string;
+  accreditation_valid_until?: string;
+  rental_requirements?: any[];
 
   remarks?: string;
   notes?: string;
@@ -335,6 +344,12 @@ interface CustomerForm {
   notes: string;
   status: string;
 
+  // Credit Terms & Accreditation
+  payment_terms: string;
+  credit_limit: string;
+  accreditation_status: string;
+  accreditation_valid_until: string;
+
   // Legacy/Project
   remarks: string;
   customer_reference: string;
@@ -368,6 +383,11 @@ const emptyCustomer: CustomerForm = {
   source: 'Website',
   notes: '',
   status: 'active',
+
+  payment_terms: 'Net 30',
+  credit_limit: '5000000',
+  accreditation_status: 'accredited',
+  accreditation_valid_until: '',
 
   remarks: '',
   customer_reference: '',
@@ -452,6 +472,7 @@ const CustomersList = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [accreditationFilter, setAccreditationFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
@@ -476,7 +497,7 @@ const CustomersList = ({
 
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<
-    'overview' | 'job_orders' | 'rentals' | 'quotations' | 'inquiries' | 'timeline'
+    'overview' | 'requirements' | 'job_orders' | 'rentals' | 'quotations' | 'inquiries' | 'timeline'
   >('overview');
 
   const viewCustomer = async (customer: Customer) => {
@@ -670,6 +691,17 @@ const CustomersList = ({
     }
 
     /*
+     * Accreditation filter
+     */
+    if (accreditationFilter !== 'all') {
+      result = result.filter(
+        customer =>
+          String(customer.accreditation_status ?? 'accredited').toLowerCase() ===
+          accreditationFilter.toLowerCase()
+      );
+    }
+
+    /*
      * Sort
      */
     result.sort((a, b) => {
@@ -703,6 +735,7 @@ const CustomersList = ({
     records,
     searchQuery,
     statusFilter,
+    accreditationFilter,
     typeFilter,
     sourceFilter,
     locationFilter,
@@ -877,6 +910,11 @@ const CustomersList = ({
       source: customer.source ?? 'Website',
       notes: customer.notes ?? '',
       status: customer.status ?? 'active',
+
+      payment_terms: customer.payment_terms ?? 'Net 30',
+      credit_limit: customer.credit_limit != null ? String(customer.credit_limit) : '5000000',
+      accreditation_status: customer.accreditation_status ?? 'accredited',
+      accreditation_valid_until: customer.accreditation_valid_until ? customer.accreditation_valid_until.split('T')[0] : '',
 
       remarks: customer.remarks ?? '',
       customer_reference: customer.customer_reference ?? customer.customer_code ?? '',
@@ -1183,6 +1221,35 @@ const CustomersList = ({
       },
     },
     {
+      key: 'accreditation_status',
+      label: 'ACCREDITATION & TERMS',
+      sortable: true,
+      width: '13%',
+      render: (_value, row) => {
+        const acc = String(row.accreditation_status || 'accredited').toLowerCase();
+        const badgeConfig =
+          acc === 'accredited'
+            ? { label: 'Accredited', color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' }
+            : acc === 'under_review'
+            ? { label: 'Under Review', color: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30' }
+            : acc === 'probationary'
+            ? { label: 'Probationary', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30' }
+            : { label: 'Blacklisted', color: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30' };
+
+        return (
+          <div className="space-y-1">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeConfig.color}`}>
+              <ShieldCheck className="h-3 w-3 shrink-0" />
+              <span>{badgeConfig.label}</span>
+            </span>
+            <div className="text-[11px] text-content-secondary font-mono truncate">
+              {row.payment_terms || 'Net 30'} · {formatPeso(row.credit_limit || 5000000)}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'status',
       label: 'STATUS',
       sortable: true,
@@ -1192,9 +1259,18 @@ const CustomersList = ({
     {
       key: 'id',
       label: 'ACTIONS',
-      width: '8%',
+      width: '11%',
       render: (_id, row) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => router.visit(`/inquiries?create=1&customer_id=${row.id}`)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
+            title="Create CRM Inquiry for this client"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Inquiry</span>
+          </button>
+
           <button
             onClick={() => viewCustomer(row)}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-all cursor-pointer shadow-xs"
@@ -1603,7 +1679,99 @@ const CustomersList = ({
         </div>
       </div>
 
-      {/* 4. ADDITIONAL */}
+      {/* 4. FISCAL CREDIT & ACCREDITATION TERMS */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border-subtle">
+          <CreditCard className="h-4 w-4 text-brand" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-content-primary">
+            Fiscal Credit & Accreditation Terms
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Accreditation Status
+            </label>
+            <select
+              value={form.accreditation_status}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  accreditation_status: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            >
+              <option value="accredited" className="bg-surface-card text-content-primary">Accredited (Approved for Leasing)</option>
+              <option value="under_review" className="bg-surface-card text-content-primary">Under Review (Pending Financial Audit)</option>
+              <option value="probationary" className="bg-surface-card text-content-primary">Probationary (COD / Pre-funded)</option>
+              <option value="blacklisted" className="bg-surface-card text-content-primary">Blacklisted (Default / Insolvent)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Payment Terms
+            </label>
+            <select
+              value={form.payment_terms}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  payment_terms: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            >
+              <option value="Net 30" className="bg-surface-card text-content-primary">Net 30 Days (Standard Commercial)</option>
+              <option value="Net 60" className="bg-surface-card text-content-primary">Net 60 Days (Enterprise Infrastructure)</option>
+              <option value="Net 15" className="bg-surface-card text-content-primary">Net 15 Days (Subcontractor)</option>
+              <option value="COD" className="bg-surface-card text-content-primary">Cash on Delivery / Mobilization (COD)</option>
+              <option value="Progress Billing" className="bg-surface-card text-content-primary">Progress Milestone Billing</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Credit Facility Limit (PHP)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="100000"
+              placeholder="e.g. 5000000"
+              value={form.credit_limit}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  credit_limit: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Accreditation Validity Date
+            </label>
+            <input
+              type="date"
+              value={form.accreditation_valid_until}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  accreditation_valid_until: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 5. ADDITIONAL */}
       <div>
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border-subtle">
           <BriefcaseBusiness className="h-4 w-4 text-brand" />
@@ -2208,6 +2376,129 @@ const CustomersList = ({
     );
   };
 
+  const Customer360RequirementsTab = ({ customer }: { customer: Customer }) => {
+    const requirements = customer.rental_requirements ?? [];
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-content-secondary">
+            Showing <span className="text-content-primary font-semibold">{requirements.length}</span> technical specification requirement{requirements.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={() => router.visit(`/rental-requirements?create=1&customer_id=${customer.id}`)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Scope New Crane Specs</span>
+          </button>
+        </div>
+
+        {/* General Technical Scoping Profile */}
+        {(customer.technical_requirements || customer.project_location || customer.site_condition) && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-500">
+              General Technical Scoping & Site Profile
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-content-secondary block">Site Location:</span>
+                <span className="font-semibold text-content-primary">{customer.project_location || 'Not specified'}</span>
+              </div>
+              <div>
+                <span className="text-content-secondary block">Ground / Foundation Condition:</span>
+                <span className="font-semibold text-content-primary">{customer.site_condition || 'Standard Geotechnical'}</span>
+              </div>
+              <div>
+                <span className="text-content-secondary block">Estimated Project Budget:</span>
+                <span className="font-mono font-bold text-emerald-500">{formatPeso(customer.estimated_budget || 0)}</span>
+              </div>
+            </div>
+            {customer.technical_requirements && (
+              <div className="pt-2 border-t border-amber-500/10 text-xs">
+                <span className="text-content-secondary block mb-1">Registered Technical Requirements:</span>
+                <p className="text-content-primary bg-surface-card p-2.5 rounded-lg border border-border-default font-mono text-[11px]">
+                  {customer.technical_requirements}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {requirements.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border-default dark:border-neutral-800 p-8 text-center">
+            <ClipboardCheck className="mx-auto h-10 w-10 text-content-secondary mb-2 opacity-40" />
+            <p className="text-sm font-semibold text-content-primary">No Specific Crane Requirements Registered</p>
+            <p className="mt-1 text-xs text-content-secondary">
+              Scope tower crane hook height, working radius, and lifting capacity requirements for this client.
+            </p>
+            <button
+              onClick={() => router.visit(`/rental-requirements?create=1&customer_id=${customer.id}`)}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500/30 transition-colors cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Create Technical Requirement</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {requirements.map((req: any) => (
+              <div key={req.id} className="rounded-xl border border-border-default bg-surface-card dark:border-neutral-800 dark:bg-neutral-900/70 p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-amber-500 dark:text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                      {req.requirement_number}
+                    </span>
+                    <span className="text-xs font-bold text-content-primary capitalize">
+                      {String(req.crane_category || '').replaceAll('_', ' ')} Crane
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2.5 py-0.5 rounded bg-surface-input text-amber-400 border border-border-default capitalize font-semibold">
+                      {req.status}
+                    </span>
+                    <button
+                      onClick={() => router.visit(`/quotations?action=create&customer_id=${customer.id}&requirement_id=${req.id}`)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>Quote</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs border-y border-border-subtle py-2.5">
+                  <div>
+                    <span className="text-content-secondary block text-[11px]">Required Load</span>
+                    <strong className="text-content-primary font-mono">{req.required_load || '—'} {req.required_load_unit || 'Tons'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-content-secondary block text-[11px]">Hook Height</span>
+                    <strong className="text-content-primary font-mono">{req.required_height || '—'} {req.required_height_unit || 'Meters'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-content-secondary block text-[11px]">Working Radius</span>
+                    <strong className="text-content-primary font-mono">{req.required_radius || '—'} {req.required_radius_unit || 'Meters'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-content-secondary block text-[11px]">Site Location</span>
+                    <span className="text-content-primary truncate block font-medium">{req.site_location || customer.project_location || '—'}</span>
+                  </div>
+                </div>
+
+                {req.notes && (
+                  <p className="text-xs text-content-secondary italic">
+                    Notes: {req.notes}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const Customer360InquiriesTab = ({ customer }: { customer: Customer }) => {
     const inquiries = customer.inquiries ?? [];
 
@@ -2343,7 +2634,7 @@ const CustomersList = ({
 
       <AppLayout title="Client Management">
         <div className="space-y-4">
-          <CrmNavTabs
+          <ClientNavTabs
             actionButton={
               isSalesBusinessDevelopment ? (
                 <Button
@@ -2354,7 +2645,7 @@ const CustomersList = ({
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  + Add Customer
+                  + Register Client
                 </Button>
               ) : undefined
             }
@@ -2367,12 +2658,12 @@ const CustomersList = ({
             </p>
           )}
 
-          {/* SUMMARY */}
+          {/* SUMMARY METRICS */}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Customers</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Clients</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <Users className="h-4 w-4" />
                 </div>
@@ -2380,51 +2671,49 @@ const CustomersList = ({
               <p className="mt-2 text-3xl font-extrabold tracking-tight text-content-primary font-mono">
                 {totalCustomers}
               </p>
-              <p className="mt-1 text-xs text-content-secondary">Registered client entities</p>
+              <p className="mt-1 text-xs text-content-secondary">Corporate & commercial clients</p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600" />
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Clients</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Accredited Accounts</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <UserCheck className="h-4 w-4" />
+                  <ShieldCheck className="h-4 w-4" />
                 </div>
               </div>
               <p className="mt-2 text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
-                {activeClients}
+                {records.filter(c => (c.accreditation_status || 'accredited').toLowerCase() === 'accredited').length}
               </p>
-              <p className="mt-1 text-xs text-content-secondary">Currently contracting</p>
+              <p className="mt-1 text-xs text-content-secondary">Safety & credit accredited</p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-600" />
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Prospects</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Leases</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <TrendingUp className="h-4 w-4" />
+                  <Truck className="h-4 w-4" />
                 </div>
               </div>
               <p className="mt-2 text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400 font-mono">
-                {prospectClients}
+                {records.filter(c => c.active_lease_summary && c.active_lease_summary !== 'No Active Lease').length}
               </p>
-              <p className="mt-1 text-xs text-content-secondary">Lead opportunities</p>
+              <p className="mt-1 text-xs text-content-secondary">Live mobilized equipment</p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">CRM Activities</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Credit Line Facility</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                  <Activity className="h-4 w-4" />
+                  <CreditCard className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-content-primary font-mono">
-                {totalInquiries + totalQuotations}
+              <p className="mt-2 text-2xl font-extrabold tracking-tight text-content-primary font-mono truncate">
+                {formatPeso(records.reduce((sum, c) => sum + Number(c.credit_limit || 5000000), 0))}
               </p>
-              <p className="mt-1 text-xs text-content-secondary">
-                {totalInquiries} inquiries · {totalQuotations} quotations
-              </p>
+              <p className="mt-1 text-xs text-content-secondary">Total approved leasing limits</p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-400 to-purple-600" />
             </div>
           </div>
@@ -2445,6 +2734,20 @@ const CustomersList = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Accreditation Filter */}
+                    <select
+                      value={accreditationFilter}
+                      onChange={e => setAccreditationFilter(e.target.value)}
+                      className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-semibold text-content-primary outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 shadow-xs"
+                      title="Filter by Accreditation Status"
+                    >
+                      <option value="all">All Accreditation</option>
+                      <option value="accredited">Accredited</option>
+                      <option value="under_review">Under Review</option>
+                      <option value="probationary">Probationary</option>
+                      <option value="blacklisted">Blacklisted</option>
+                    </select>
+
                     {/* Customer Type Filter */}
                     <select
                       value={typeFilter}
@@ -2500,6 +2803,7 @@ const CustomersList = ({
                     <button
                       onClick={() => {
                         setStatusFilter('all');
+                        setAccreditationFilter('all');
                         setTypeFilter('all');
                         setSourceFilter('all');
                         setLocationFilter('all');
@@ -2746,19 +3050,21 @@ const CustomersList = ({
                     {/* Right: Quick Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-neutral-800">
                       <button
-                        onClick={() => router.visit(`/job-orders?action=create&customer_id=${selectedCustomer.id}`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                        onClick={() => router.visit(`/inquiries?create=1&customer_id=${selectedCustomer.id}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                        title="Create CRM Inquiry for this client"
                       >
                         <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-                        <span>Job Order</span>
+                        <span>Create CRM Inquiry</span>
                       </button>
 
                       <button
-                        onClick={() => router.visit(`/rentals?action=create&customer_id=${selectedCustomer.id}`)}
+                        onClick={() => router.visit(`/rental-requirements?create=1&customer_id=${selectedCustomer.id}`)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-app hover:bg-surface-card text-content-primary font-semibold text-xs border border-border-default transition-all active:scale-95 shadow-xs cursor-pointer"
+                        title="Scope crane load, height, and site specs"
                       >
-                        <Truck className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>Rent Crane</span>
+                        <FileCheck2 className="h-3.5 w-3.5 text-amber-500" />
+                        <span>Scope Crane Specs</span>
                       </button>
 
                       <button
@@ -2767,6 +3073,14 @@ const CustomersList = ({
                       >
                         <FileText className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                         <span>Quote</span>
+                      </button>
+
+                      <button
+                        onClick={() => router.visit(`/job-orders?action=create&customer_id=${selectedCustomer.id}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-app hover:bg-surface-card text-content-primary font-semibold text-xs border border-border-default transition-all active:scale-95 shadow-xs cursor-pointer"
+                      >
+                        <FolderKanban className="h-3.5 w-3.5 text-blue-500" />
+                        <span>Job Order</span>
                       </button>
 
                       <button
@@ -2839,22 +3153,22 @@ const CustomersList = ({
                     </p>
                   </div>
 
-                  {/* KPI 5: Account Standing */}
+                  {/* KPI 5: Accreditation & Credit Facility */}
                   <div className="rounded-xl border border-border-default bg-surface-app/70 dark:bg-neutral-900/60 p-3.5 relative overflow-hidden col-span-2 md:col-span-1">
                     <div className="flex items-center justify-between text-content-secondary mb-1">
-                      <span className="text-[11px] uppercase font-bold tracking-wider">Account Standing</span>
+                      <span className="text-[11px] uppercase font-bold tracking-wider">Accreditation</span>
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <p className="font-semibold text-sm text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
-                      {selectedCustomer.status || 'Active'}
+                    <p className="font-semibold text-sm text-emerald-700 dark:text-emerald-400 uppercase tracking-wide truncate">
+                      {selectedCustomer.accreditation_status || 'Accredited'}
                     </p>
-                    <p className="text-[10px] text-content-secondary mt-0.5 truncate">
-                      Tier: {selectedCustomer.customer_type || 'Corporate'}
+                    <p className="text-[10px] text-content-secondary mt-0.5 truncate font-mono">
+                      {selectedCustomer.payment_terms || 'Net 30'} · {formatPeso(selectedCustomer.credit_limit || 5000000)}
                     </p>
                   </div>
                 </div>
 
-                {/* 3. 6-TAB NAVIGATION CONTROLLER */}
+                {/* 3. 7-TAB NAVIGATION CONTROLLER */}
                 <div className="border-b border-border-subtle">
                   <nav className="flex space-x-1 overflow-x-auto pb-px" aria-label="Customer 360 Tabs">
                     {[
@@ -2863,6 +3177,12 @@ const CustomersList = ({
                         label: '360 Overview & Contacts',
                         icon: Building2,
                         count: null,
+                      },
+                      {
+                        key: 'requirements' as const,
+                        label: 'Technical Scoping & KYC',
+                        icon: FileCheck2,
+                        count: selectedCustomer.rental_requirements?.length ?? 0,
                       },
                       {
                         key: 'job_orders' as const,
@@ -2901,9 +3221,9 @@ const CustomersList = ({
                         <button
                           key={tab.key}
                           onClick={() => setActiveProfileTab(tab.key)}
-                          className={`group inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                          className={`group inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                             isActive
-                              ? 'border-amber-500 text-amber-400 bg-amber-500/5'
+                              ? 'border-amber-500 text-amber-400 bg-amber-500/5 font-bold'
                               : 'border-transparent text-content-secondary hover:text-content-primary hover:border-neutral-700'
                           }`}
                         >
@@ -2926,6 +3246,10 @@ const CustomersList = ({
                 <div className="min-h-[280px]">
                   {activeProfileTab === 'overview' && (
                     <Customer360OverviewTab customer={selectedCustomer} />
+                  )}
+
+                  {activeProfileTab === 'requirements' && (
+                    <Customer360RequirementsTab customer={selectedCustomer} />
                   )}
 
                   {activeProfileTab === 'job_orders' && (

@@ -333,6 +333,10 @@ class CustomerController extends Controller
             'source' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'status' => ['nullable', 'string', 'max:50'],
+            'payment_terms' => ['nullable', 'string', 'max:50'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'accreditation_status' => ['nullable', 'string', 'max:50'],
+            'accreditation_valid_until' => ['nullable', 'date'],
             'project_location' => ['nullable', 'string', 'max:255'],
             'technical_requirements' => ['nullable', 'string'],
             'site_condition' => ['nullable', 'string'],
@@ -344,6 +348,9 @@ class CustomerController extends Controller
         $validated['company_name'] = $displayName;
         $validated['status'] = strtolower($validated['status'] ?? 'active');
         $validated['customer_type'] = strtolower($validated['customer_type'] ?? 'corporate');
+        $validated['accreditation_status'] = strtolower($validated['accreditation_status'] ?? 'accredited');
+        $validated['payment_terms'] = $validated['payment_terms'] ?? 'Net 30';
+        $validated['credit_limit'] = $validated['credit_limit'] ?? 500000.00;
 
         $customer = Customer::create($validated);
 
@@ -365,6 +372,7 @@ class CustomerController extends Controller
             'followUps.assignee',
             'communications.creator',
             'feedbacks',
+            'rentalRequirements.equipment',
         ]);
 
         $totalJobOrdersAmount = (float) $customer->jobOrders->sum('total_amount');
@@ -443,6 +451,10 @@ class CustomerController extends Controller
             'source' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'status' => ['nullable', 'string', 'max:50'],
+            'payment_terms' => ['nullable', 'string', 'max:50'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'accreditation_status' => ['nullable', 'string', 'max:50'],
+            'accreditation_valid_until' => ['nullable', 'date'],
             'project_location' => ['nullable', 'string', 'max:255'],
             'technical_requirements' => ['nullable', 'string'],
             'site_condition' => ['nullable', 'string'],
@@ -460,6 +472,9 @@ class CustomerController extends Controller
         }
         if (isset($validated['customer_type'])) {
             $validated['customer_type'] = strtolower($validated['customer_type']);
+        }
+        if (isset($validated['accreditation_status'])) {
+            $validated['accreditation_status'] = strtolower($validated['accreditation_status']);
         }
 
         $customer->update($validated);

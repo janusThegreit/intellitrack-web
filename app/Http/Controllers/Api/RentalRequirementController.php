@@ -97,8 +97,8 @@ class RentalRequirementController extends Controller
     private function validated(Request $request, bool $partial = false): array
     {
         return $request->validate([
-            'customer_inquiry_id' => [$partial ? 'sometimes' : 'required', 'exists:customer_inquiries,id'],
-            'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_inquiry_id' => ['nullable', 'exists:customer_inquiries,id'],
+            'customer_id' => [$partial ? 'sometimes' : 'nullable', 'exists:customers,id'],
             'equipment_id' => ['nullable', 'exists:equipment,id'],
             'quotation_id' => ['nullable', 'exists:quotations,id'],
             'job_order_id' => ['nullable', 'exists:job_orders,id'],
