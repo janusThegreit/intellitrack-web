@@ -30,6 +30,8 @@ import {
   Briefcase,
   DollarSign,
   Send,
+  Calculator,
+  ClipboardCheck,
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
 
@@ -112,12 +114,19 @@ interface JobOrder {
 }
 
 interface JobOrderListProps {
-  view?: 'all' | 'requests' | 'assignment' | 'scheduling' | 'completion';
+  view?: 'all' | 'requirements_review' | 'cost_estimate' | 'pending_dispatch' | 'requests' | 'assignment' | 'scheduling' | 'completion';
   jobOrders?: Array<JobOrder>;
 }
 
 const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'requests' | 'assignment' | 'scheduling' | 'completion'>(view || 'all');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab) return tab;
+    }
+    return view || 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -169,16 +178,24 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const [message, setMessage] = useState('');
   const [copiedNumber, setCopiedNumber] = useState(false);
 
-  // Sync activeTab if view prop changes
+  // Sync activeTab if view prop or URL changes
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam) {
+        setActiveTab(tabParam);
+        return;
+      }
+    }
     if (view) {
       setActiveTab(view);
     }
   }, [view]);
 
-  const handleTabChange = (tab: 'all' | 'requests' | 'assignment' | 'scheduling' | 'completion') => {
+  const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    const path = tab === 'all' ? '/job-orders' : `/job-orders/${tab}`;
+    const path = tab === 'all' ? '/job-orders' : `/job-orders?tab=${tab}`;
     window.history.pushState({}, '', path);
   };
 
@@ -254,6 +271,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const counts = useMemo(() => {
     return {
       all: records.length,
+      requirements_review: records.filter((r) => r.status === 'pending' || r.status === 'draft').length,
+      cost_estimate: records.filter((r) => Number(r.estimated_cost || r.total_amount) > 0).length,
+      pending_dispatch: records.filter((r) => r.status === 'pending_dispatch' || r.status === 'approved').length,
       requests: records.filter((r) => r.status === 'pending' || r.status === 'draft').length,
       assignment: records.filter((r) => !r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled').length,
       scheduling: records.filter((r) => (!r.scheduled_date || r.status === 'approved' || r.status === 'in-progress') && r.status !== 'completed' && r.status !== 'cancelled').length,
@@ -263,7 +283,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
 
   // Overall Telemetry Metrics
   const telemetry = useMemo(() => {
-    const active = records.filter(r => r.status === 'in-progress' || r.status === 'approved').length;
+    const active = records.filter(r => r.status === 'in-progress' || r.status === 'approved' || r.status === 'pending_dispatch').length;
     const dispatched = records.filter(r => !!r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled').length;
     const totalVal = records.reduce((acc, r) => acc + (r.total_amount || 0), 0);
     const completedCount = records.filter(r => r.status === 'completed').length;
@@ -285,9 +305,13 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const filtered = useMemo(() => {
     let result = [...records];
 
-    // Tab-level filtering
-    if (activeTab === 'requests') {
+    // Tab-level filtering for Core 1 modules
+    if (activeTab === 'requirements_review' || activeTab === 'requests') {
       result = result.filter((item) => item.status === 'pending' || item.status === 'draft');
+    } else if (activeTab === 'cost_estimate') {
+      result = result.filter((item) => Number(item.estimated_cost || item.total_amount) > 0);
+    } else if (activeTab === 'pending_dispatch') {
+      result = result.filter((item) => item.status === 'pending_dispatch' || item.status === 'approved');
     } else if (activeTab === 'assignment') {
       result = result.filter((item) => !item.assigned_to && item.status !== 'completed' && item.status !== 'cancelled');
     } else if (activeTab === 'scheduling') {
@@ -813,11 +837,11 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           <button
             type="button"
             onClick={() => setHandoffModalJob(row)}
-            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20"
-            title="Forward to Group 188 (Core 2: Operations & Dispatch)"
+            className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer shadow-xs"
+            title="Forward to Core 2 Dispatch"
           >
             <Send className="w-3.5 h-3.5" />
-            <span className="text-[10px] hidden sm:inline">To Core 2</span>
+            <span className="text-[11px] hidden sm:inline">Forward to Core 2 Dispatch</span>
           </button>
 
           <button
@@ -907,18 +931,18 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </div>
           </div>
 
-          {/* Sub-Navigation Workflow Tabs */}
+          {/* Sub-Navigation Workflow Tabs for Core 1 */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
             <button
               onClick={() => handleTabChange('all')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
               }`}
             >
               <FileText className="h-4 w-4" />
-              <span>All Orders</span>
+              <span>Registration</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
                 activeTab === 'all' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
               }`}>
@@ -927,75 +951,58 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </button>
 
             <button
-              onClick={() => handleTabChange('requests')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                activeTab === 'requests'
+              onClick={() => handleTabChange('requirements_review')}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'requirements_review' || activeTab === 'requests'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
               }`}
             >
-              <Clock className="h-4 w-4" />
-              <span>Requests & Approvals</span>
-              {counts.requests > 0 && (
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Requirements Review</span>
+              {counts.requirements_review > 0 && (
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  activeTab === 'requests' ? 'bg-slate-950 text-amber-500' : 'bg-amber-500/20 text-amber-400'
+                  activeTab === 'requirements_review' ? 'bg-slate-950 text-amber-500' : 'bg-amber-500/20 text-amber-400'
                 }`}>
-                  {counts.requests}
+                  {counts.requirements_review}
                 </span>
               )}
             </button>
 
             <button
-              onClick={() => handleTabChange('assignment')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                activeTab === 'assignment'
+              onClick={() => handleTabChange('cost_estimate')}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'cost_estimate'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
               }`}
             >
-              <UserCheck className="h-4 w-4" />
-              <span>Personnel Assignment</span>
-              {counts.assignment > 0 && (
+              <Calculator className="h-4 w-4" />
+              <span>Cost Estimate</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                activeTab === 'cost_estimate' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
+              }`}>
+                {counts.cost_estimate}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('pending_dispatch')}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'pending_dispatch'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
+              }`}
+            >
+              <Send className="h-4 w-4" />
+              <span>Pending Dispatch</span>
+              {counts.pending_dispatch > 0 && (
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  activeTab === 'assignment' ? 'bg-slate-950 text-amber-500' : 'bg-rose-500/20 text-rose-400'
+                  activeTab === 'pending_dispatch' ? 'bg-slate-950 text-amber-500' : 'bg-blue-500/20 text-blue-400'
                 }`}>
-                  {counts.assignment}
+                  {counts.pending_dispatch}
                 </span>
               )}
-            </button>
-
-            <button
-              onClick={() => handleTabChange('scheduling')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                activeTab === 'scheduling'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
-              }`}
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Scheduling & Mobilization</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                activeTab === 'scheduling' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
-              }`}>
-                {counts.scheduling}
-              </span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange('completion')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                activeTab === 'completion'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
-              }`}
-            >
-              <Star className="h-4 w-4" />
-              <span>Completion & CSAT Feedback</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                activeTab === 'completion' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
-              }`}>
-                {counts.completion}
-              </span>
             </button>
           </div>
 
@@ -2387,12 +2394,12 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           <Modal
             isOpen={!!handoffModalJob}
             onClose={() => setHandoffModalJob(null)}
-            title="Operations Hand-off Gateway (Forward to Operations)"
+            title="Forward to Core 2 Dispatch (Operations Hand-off)"
             size="lg"
             footer={
               <div className="flex items-center justify-between w-full">
                 <div className="text-xs text-content-muted">
-                  Receiving: <span className="font-semibold text-emerald-500">Operations & Technical Dispatch Department</span>
+                  Receiving: <span className="font-semibold text-emerald-500">Core 2: Operations & Dispatch Department</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => setHandoffModalJob(null)}>
@@ -2400,15 +2407,18 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   </Button>
                   <Button
                     variant="primary"
-                    onClick={() => {
-                      setMessage(`Job Order ${handoffModalJob?.job_number} successfully transmitted to Operations & Technical Dispatch!`);
-                      setHandoffModalJob(null);
-                      setTimeout(() => setMessage(''), 5000);
+                    onClick={async () => {
+                      if (handoffModalJob) {
+                        await handleStatusTransition(handoffModalJob.id, 'pending_dispatch');
+                        setMessage(`Job Order ${handoffModalJob.job_number} forwarded to Core 2 Dispatch! Status updated to Pending Core 2 Dispatch.`);
+                        setHandoffModalJob(null);
+                        setTimeout(() => setMessage(''), 5000);
+                      }
                     }}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5 mr-1" />
-                    Transmit Job Order to Operations
+                    Forward to Core 2 Dispatch
                   </Button>
                 </div>
               </div>
@@ -2453,10 +2463,10 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                 </div>
 
                 <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-600 dark:text-blue-300">
-                  <strong>Operations Integration Protocol:</strong>
+                  <strong>Core 2 Operations Integration Protocol:</strong>
                   <ul className="mt-1 list-disc list-inside space-y-0.5 text-content-secondary text-[10px]">
-                    <li>Dispatches to Dispatch Job & Real-Time Scheduling System</li>
-                    <li>Dispatches to Driver/Operator & Heavy Equipment Assignment</li>
+                    <li>Direct status hand-off to Core 2: Operations & Dispatch</li>
+                    <li>Hands off site technical specs and mobilized equipment requirements for scheduling</li>
                   </ul>
                 </div>
               </div>

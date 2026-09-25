@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
+  Users,
+  ClipboardCheck,
   Building2,
-  ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -14,22 +15,31 @@ export const ClientNavTabs: React.FC<ClientNavTabsProps> = ({ actionButton }) =>
   const { url } = usePage();
   const currentPath = url || (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '');
 
-  const isAccreditation = currentPath.includes('tab=accreditation');
+  const isRequirements = currentPath.includes('tab=requirements');
+  const isProfiles = currentPath.includes('tab=profiles');
+  const isDirectory = !isRequirements && !isProfiles;
 
   const tabs = [
     {
-      label: 'Client Directory & Dossier',
+      label: 'Clients Directory',
       href: '/clients',
-      icon: <Building2 className="h-4 w-4" />,
-      active: !isAccreditation,
-      description: 'Corporate profiles, contact persons & account directory',
+      icon: <Users className="h-4 w-4" />,
+      active: isDirectory,
+      description: 'Active client accounts, contractors & corporate directory',
     },
     {
-      label: 'Accreditation & Credit Facility',
-      href: '/clients?tab=accreditation',
-      icon: <ShieldCheck className="h-4 w-4" />,
-      active: isAccreditation,
-      description: 'SEC/TIN KYC, credit limits, payment terms & standing',
+      label: 'Client Requirements',
+      href: '/clients?tab=requirements',
+      icon: <ClipboardCheck className="h-4 w-4" />,
+      active: isRequirements,
+      description: 'Accreditation, KYC specs & registered crane requirements',
+    },
+    {
+      label: 'Client Profiles',
+      href: '/clients?tab=profiles',
+      icon: <Building2 className="h-4 w-4" />,
+      active: isProfiles,
+      description: 'Detailed company dossiers, fiscal credit lines & contacts',
     },
   ];
 

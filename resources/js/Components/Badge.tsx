@@ -74,6 +74,8 @@ const getStatusConfig = (status: string) => {
     'inactive': { variant: 'neutral', label: 'Inactive' },
     'suspended': { variant: 'error', label: 'Suspended' },
     'pending': { variant: 'warning', label: 'Pending' },
+    'pending_dispatch': { variant: 'info', label: 'Pending Core 2 Dispatch' },
+    'forwarded_dispatch': { variant: 'info', label: 'Forwarded to Core 2 Dispatch' },
     'submitted': { variant: 'info', label: 'Submitted' },
     'under_review': { variant: 'warning', label: 'Under Review' },
     'approved': { variant: 'success', label: 'Approved' },

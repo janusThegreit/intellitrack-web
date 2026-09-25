@@ -215,7 +215,7 @@ class JobOrderController extends Controller
     {
         Gate::authorize('manage-job-orders');
         $validated = $request->validate([
-            'status' => ['required', 'in:draft,pending,approved,in-progress,completed,cancelled'],
+            'status' => ['required', 'in:draft,pending,approved,pending_dispatch,in-progress,completed,cancelled'],
         ]);
 
         $oldStatus = $jobOrder->status;

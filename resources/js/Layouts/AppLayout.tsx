@@ -36,6 +36,13 @@ import {
   CalendarCheck,
   Wrench,
   Clock,
+  Building2,
+  ClipboardCheck,
+  Calculator,
+  Send,
+  Calendar,
+  MapPin,
+  Flag,
 } from 'lucide-react';
 
 import SalesAiFloatingChatbot from '../Components/SalesAiFloatingChatbot';
@@ -83,21 +90,33 @@ const navItems: NavItem[] = [
     href: '/clients',
     roles: ['sales_manager', 'sales_business_development', 'administrator'],
     children: [
-      { label: 'Client Directory', icon: <Users className="w-3.5 h-3.5" />, href: '/clients' },
-      { label: 'Accreditation & Credit', icon: <ShieldCheck className="w-3.5 h-3.5" />, href: '/clients?tab=accreditation' },
+      { label: 'Clients Directory', icon: <Users className="w-3.5 h-3.5" />, href: '/clients' },
+      { label: 'Client Requirements', icon: <ClipboardCheck className="w-3.5 h-3.5" />, href: '/clients?tab=requirements' },
+      { label: 'Client Profiles', icon: <Building2 className="w-3.5 h-3.5" />, href: '/clients?tab=profiles' },
     ],
   },
   {
-    label: 'CRM & Inquiries',
+    label: 'CRM',
     icon: <MessageSquare className="w-4 h-4" />,
     href: '/crm',
     roles: ['sales_manager', 'sales_business_development', 'administrator'],
     children: [
       { label: 'Inquiries', icon: <MessageSquare className="w-3.5 h-3.5" />, href: '/inquiries' },
-      { label: 'Follow-Ups', icon: <PhoneCall className="w-3.5 h-3.5" />, href: '/crm/follow-ups' },
-      { label: 'Communications', icon: <Mail className="w-3.5 h-3.5" />, href: '/crm/communications' },
       { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/quotations' },
-      { label: 'Customer Feedback', icon: <MessageSquareQuote className="w-3.5 h-3.5" />, href: '/crm/feedback' },
+      { label: 'Follow-ups', icon: <PhoneCall className="w-3.5 h-3.5" />, href: '/crm/follow-ups' },
+      { label: 'Communications', icon: <Mail className="w-3.5 h-3.5" />, href: '/crm/communications' },
+    ],
+  },
+  {
+    label: 'Job Order Registration',
+    icon: <FileText className="w-4 h-4" />,
+    href: '/job-orders',
+    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
+    children: [
+      { label: 'Registration', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders' },
+      { label: 'Requirements Review', icon: <ClipboardCheck className="w-3.5 h-3.5" />, href: '/job-orders?tab=requirements_review' },
+      { label: 'Cost Estimate', icon: <Calculator className="w-3.5 h-3.5" />, href: '/job-orders?tab=cost_estimate' },
+      { label: 'Pending Dispatch', icon: <Send className="w-3.5 h-3.5" />, href: '/job-orders?tab=pending_dispatch' },
     ],
   },
   {
@@ -107,9 +126,8 @@ const navItems: NavItem[] = [
     roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
     children: [
       { label: 'Rental Agreements', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals' },
-      { label: 'Rental Requirements', icon: <ClipboardList className="w-3.5 h-3.5" />, href: '/rental-requirements' },
-      { label: 'Equipment Catalog', icon: <Truck className="w-3.5 h-3.5" />, href: '/equipment' },
-      { label: 'Rental Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability' },
+      { label: 'Equipment Requirements', icon: <ClipboardList className="w-3.5 h-3.5" />, href: '/rental-requirements' },
+      { label: 'Booking Transactions', icon: <Calendar className="w-3.5 h-3.5" />, href: '/rentals?tab=bookings' },
     ],
   },
   {
@@ -117,15 +135,10 @@ const navItems: NavItem[] = [
     icon: <FolderKanban className="w-4 h-4" />,
     href: '/projects',
     roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
-  },
-  {
-    label: 'Job Order Registration',
-    icon: <FileText className="w-4 h-4" />,
-    href: '/job-orders',
-    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
     children: [
-      { label: 'Registered Job Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders' },
-      { label: 'Registration Requests', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests' },
+      { label: 'Project Tracking', icon: <FolderKanban className="w-3.5 h-3.5" />, href: '/projects' },
+      { label: 'Site Requirements', icon: <MapPin className="w-3.5 h-3.5" />, href: '/projects?tab=site-requirements' },
+      { label: 'Milestone Status', icon: <Flag className="w-3.5 h-3.5" />, href: '/projects?tab=milestones' },
     ],
   },
   {

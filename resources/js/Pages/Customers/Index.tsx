@@ -581,7 +581,12 @@ const CustomersList = ({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('tab') === 'accreditation') {
+      const tab = params.get('tab');
+      if (tab === 'requirements') {
+        setStatusFilter('all');
+      } else if (tab === 'profiles') {
+        setStatusFilter('all');
+      } else if (tab === 'accreditation') {
         setAccreditationFilter('accredited');
       }
     }
