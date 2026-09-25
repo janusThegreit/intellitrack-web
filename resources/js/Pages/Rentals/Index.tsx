@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
 import FleetNavTabs from '../../Components/FleetNavTabs';
-import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 interface Rental {
   id: number;
@@ -234,12 +233,9 @@ export default function RentalsList() {
 
   return (
     <>
-      <Head title="Rental Management (Runes) - Group #187 Core 1" />
-      <AppLayout title="Rental Management Module">
+      <Head title="Rental Management | IntelliTrack" />
+      <AppLayout title="Rental Management">
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
-          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-          <Core1PipelineStepper currentStep={3} />
-
           {/* Nav Tabs */}
           <FleetNavTabs
             actionButton={

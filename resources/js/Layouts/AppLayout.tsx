@@ -327,19 +327,8 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
           </button>
         </div>
 
-        {/* Group 187 Core Transaction 1 Badge */}
-        {!isCompact && (
-          <div className="mx-3 mt-3 mb-1 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-amber-500 tracking-wider uppercase">Core Transaction 1</span>
-            </div>
-            <span className="text-[10px] font-extrabold bg-amber-500 text-white dark:text-slate-950 px-1.5 py-0.5 rounded">Group 187</span>
-          </div>
-        )}
-
         {/* Navigation items */}
-        <nav className={clsx('flex-1 space-y-0.5 overflow-y-auto py-3', isCollapsed ? 'px-2' : 'px-3')}>
+        <nav className={clsx('flex-1 space-y-0.5 overflow-y-auto py-4', isCollapsed ? 'px-2' : 'px-3')}>
           {availableNavItems.map((item) => (
             <NavLink key={item.href} item={item} />
           ))}

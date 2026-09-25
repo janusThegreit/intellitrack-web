@@ -8,7 +8,6 @@ import { Input } from '../../Components/Form';
 import { StatusBadge } from '../../Components/Badge';
 import Modal from '../../Components/Modal';
 import CrmNavTabs from '../../Components/CrmNavTabs';
-import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 import {
   Plus,
@@ -2340,13 +2339,10 @@ const CustomersList = ({
 
   return (
     <>
-      <Head title="Client Management (Berongoy) - Group #187 Core 1" />
+      <Head title="Client Management | IntelliTrack" />
 
-      <AppLayout title="Client Management Module">
+      <AppLayout title="Client Management">
         <div className="space-y-4">
-          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-          <Core1PipelineStepper currentStep={1} />
-
           <CrmNavTabs
             actionButton={
               isSalesBusinessDevelopment ? (

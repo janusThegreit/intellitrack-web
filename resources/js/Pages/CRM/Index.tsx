@@ -21,7 +21,6 @@ import AppLayout from '../../Layouts/AppLayout';
 import Button from '../../Components/Button';
 import Modal from '../../Components/Modal';
 import CrmNavTabs from '../../Components/CrmNavTabs';
-import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 interface Customer {
   id?: number;
@@ -383,9 +382,6 @@ const CRM = () => {
       <Head title="CRM & Customer Inquiries - IntelliTrack" />
       <AppLayout title="CRM & Commercial Inquiries">
         <div className="space-y-6">
-          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-          <Core1PipelineStepper currentStep={2} />
-
           <CrmNavTabs
             actionButton={
               <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)}>

@@ -31,7 +31,6 @@ import clsx from 'clsx';
 import axios from 'axios';
 import { StatusBadge } from '../Components/Badge';
 import Button from '../Components/Button';
-import Core1PipelineStepper from '../Components/Core1PipelineStepper';
 
 interface AdminSummary {
   total_users: number;
@@ -1363,9 +1362,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
-        {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-        <Core1PipelineStepper currentStep={1} />
 
         {/* Sales Manager Executive AI Intelligence & Commercial Roll-Up Strip */}
         {data?.sales_manager_summary && (

@@ -23,7 +23,6 @@ import { formatPeso } from '../../Utils/currency';
 import CrmNavTabs from '../../Components/CrmNavTabs';
 import Modal from '../../Components/Modal';
 import Button from '../../Components/Button';
-import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 interface Customer { id: number; name: string; company_name?: string; city?: string; project_location?: string; }
 
@@ -452,10 +451,7 @@ const QuotationWorkspace = () => {
     <>
       <Head title="Sales & Quotation Management" />
       <AppLayout title="CRM & Quotation Management">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 space-y-6">
-          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-          <Core1PipelineStepper currentStep={3} />
-
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <CrmNavTabs />
           
           <div className="mb-6 pb-2 border-b border-border-subtle flex items-center justify-between">

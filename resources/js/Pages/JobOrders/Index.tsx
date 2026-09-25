@@ -32,7 +32,6 @@ import {
   Send,
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
-import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 interface StaffUser {
   id: number;
@@ -849,25 +848,19 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
 
   return (
     <>
-      <Head title="Job Order Registration Management (Camarig) - IntelliTrack Core 1" />
+      <Head title="Job Order Management - IntelliTrack" />
       <AppLayout
-        title="Job Order Registration Management"
+        title="Job Order Management"
         headerAction={
           <div className="flex items-center gap-2">
             <Button variant="primary" onClick={() => setCreatingJob(true)}>
               <Plus className="w-4 h-4 mr-1" />
-              Register New Job Order
+              New Job Order
             </Button>
           </div>
         }
       >
         <div className="space-y-6">
-          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
-          <Core1PipelineStepper
-            currentStep={5}
-            onHandoffClick={() => records.length > 0 && setHandoffModalJob(records[0])}
-          />
-
           {message && (
             <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-400 animate-fadeIn">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -2390,16 +2383,16 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             )}
           </Modal>
 
-          {/* Operations Hand-off Gateway Modal (Bridge to Core 2: Operations & Dispatch) */}
+          {/* Operations Hand-off Gateway Modal (Bridge to Operations & Dispatch) */}
           <Modal
             isOpen={!!handoffModalJob}
             onClose={() => setHandoffModalJob(null)}
-            title="Operations Hand-off Gateway (Forward to Core 2)"
+            title="Operations Hand-off Gateway (Forward to Operations)"
             size="lg"
             footer={
               <div className="flex items-center justify-between w-full">
                 <div className="text-xs text-content-muted">
-                  Receiving: <span className="font-semibold text-emerald-500">Group #188 (Operations & Dispatch)</span>
+                  Receiving: <span className="font-semibold text-emerald-500">Operations & Technical Dispatch Department</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => setHandoffModalJob(null)}>
@@ -2408,14 +2401,14 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   <Button
                     variant="primary"
                     onClick={() => {
-                      setMessage(`Job Order ${handoffModalJob?.job_number} successfully transmitted to Group 188 (Core 2: Operations, Dispatch, and Resource Management)!`);
+                      setMessage(`Job Order ${handoffModalJob?.job_number} successfully transmitted to Operations & Technical Dispatch!`);
                       setHandoffModalJob(null);
                       setTimeout(() => setMessage(''), 5000);
                     }}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                   >
                     <Send className="w-3.5 h-3.5 mr-1" />
-                    Transmit Job Order to Core 2
+                    Transmit Job Order to Operations
                   </Button>
                 </div>
               </div>
@@ -2426,10 +2419,10 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                 <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400">
                   <p className="font-bold flex items-center gap-1.5">
                     <CheckCircle className="w-4 h-4" />
-                    Core 1 Output Finalized — Ready for Operations Dispatch
+                    Job Order Finalized — Ready for Operations Dispatch
                   </p>
                   <p className="mt-1 text-[11px] text-content-secondary">
-                    Ang Job Order na ito ay dumaan sa kumpletong Core 1 workflow (Client Onboarding ➔ CRM Inquiry ➔ Quotation Approval ➔ Project Site Specs). Ipa-forward ito ngayon sa Group 188 para sa Driver/Operator assignment at mobilization trip scheduling.
+                    This Job Order has completed commercial registration (Client Verification, Inquiry, Approved Quotation, and Site Specifications). Forward this to Operations & Dispatch for personnel assignment and mobilization trip scheduling.
                   </p>
                 </div>
 
@@ -2444,7 +2437,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-content-muted uppercase">Project Site Location</span>
-                    <p className="text-content-primary">{handoffModalJob.location || 'Metro Manila Construction Site'}</p>
+                    <p className="text-content-primary">{handoffModalJob.location || 'Construction Site'}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-content-muted uppercase">Total Contract Value</span>
@@ -2455,15 +2448,15 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-content-primary">Scope of Work & Technical Specs Transmitted</label>
                   <div className="p-3 rounded-xl bg-surface-input border border-border-default text-xs text-content-secondary">
-                    {handoffModalJob.description || 'Tower Crane mobilization, foundation anchoring, jib assembly, and crane erection with safety certification.'}
+                    {handoffModalJob.description || 'Heavy equipment mobilization, foundation anchoring, assembly, and erection with safety compliance.'}
                   </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-600 dark:text-blue-300">
-                  <strong>Core 2 Handshake Protocol:</strong>
+                  <strong>Operations Integration Protocol:</strong>
                   <ul className="mt-1 list-disc list-inside space-y-0.5 text-content-secondary text-[10px]">
-                    <li>Dispatches to Samuel Cabanting (Dispatch Job & Real-Time Scheduling)</li>
-                    <li>Dispatches to Jhon Christopher Atinado (Assign Driver/Operator & Equipment)</li>
+                    <li>Dispatches to Dispatch Job & Real-Time Scheduling System</li>
+                    <li>Dispatches to Driver/Operator & Heavy Equipment Assignment</li>
                   </ul>
                 </div>
               </div>
