@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import Modal from '../../Components/Modal';
+import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 import {
   FolderKanban,
   Building2,
@@ -378,9 +379,12 @@ export default function ProjectsIndex({ projects: initialProjects = [] }: { proj
 
   return (
     <AppLayout>
-      <Head title="Project Management | IntelliTrack Enterprise" />
+      <Head title="Project Management (Tinaja) | IntelliTrack Core 1" />
 
       <div className="space-y-6">
+        {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
+        <Core1PipelineStepper currentStep={4} />
+
         {/* TOP HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

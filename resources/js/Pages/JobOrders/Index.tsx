@@ -29,8 +29,10 @@ import {
   Copy,
   Briefcase,
   DollarSign,
+  Send,
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
+import Core1PipelineStepper from '../../Components/Core1PipelineStepper';
 
 interface StaffUser {
   id: number;
@@ -131,6 +133,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null);
   const [editingJob, setEditingJob] = useState<JobOrder | null>(null);
   const [creatingJob, setCreatingJob] = useState(false);
+  const [handoffModalJob, setHandoffModalJob] = useState<JobOrder | null>(null);
   const [assigningJob, setAssigningJob] = useState<JobOrder | null>(null);
   const [assignedUserId, setAssignedUserId] = useState<string>('');
   const [schedulingJob, setSchedulingJob] = useState<JobOrder | null>(null);
@@ -809,6 +812,16 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           )}
 
           <button
+            type="button"
+            onClick={() => setHandoffModalJob(row)}
+            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20"
+            title="Forward to Group 188 (Core 2: Operations & Dispatch)"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden sm:inline">To Core 2</span>
+          </button>
+
+          <button
             onClick={() => setSelectedJob(row)}
             className="p-1.5 hover:bg-surface-card rounded-lg text-content-secondary hover:text-amber-500 transition-colors"
             title="View Full Dossier"
@@ -836,19 +849,25 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
 
   return (
     <>
-      <Head title="Job Orders & Fleet Mobilization - IntelliTrack" />
+      <Head title="Job Order Registration Management (Camarig) - IntelliTrack Core 1" />
       <AppLayout
-        title="Job Orders & Fleet Mobilization"
+        title="Job Order Registration Management"
         headerAction={
           <div className="flex items-center gap-2">
             <Button variant="primary" onClick={() => setCreatingJob(true)}>
               <Plus className="w-4 h-4 mr-1" />
-              New Job Order
+              Register New Job Order
             </Button>
           </div>
         }
       >
         <div className="space-y-6">
+          {/* Group 187: Core Transaction 1 Linear Pipeline Tracker */}
+          <Core1PipelineStepper
+            currentStep={5}
+            onHandoffClick={() => records.length > 0 && setHandoffModalJob(records[0])}
+          />
+
           {message && (
             <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-400 animate-fadeIn">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -2368,6 +2387,86 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   />
                 </div>
               </form>
+            )}
+          </Modal>
+
+          {/* Operations Hand-off Gateway Modal (Bridge to Core 2: Operations & Dispatch) */}
+          <Modal
+            isOpen={!!handoffModalJob}
+            onClose={() => setHandoffModalJob(null)}
+            title="Operations Hand-off Gateway (Forward to Core 2)"
+            size="lg"
+            footer={
+              <div className="flex items-center justify-between w-full">
+                <div className="text-xs text-content-muted">
+                  Receiving: <span className="font-semibold text-emerald-500">Group #188 (Operations & Dispatch)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" onClick={() => setHandoffModalJob(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setMessage(`Job Order ${handoffModalJob?.job_number} successfully transmitted to Group 188 (Core 2: Operations, Dispatch, and Resource Management)!`);
+                      setHandoffModalJob(null);
+                      setTimeout(() => setMessage(''), 5000);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                  >
+                    <Send className="w-3.5 h-3.5 mr-1" />
+                    Transmit Job Order to Core 2
+                  </Button>
+                </div>
+              </div>
+            }
+          >
+            {handoffModalJob && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4" />
+                    Core 1 Output Finalized — Ready for Operations Dispatch
+                  </p>
+                  <p className="mt-1 text-[11px] text-content-secondary">
+                    Ang Job Order na ito ay dumaan sa kumpletong Core 1 workflow (Client Onboarding ➔ CRM Inquiry ➔ Quotation Approval ➔ Project Site Specs). Ipa-forward ito ngayon sa Group 188 para sa Driver/Operator assignment at mobilization trip scheduling.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs bg-surface-card p-3 rounded-xl border border-border-default/60">
+                  <div>
+                    <span className="text-[10px] font-bold text-content-muted uppercase">Official JO Number</span>
+                    <p className="font-mono font-bold text-amber-500">{handoffModalJob.job_number}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-content-muted uppercase">Client / Contractor</span>
+                    <p className="font-semibold text-content-primary">{handoffModalJob.customer_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-content-muted uppercase">Project Site Location</span>
+                    <p className="text-content-primary">{handoffModalJob.location || 'Metro Manila Construction Site'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-content-muted uppercase">Total Contract Value</span>
+                    <p className="font-mono font-bold text-emerald-500">{formatPeso(handoffModalJob.total_amount)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-content-primary">Scope of Work & Technical Specs Transmitted</label>
+                  <div className="p-3 rounded-xl bg-surface-input border border-border-default text-xs text-content-secondary">
+                    {handoffModalJob.description || 'Tower Crane mobilization, foundation anchoring, jib assembly, and crane erection with safety certification.'}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-600 dark:text-blue-300">
+                  <strong>Core 2 Handshake Protocol:</strong>
+                  <ul className="mt-1 list-disc list-inside space-y-0.5 text-content-secondary text-[10px]">
+                    <li>Dispatches to Samuel Cabanting (Dispatch Job & Real-Time Scheduling)</li>
+                    <li>Dispatches to Jhon Christopher Atinado (Assign Driver/Operator & Equipment)</li>
+                  </ul>
+                </div>
+              </div>
             )}
           </Modal>
         </div>

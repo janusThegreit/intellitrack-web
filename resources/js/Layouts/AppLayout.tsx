@@ -76,62 +76,54 @@ const navItems: NavItem[] = [
     roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
   },
   {
-    label: 'CRM',
-    icon: <Users className="w-4 h-4" />,
-    href: '/crm',
-    roles: ['sales_manager', 'sales_business_development'],
+    label: 'Client Management',
+    icon: <UserCircle className="w-4 h-4" />,
+    href: '/clients',
+    roles: ['sales_manager', 'sales_business_development', 'administrator'],
     children: [
-      { label: 'Customers', icon: <UserCircle className="w-3.5 h-3.5" />, href: '/customers' },
+      { label: 'All Clients', icon: <Users className="w-3.5 h-3.5" />, href: '/clients' },
+      { label: 'Client Requirements', icon: <FileText className="w-3.5 h-3.5" />, href: '/rental-requirements' },
+    ],
+  },
+  {
+    label: 'CRM & Inquiries',
+    icon: <MessageSquare className="w-4 h-4" />,
+    href: '/crm',
+    roles: ['sales_manager', 'sales_business_development', 'administrator'],
+    children: [
       { label: 'Inquiries', icon: <MessageSquare className="w-3.5 h-3.5" />, href: '/inquiries' },
       { label: 'Follow-Ups', icon: <PhoneCall className="w-3.5 h-3.5" />, href: '/crm/follow-ups' },
       { label: 'Communications', icon: <Mail className="w-3.5 h-3.5" />, href: '/crm/communications' },
       { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/quotations' },
-      { label: 'Feedback', icon: <MessageSquareQuote className="w-3.5 h-3.5" />, href: '/crm/feedback' },
+      { label: 'Customer Feedback', icon: <MessageSquareQuote className="w-3.5 h-3.5" />, href: '/crm/feedback' },
     ],
   },
   {
-    label: 'Job Orders',
-    icon: <FileText className="w-4 h-4" />,
-    href: '/job-orders',
-    roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'],
+    label: 'Rental Management',
+    icon: <CalendarCheck className="w-4 h-4" />,
+    href: '/rentals',
+    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
     children: [
-      { label: 'All Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
-      { label: 'Requests & Approvals', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
-      { label: 'Assignment', icon: <UserCheck className="w-3.5 h-3.5" />, href: '/job-orders/assignment', roles: ['sales_manager', 'operations_technical', 'staff'] },
-      { label: 'Scheduling', icon: <CalendarClock className="w-3.5 h-3.5" />, href: '/job-orders/scheduling', roles: ['sales_manager', 'operations_technical', 'staff'] },
-      { label: 'Completion', icon: <CheckCircle2 className="w-3.5 h-3.5" />, href: '/job-orders/completion', roles: ['sales_manager', 'operations_technical', 'staff'] },
+      { label: 'Rental Agreements', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals' },
+      { label: 'Equipment Catalog', icon: <Truck className="w-3.5 h-3.5" />, href: '/equipment' },
+      { label: 'Rental Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability' },
     ],
   },
   {
-    label: 'Fleet & Rentals',
-    icon: <Truck className="w-4 h-4" />,
-    href: '/equipment',
-    roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'],
-    children: [
-      { label: 'Equipment', icon: <Truck className="w-3.5 h-3.5" />, href: '/equipment', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
-      { label: 'Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
-      { label: 'Rentals', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals', roles: ['sales_manager', 'operations_technical', 'staff'] },
-      { label: 'Maintenance', icon: <Wrench className="w-3.5 h-3.5" />, href: '/equipment/maintenance', roles: ['sales_manager', 'operations_technical', 'staff'] },
-    ],
-  },
-  {
-    label: 'Projects',
+    label: 'Project Management',
     icon: <FolderKanban className="w-4 h-4" />,
     href: '/projects',
-    roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'],
+    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
   },
   {
-    label: 'AI Analytics',
-    icon: <Sparkles className="w-4 h-4" />,
-    href: '/ai-analytics',
-    badge: 'AI',
-    roles: ['sales_manager'],
-  },
-  {
-    label: 'Reports & BI',
-    icon: <BarChart3 className="w-4 h-4" />,
-    href: '/reports',
-    roles: ['sales_manager'],
+    label: 'Job Order Registration',
+    icon: <FileText className="w-4 h-4" />,
+    href: '/job-orders',
+    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
+    children: [
+      { label: 'Registered Job Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders' },
+      { label: 'Registration Requests', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests' },
+    ],
   },
   {
     label: 'User Management',
@@ -335,8 +327,19 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
           </button>
         </div>
 
+        {/* Group 187 Core Transaction 1 Badge */}
+        {!isCompact && (
+          <div className="mx-3 mt-3 mb-1 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-amber-500 tracking-wider uppercase">Core Transaction 1</span>
+            </div>
+            <span className="text-[10px] font-extrabold bg-amber-500 text-white dark:text-slate-950 px-1.5 py-0.5 rounded">Group 187</span>
+          </div>
+        )}
+
         {/* Navigation items */}
-        <nav className={clsx('flex-1 space-y-0.5 overflow-y-auto py-4', isCollapsed ? 'px-2' : 'px-3')}>
+        <nav className={clsx('flex-1 space-y-0.5 overflow-y-auto py-3', isCollapsed ? 'px-2' : 'px-3')}>
           {availableNavItems.map((item) => (
             <NavLink key={item.href} item={item} />
           ))}
