@@ -8,7 +8,7 @@ COPY vite.config.js tailwind.config.js postcss.config.js tsconfig.json ./
 RUN npm run build
 
 FROM php:8.4-cli-bookworm
-WORKDIR /var/www/html
+WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq-dev libzip-dev unzip git curl \
@@ -25,7 +25,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && sed -i 's/\r$//' /usr/local/bin/entrypoint \
     && chmod +x /usr/local/bin/entrypoint \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && ln -s /app /var/www/html
 
 EXPOSE 8000
 ENTRYPOINT ["entrypoint"]
