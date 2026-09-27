@@ -39,7 +39,7 @@ class RoleController extends Controller
                 'label' => 'Sales Manager',
                 'badge' => 'Sales Management',
                 'tier' => 'Commercial Management',
-                'scope' => 'Quotation Approval & Core 1 Oversight',
+                'scope' => 'Quotation Approval & Commercial Oversight',
                 'description' => 'Reviews and approves commercial quotations, requests revisions, monitors customer pipelines, Job Orders, rentals, projects, and utilizes AI analytics & management reporting.',
             ],
             [
@@ -50,7 +50,7 @@ class RoleController extends Controller
                 'badge' => 'Primary Sales User',
                 'tier' => 'Sales Operations',
                 'scope' => 'Inquiry Intake, Quotations & Job Order Registration',
-                'description' => 'Primary operational user for Core 1: processes customer inquiries (including Alibaton website), manages clients, drafts quotations, records rental requirements, and registers Job Orders for submission to Operations.',
+                'description' => 'Primary operational user for Sales & Commercial: processes customer inquiries (including Alibaton website), manages clients, drafts quotations, records rental requirements, and registers Job Orders for submission to Operations.',
             ],
         ];
 

@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/job-orders', fn () => Inertia::render('JobOrders/Index'))->middleware('can:manage-job-orders')->name('job-orders');
     Route::get('/job-orders/requests', fn () => Inertia::render('JobOrders/Index', ['view' => 'requests']))->middleware('can:manage-job-orders')->name('job-orders.requests');
+    Route::get('/job-orders/tracking', fn () => Inertia::render('JobOrders/Index', ['view' => 'tracking']))->middleware('can:manage-job-orders')->name('job-orders.tracking');
     Route::get('/job-orders/completion', fn () => Inertia::render('JobOrders/Index', ['view' => 'completion']))->middleware('can:manage-job-orders')->name('job-orders.completion');
     Route::get('/projects', fn () => Inertia::render('Projects/Index'))->middleware('can:view-projects')->name('projects');
     Route::get('/record/{type}/{id}', fn (string $type, int $id) => Inertia::render('Records/Show', ['type' => $type, 'recordId' => $id]))->middleware('can:view-core-dashboard')->name('record.show');

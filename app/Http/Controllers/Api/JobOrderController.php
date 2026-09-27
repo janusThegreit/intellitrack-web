@@ -78,13 +78,13 @@ class JobOrderController extends Controller
         $validated['job_order_number'] = 'JO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
         $validated['created_by'] = auth()->id();
         $validated['status'] = $validated['status'] ?? 'registered';
-        $validated['operational_status'] = $validated['operational_status'] ?? 'Pending Submission to Core 2 Operations';
+        $validated['operational_status'] = $validated['operational_status'] ?? 'Pending Submission to Operations';
         $validated['dispatch_status'] = 'Unassigned';
         $validated['operational_equipment_status'] = 'Awaiting Operations Allocation';
 
         $jobOrder = JobOrder::create($validated);
 
-        ActivityLogService::log(Auth::user(), 'created', JobOrder::class, $jobOrder->id, "Job Order {$jobOrder->job_order_number} registered in Core 1.", null, [
+        ActivityLogService::log(Auth::user(), 'created', JobOrder::class, $jobOrder->id, "Job Order {$jobOrder->job_order_number} registered in Sales & Commercial.", null, [
             'status' => $jobOrder->status,
             'client_id' => $jobOrder->customer_id,
             'service_type' => $jobOrder->service_type,

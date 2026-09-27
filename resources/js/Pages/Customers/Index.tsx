@@ -8,6 +8,7 @@ import { Input } from '../../Components/Form';
 import { StatusBadge } from '../../Components/Badge';
 import Modal from '../../Components/Modal';
 import ClientNavTabs from '../../Components/ClientNavTabs';
+import CrmNavTabs from '../../Components/CrmNavTabs';
 
 import {
   Plus,
@@ -212,6 +213,7 @@ interface Customer {
    * Client status & Accreditation
    */
   status: string;
+  bidding_status?: string;
   payment_terms?: string;
   credit_limit?: number;
   accreditation_status?: string;
@@ -358,6 +360,7 @@ interface CustomerForm {
   technical_requirements: string;
   site_condition: string;
   estimated_budget: string;
+  bidding_status: string;
 }
 
 const emptyCustomer: CustomerForm = {
@@ -396,6 +399,7 @@ const emptyCustomer: CustomerForm = {
   technical_requirements: '',
   site_condition: '',
   estimated_budget: '',
+  bidding_status: 'bidding',
 };
 
 /*
@@ -940,6 +944,7 @@ const CustomersList = ({
         customer.estimated_budget != null
           ? String(customer.estimated_budget)
           : '',
+      bidding_status: customer.bidding_status ?? 'bidding',
     });
   };
 
@@ -1785,7 +1790,112 @@ const CustomersList = ({
         </div>
       </div>
 
-      {/* 5. ADDITIONAL */}
+      {/* 5. CLIENT SCOPING & PROJECT REQUIREMENTS */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border-subtle">
+          <FolderKanban className="h-4 w-4 text-brand" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-content-primary">
+            Client Scoping & Project Specifications
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Project Stage / Bidding Status <span className="text-amber-500">*</span>
+            </label>
+            <select
+              value={form.bidding_status}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  bidding_status: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            >
+              <option value="bidding" className="bg-surface-card text-content-primary">Bidding Stage (Submitting Proposal)</option>
+              <option value="awarded" className="bg-surface-card text-content-primary">Awarded Project (PO / NTP Received)</option>
+              <option value="negotiating" className="bg-surface-card text-content-primary">Under Negotiation</option>
+              <option value="direct_contract" className="bg-surface-card text-content-primary">Direct Commercial Contract</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Estimated Budget (PHP)
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="e.g. 2500000"
+              value={form.estimated_budget}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  estimated_budget: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none font-mono"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Site Location / Project Address
+            </label>
+            <input
+              placeholder="e.g. Tower 2 Construction Site, Bonifacio Global City, Taguig"
+              value={form.project_location}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  project_location: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Technical Equipment Requirements
+            </label>
+            <textarea
+              rows={2}
+              placeholder="e.g. 10T Luffing Jib Crane, 50m Free Standing Height, Rigging accessories..."
+              value={form.technical_requirements}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  technical_requirements: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-content-primary mb-1">
+              Site Condition & Access
+            </label>
+            <textarea
+              rows={2}
+              placeholder="e.g. Foundation pad cured, 3-phase power ready, accessible by 40ft lowbed trailer..."
+              value={form.site_condition}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  site_condition: event.target.value,
+                })
+              }
+              className="w-full rounded-md border border-border-default bg-surface-input p-2.5 text-sm text-content-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 6. ADDITIONAL */}
       <div>
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border-subtle">
           <BriefcaseBusiness className="h-4 w-4 text-brand" />
@@ -2648,6 +2758,7 @@ const CustomersList = ({
 
       <AppLayout title="Client Management">
         <div className="space-y-4">
+          <CrmNavTabs />
           <ClientNavTabs
             actionButton={
               isSalesBusinessDevelopment ? (

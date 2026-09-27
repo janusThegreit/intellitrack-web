@@ -43,6 +43,7 @@ import {
   Calendar,
   MapPin,
   Flag,
+  Activity,
 } from 'lucide-react';
 
 import SalesAiFloatingChatbot from '../Components/SalesAiFloatingChatbot';
@@ -99,18 +100,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: 'CRM',
-    icon: <MessageSquare className="w-4 h-4" />,
-    href: '/crm',
-    roles: ['sales_manager', 'sales_business_development', 'administrator'],
-    children: [
-      { label: 'Inquiries', icon: <MessageSquare className="w-3.5 h-3.5" />, href: '/inquiries' },
-      { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/quotations' },
-      { label: 'Follow-ups', icon: <PhoneCall className="w-3.5 h-3.5" />, href: '/crm/follow-ups' },
-      { label: 'Communications', icon: <Mail className="w-3.5 h-3.5" />, href: '/crm/communications' },
-    ],
-  },
-  {
     label: 'Job Order Registration',
     icon: <FileText className="w-4 h-4" />,
     href: '/job-orders',
@@ -118,6 +107,7 @@ const navItems: NavItem[] = [
     children: [
       { label: 'All Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders' },
       { label: 'Registration & Queue', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests' },
+      { label: 'Operations Tracking', icon: <Activity className="w-3.5 h-3.5" />, href: '/job-orders/tracking' },
       { label: 'Completed Orders', icon: <CheckCircle2 className="w-3.5 h-3.5" />, href: '/job-orders/completion' },
     ],
   },
@@ -128,7 +118,7 @@ const navItems: NavItem[] = [
     roles: ['sales_manager', 'sales_business_development'],
     children: [
       { label: 'Rental Requests', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals' },
-      { label: 'Equipment Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability', badge: 'Core 2 Read' },
+      { label: 'Equipment Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability' },
     ],
   },
   {

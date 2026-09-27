@@ -86,7 +86,7 @@ const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
     pageTitle: 'Settings & System Governance',
     pageSubtitle: 'Manage your administrator identity, security credentials, and system-wide maintenance policies.',
     verifiedBadge: 'Verified Super Administrator',
-    department: 'IntelliTrack Core Infrastructure & IAM',
+    department: 'IT Infrastructure & IAM',
     roleLabel: 'Administrator',
     badgeBg: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
     tabLabel: 'Governance Policy',

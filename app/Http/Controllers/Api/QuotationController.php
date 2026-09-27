@@ -319,7 +319,7 @@ class QuotationController extends Controller
                 'rental_requirements' => "Offer valid until: {$quotation->valid_until}. Terms: {$quotation->terms_conditions}",
                 'description' => $description,
                 'status' => 'registered',
-                'operational_status' => 'Pending Submission to Core 2 Operations',
+                'operational_status' => 'Pending Submission to Operations',
                 'priority' => 'high',
                 'scheduled_date' => now()->addDays(2),
                 'due_date' => $quotation->valid_until ?: now()->addMonths(1),

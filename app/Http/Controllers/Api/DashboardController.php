@@ -54,7 +54,7 @@ class DashboardController extends Controller
             ];
         }
 
-        // 2. Sales Manager Dashboard Summary (Core 1 Management, Review, Approval & Analytics)
+        // 2. Sales Manager Dashboard Summary (Sales Management, Review, Approval & Analytics)
         $salesManagerSummary = null;
         if ($user && ($user->isSalesManager() || $user->role === 'sales_manager')) {
             $pipelineValue = (float) \App\Models\Quotation::whereIn('status', ['under_review', 'approved', 'sent', 'accepted'])->sum('total_amount');
@@ -106,7 +106,7 @@ class DashboardController extends Controller
                 'ai_insights' => [
                     'pipeline_health' => $winRate >= 50 ? 'Strong Conversion Rate' : 'Review Follow-up Velocity',
                     'inquiry_velocity' => \App\Models\CustomerInquiry::where('created_at', '>=', now()->subDays(7))->count() . ' new inquiries this week',
-                    'operational_handoffs' => JobOrder::where('status', 'submitted')->count() . ' orders awaiting Core 2 dispatch confirmation',
+                    'operational_handoffs' => JobOrder::where('status', 'submitted')->count() . ' orders awaiting Operations dispatch confirmation',
                 ],
             ];
         }

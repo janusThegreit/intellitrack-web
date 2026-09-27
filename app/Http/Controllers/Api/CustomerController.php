@@ -341,6 +341,7 @@ class CustomerController extends Controller
             'technical_requirements' => ['nullable', 'string'],
             'site_condition' => ['nullable', 'string'],
             'estimated_budget' => ['nullable', 'numeric', 'min:0'],
+            'bidding_status' => ['nullable', 'string', 'max:50'],
         ]);
 
         $displayName = $validated['company_name'] ?? $validated['name'] ?? 'Customer';
@@ -459,6 +460,7 @@ class CustomerController extends Controller
             'technical_requirements' => ['nullable', 'string'],
             'site_condition' => ['nullable', 'string'],
             'estimated_budget' => ['nullable', 'numeric', 'min:0'],
+            'bidding_status' => ['nullable', 'string', 'max:50'],
         ]);
 
         if (isset($validated['company_name']) && !isset($validated['name'])) {

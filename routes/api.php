@@ -139,11 +139,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::apiResource('rental-requirements', RentalRequirementController::class);
     Route::post('rental-requirements/{rentalRequirement}/assess', [RentalRequirementController::class, 'assess']);
 
-    // Equipment Routes (Core 1 receives/reads equipment availability from Operations/Resource subsystem)
+    // Equipment Routes (Sales receives/reads equipment availability from Operations Department)
     Route::apiResource('equipment', EquipmentController::class)->only(['index', 'show']);
     Route::get('equipment/{equipment}/rentals', [EquipmentController::class, 'rentals']);
 
-    // Job Order Routes (Core 1 Job Order Registration & Monitoring)
+    // Job Order Routes (Sales & Commercial Job Order Registration & Monitoring)
     Route::apiResource('job-orders', JobOrderController::class);
     Route::post('job-orders/{jobOrder}/items', [JobOrderController::class, 'addItem']);
     Route::put('job-orders/{jobOrder}/items/{item}', [JobOrderController::class, 'updateItem']);
@@ -152,18 +152,23 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('job-orders/{jobOrder}/submit-to-operations', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'submitJobOrderToOperations']);
     Route::post('job-orders/{jobOrder}/operations-status', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'receiveOperationsStatus']);
 
-    // Core 1 Subsystem Integrations
+    // Department Subsystem Integrations
+    Route::post('customers/{customer}/sync-finance', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
+    Route::post('integrations/finance/sync-customer-master/{customer}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
+    Route::post('integrations/operations/submit-job-order/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'submitJobOrderToOperations']);
+    Route::post('integrations/operations/status-update/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'receiveOperationsStatus']);
+    Route::post('integrations/website-inquiry', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'ingestWebsiteInquiry']);
+    // Legacy aliases
     Route::post('customers/{customer}/sync-group185', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
     Route::post('integrations/group185/sync-customer-master/{customer}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
     Route::post('integrations/core2/submit-job-order/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'submitJobOrderToOperations']);
     Route::post('integrations/core2/status-update/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'receiveOperationsStatus']);
-    Route::post('integrations/website-inquiry', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'ingestWebsiteInquiry']);
 
-    // Rental Routes (Core 1 Customer Rental Requirements)
+    // Rental Routes (Customer Rental Requirements)
     Route::apiResource('rentals', RentalController::class);
     Route::get('rentals/overdue', [RentalController::class, 'overdue']);
 
-    // Quotation Routes (Core 1 Sales Process)
+    // Quotation Routes (Sales Process)
     Route::apiResource('quotations', QuotationController::class);
     Route::post('quotations/{quotation}/submit', [QuotationController::class, 'submitForApproval']);
     Route::post('quotations/{quotation}/approve', [QuotationController::class, 'approve']);

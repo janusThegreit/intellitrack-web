@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, FormEvent } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Card, CardBody } from '../../Components/Card';
 import Table, { TableColumn } from '../../Components/Table';
@@ -7,6 +7,7 @@ import Button from '../../Components/Button';
 import { Input } from '../../Components/Form';
 import { StatusBadge } from '../../Components/Badge';
 import Modal from '../../Components/Modal';
+import WorkOrderPrint from '../../Components/WorkOrderPrint';
 import { 
   Plus, 
   Edit2, 
@@ -32,6 +33,7 @@ import {
   Send,
   ArrowUpRight,
   Info,
+  Activity,
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
 
@@ -114,7 +116,7 @@ interface JobOrder {
 }
 
 interface JobOrderListProps {
-  view?: 'all' | 'requests' | 'registered' | 'completion';
+  view?: 'all' | 'requests' | 'registered' | 'completion' | 'assignment' | 'scheduling' | 'tracking';
   jobOrders?: Array<JobOrder>;
 }
 
@@ -125,7 +127,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const isSBD = userRole === 'sales_business_development';
   const canManage = isSalesManager || isSBD;
 
-  const [activeTab, setActiveTab] = useState<'all' | 'requests' | 'registered' | 'completion'>(view || 'all');
+  const [activeTab, setActiveTab] = useState<'all' | 'requests' | 'registered' | 'completion' | 'assignment' | 'scheduling' | 'tracking'>((view as any) || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -141,16 +143,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const [editingJob, setEditingJob] = useState<JobOrder | null>(null);
   const [creatingJob, setCreatingJob] = useState(false);
   const [handoffModalJob, setHandoffModalJob] = useState<JobOrder | null>(null);
-  const [assigningJob, setAssigningJob] = useState<JobOrder | null>(null);
-  const [assignedUserId, setAssignedUserId] = useState<string>('');
-  const [schedulingJob, setSchedulingJob] = useState<JobOrder | null>(null);
-  const [scheduleData, setScheduleData] = useState({
-    scheduled_date: '',
-    start_date: '',
-    due_date: '',
-    location: '',
-    notes: '',
-  });
+  const [printingJob, setPrintingJob] = useState<JobOrder | null>(null);
 
   // Adding equipment modal state
   const [addingEquipmentJob, setAddingEquipmentJob] = useState<JobOrder | null>(null);
@@ -164,6 +157,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
 
   const [newJob, setNewJob] = useState({
     customer_id: '',
+    service_type: 'Tower Crane Erection',
+    required_equipment: '',
+    special_instructions: '',
     description: '',
     priority: 'medium',
     scheduled_date: '',
@@ -192,10 +188,19 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     }
   }, [view]);
 
-  const handleTabChange = (tab: 'all' | 'requests' | 'registered' | 'completion') => {
+  const handleTabChange = (tab: 'all' | 'requests' | 'registered' | 'completion' | 'assignment' | 'scheduling' | 'tracking') => {
     setActiveTab(tab);
-    const path = tab === 'all' ? '/job-orders' : `/job-orders?tab=${tab}`;
-    window.history.pushState({}, '', path);
+    if (tab === 'all') {
+      router.visit('/job-orders', { preserveState: true, preserveScroll: true });
+    } else if (tab === 'requests') {
+      router.visit('/job-orders/requests', { preserveState: true, preserveScroll: true });
+    } else if (tab === 'completion') {
+      router.visit('/job-orders/completion', { preserveState: true, preserveScroll: true });
+    } else if (tab === 'tracking') {
+      router.visit('/job-orders/tracking', { preserveState: true, preserveScroll: true });
+    } else {
+      router.visit(`/job-orders?tab=${tab}`, { preserveState: true, preserveScroll: true });
+    }
   };
 
   const loadJobOrders = async () => {
@@ -266,50 +271,39 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
 
   const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 
-  // Tab count indicators
+  // Tab count indicators (Sales, Customer & Job Order Management)
   const counts = useMemo(() => {
     return {
       all: records.length,
-      requirements_review: records.filter((r) => r.status === 'pending' || r.status === 'draft').length,
-      cost_estimate: records.filter((r) => Number(r.estimated_cost || r.total_amount) > 0).length,
-      pending_dispatch: records.filter((r) => r.status === 'pending_dispatch' || r.status === 'approved').length,
       requests: records.filter((r) => r.status === 'pending' || r.status === 'draft').length,
-      registered: records.filter((r) => r.status === 'registered' || r.status === 'approved').length,
+      tracking: records.filter((r) => r.status === 'in-progress' || r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').length,
       completion: records.filter((r) => r.status === 'completed').length,
     };
   }, [records]);
 
   // Overall Telemetry Metrics
   const telemetry = useMemo(() => {
-    const active = records.filter(r => r.status === 'in-progress' || r.status === 'approved' || r.status === 'pending_dispatch').length;
-    const dispatched = records.filter(r => !!r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled').length;
-    const totalVal = records.reduce((acc, r) => acc + (r.total_amount || 0), 0);
+    const total = records.length;
+    const pendingAuth = records.filter(r => r.status === 'pending' || r.status === 'draft').length;
+    const activeOperations = records.filter(r => r.status === 'in-progress' || r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').length;
     const completedCount = records.filter(r => r.status === 'completed').length;
-    return { active, dispatched, totalVal, completedCount };
-  }, [records]);
-
-  // Workload count per staff member
-  const staffWorkload = useMemo(() => {
-    const map: Record<number, number> = {};
-    records.forEach(r => {
-      if (r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled') {
-        map[r.assigned_to] = (map[r.assigned_to] || 0) + 1;
-      }
-    });
-    return map;
+    const totalVal = records.reduce((acc, r) => acc + (r.total_amount || 0), 0);
+    return { total, pendingAuth, activeOperations, completedCount, totalVal };
   }, [records]);
 
   // Tab and Search Filtering
   const filtered = useMemo(() => {
     let result = [...records];
 
-    // Tab-level filtering for Core 1 modules
-    if (activeTab === 'requirements_review' || activeTab === 'requests') {
+    // Tab-level filtering
+    if (activeTab === 'requests' || (activeTab as string) === 'requirements_review') {
       result = result.filter((item) => item.status === 'pending' || item.status === 'draft');
-    } else if (activeTab === 'registered') {
-      result = result.filter((item) => item.status === 'registered' || item.status === 'approved');
     } else if (activeTab === 'completion') {
       result = result.filter((item) => item.status === 'completed');
+    } else if (activeTab === 'tracking') {
+      result = result.filter((item) => item.status === 'in-progress' || item.status === 'approved' || item.status === 'registered' || item.status === 'pending_dispatch');
+    } else if (activeTab === 'registered') {
+      result = result.filter((item) => item.status === 'registered' || item.status === 'approved');
     }
 
     // Status filter dropdown (when in All Orders)
@@ -373,6 +367,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       setCreatingJob(false);
       setNewJob({
         customer_id: '',
+        service_type: 'Tower Crane Erection',
+        required_equipment: '',
+        special_instructions: '',
         description: '',
         priority: 'medium',
         scheduled_date: '',
@@ -419,90 +416,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     setSaving(false);
   };
 
-  const handleAssignStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assigningJob || !assignedUserId) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/job-orders/${assigningJob.id}/assign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-CSRF-TOKEN': csrf,
-        },
-        body: JSON.stringify({ assigned_to: Number(assignedUserId) }),
-      });
-      if (res.ok) {
-        setAssigningJob(null);
-        setAssignedUserId('');
-        await loadJobOrders();
-        setMessage('Technical personnel assigned and dispatched.');
-        setTimeout(() => setMessage(''), 4000);
-      } else {
-        setMessage('Failed to assign personnel.');
-      }
-    } catch {
-      setMessage('Error updating assignment.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
-  const handleScheduleOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!schedulingJob) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/job-orders/${schedulingJob.id}/schedule`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-CSRF-TOKEN': csrf,
-        },
-        body: JSON.stringify(scheduleData),
-      });
-      if (res.ok) {
-        setSchedulingJob(null);
-        await loadJobOrders();
-        setMessage('Job Order schedule and deployment dates updated.');
-        setTimeout(() => setMessage(''), 4000);
-      } else {
-        setMessage('Failed to update schedule.');
-      }
-    } catch {
-      setMessage('Error updating schedule.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeployNow = async (job: JobOrder) => {
-    if (!window.confirm(`Deploy ${job.job_number} to site now? This will record today as the execution start date and set status to In-Progress.`)) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/job-orders/${job.id}/schedule`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-CSRF-TOKEN': csrf,
-        },
-        body: JSON.stringify({
-          start_date: new Date().toISOString().slice(0, 10),
-          status: 'in-progress',
-        }),
-      });
-      if (res.ok) {
-        await loadJobOrders();
-        setMessage(`${job.job_number} is now officially Mobilized and In-Progress.`);
-        setTimeout(() => setMessage(''), 4000);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleStatusTransition = async (jobId: number, nextStatus: string) => {
     try {
@@ -607,9 +521,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     setTimeout(() => setCopiedNumber(false), 2000);
   };
 
-  // Core 1 → Core 2 Operations Handoff
+  // Sales → Operations Handoff
   const handleSubmitToOperations = async (job: JobOrder) => {
-    if (!window.confirm(`Submit "${job.job_number}" to Core 2 Operations for dispatch and scheduling? This is a one-way handoff — Core 2 will take ownership of dispatch, driver assignment, and scheduling.`)) return;
+    if (!window.confirm(`Submit "${job.job_number}" to Operations & Dispatch for field scheduling? This handoff transfers operational dispatch and driver assignment to the Operations Department.`)) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/job-orders/${job.id}/submit-to-operations`, {
@@ -619,11 +533,11 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           Accept: 'application/json',
           'X-CSRF-TOKEN': csrf,
         },
-        body: JSON.stringify({ notes: 'Submitted from Core 1 Sales workspace' }),
+        body: JSON.stringify({ notes: 'Submitted from Sales & Commercial Department' }),
       });
       if (res.ok) {
         await loadJobOrders();
-        setMessage(`${job.job_number} successfully submitted to Core 2 Operations. Dispatch and scheduling will be handled by the Operations team.`);
+        setMessage(`${job.job_number} successfully submitted to Operations & Dispatch. Dispatch and scheduling will be handled by the Operations team.`);
         setTimeout(() => setMessage(''), 6000);
       } else {
         const err = await res.json().catch(() => ({}));
@@ -643,22 +557,22 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       key: 'job_number',
       label: 'Job #',
       sortable: true,
-      width: '14%',
+      width: '12%',
       render: (value, row) => (
         <div>
           <span className="font-semibold text-amber-500 hover:underline cursor-pointer" onClick={() => setSelectedJob(row)}>
             {value}
           </span>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.2 rounded ${
+            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
               row.priority === 'urgent' ? 'bg-rose-500/20 text-rose-400' :
               row.priority === 'high' ? 'bg-amber-500/20 text-amber-400' :
-              'bg-surface-card text-content-muted'
+              'bg-surface-input text-content-muted border border-border-default/50'
             }`}>
               {row.priority || 'Medium'}
             </span>
             {row.quotation_id && (
-              <span className="text-[10px] text-content-muted">From Quote</span>
+              <span className="text-[9px] text-content-muted">From Quote</span>
             )}
           </div>
         </div>
@@ -668,93 +582,108 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       key: 'customer_name',
       label: 'Customer & Site',
       sortable: true,
-      width: '22%',
+      width: '18%',
       render: (value, row) => (
-        <div>
-          <p className="font-semibold text-content-primary truncate">{value}</p>
+        <div className="max-w-[190px]">
+          <p className="font-semibold text-content-primary truncate text-xs" title={value}>{value}</p>
           {row.location ? (
-            <p className="text-[11px] text-content-secondary truncate flex items-center gap-1 mt-0.5">
-              <MapPin className="h-3 w-3 shrink-0 text-amber-500" /> {row.location}
+            <p className="text-[11px] text-content-secondary truncate flex items-center gap-1 mt-0.5" title={row.location}>
+              <MapPin className="h-3 w-3 shrink-0 text-amber-500" />
+              <span className="truncate">{row.location}</span>
             </p>
           ) : (
-            <span className="text-[11px] text-content-muted italic">Site location not set</span>
+            <span className="text-[10px] text-content-muted italic">Site location not set</span>
           )}
         </div>
       ),
     },
     {
+      key: 'service_type',
+      label: 'Service Task',
+      width: '12%',
+      render: (_, row) => (
+        <div className="max-w-[140px]">
+          <span className="font-semibold text-content-primary text-xs truncate block" title={row.service_type || 'Tower Crane Erection'}>
+            {row.service_type || 'Tower Crane Erection'}
+          </span>
+          <p className="text-[10px] text-content-secondary mt-0.5 truncate" title={row.description || 'Heavy Lifting Operation'}>
+            {row.description || 'Heavy Lifting Operation'}
+          </p>
+        </div>
+      ),
+    },
+    {
       key: 'equipment_count',
-      label: 'Allocated Equipment',
-      width: '18%',
+      label: 'Equipment Specs',
+      width: '12%',
       render: (_, row) => {
         const items = row.job_order_items ?? [];
+        if (items.length === 0 && row.required_equipment) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-input border border-border-default/60 text-[10px] text-content-secondary max-w-[125px]" title={row.required_equipment}>
+              <Truck className="h-3 w-3 text-amber-500 shrink-0" />
+              <span className="truncate">{row.required_equipment}</span>
+            </span>
+          );
+        }
         if (items.length === 0) {
           return (
             <button
               onClick={() => setAddingEquipmentJob(row)}
-              className="text-[11px] text-amber-500 font-semibold hover:underline flex items-center gap-1"
+              className="text-[10px] text-amber-500 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <Truck className="h-3 w-3" /> + Allocate Fleet
+              <Plus className="h-3 w-3" /> + Add Spec
             </button>
           );
         }
         return (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <div className="flex flex-wrap gap-1">
               {items.slice(0, 2).map((it) => (
-                <span key={it.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-card border border-border-default/60 text-[10px] text-content-secondary font-medium">
+                <span key={it.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-input border border-border-default/60 text-[9px] text-content-secondary font-medium">
                   <Wrench className="h-2.5 w-2.5 text-amber-400" />
                   {it.equipment?.code || it.equipment?.name || 'Unit'}
                 </span>
               ))}
               {items.length > 2 && (
-                <span className="text-[10px] text-content-muted font-bold self-center">
-                  +{items.length - 2} more
+                <span className="text-[9px] text-content-muted font-bold self-center">
+                  +{items.length - 2}
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-content-muted font-mono">{items.length} fleet unit{items.length > 1 ? 's' : ''}</p>
+            <p className="text-[9px] text-content-muted font-mono">{items.length} fleet spec{items.length > 1 ? 's' : ''}</p>
           </div>
         );
       },
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Status & Operations',
       sortable: true,
-      width: '11%',
-      render: (status) => <StatusBadge status={status} />,
-    },
-    {
-      key: 'assigned_to',
-      label: 'Assigned Lead',
       width: '14%',
       render: (_, row) => {
-        const staff = staffList.find((s) => s.id === row.assigned_to) || row.assigned_to_user;
+        const opStatus = (row as any).operational_status;
+        const isForwarded = row.status === 'in-progress' || row.status === 'completed' || opStatus;
         return (
-          <div className="flex items-center gap-1.5">
-            {staff ? (
-              <div className="flex items-center gap-1.5 text-xs text-content-primary">
-                <div className="h-6 w-6 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-[10px] font-bold text-amber-400 shrink-0">
-                  {staff.name ? staff.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <div className="truncate max-w-[100px]">
-                  <p className="font-semibold text-xs truncate">{staff.name}</p>
-                  <p className="text-[9px] text-content-muted capitalize truncate">{staff.role.replaceAll('_', ' ')}</p>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setAssigningJob(row);
-                  setAssignedUserId('');
-                }}
-                className="text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg hover:bg-amber-500/20 flex items-center gap-1 transition-all"
-              >
-                <UserCheck className="h-3 w-3" /> Assign Lead
-              </button>
-            )}
+          <div className="space-y-1">
+            <div>
+              <StatusBadge status={row.status} />
+            </div>
+            <div className="flex items-center gap-1">
+              {isForwarded ? (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[9px] font-semibold max-w-[130px] truncate"
+                  title={opStatus || 'Forwarded to Ops'}
+                >
+                  <Truck className="h-2.5 w-2.5 shrink-0" />
+                  <span className="truncate">{opStatus ? opStatus.replace('Transmitted to ', '') : 'Forwarded to Ops'}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-input border border-border-default/50 text-[9px] text-content-muted">
+                  <span>Awaiting Ops</span>
+                </span>
+              )}
+            </div>
           </div>
         );
       },
@@ -763,6 +692,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       key: 'total_amount',
       label: 'Total Value',
       sortable: true,
+      width: '10%',
       render: (amount) => (
         <span className="font-bold text-emerald-400 font-mono text-xs">
           {formatPeso(amount)}
@@ -773,12 +703,13 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       key: 'scheduled_date',
       label: 'Timeline',
       sortable: true,
+      width: '10%',
       render: (_, row) => (
         <div className="text-xs">
           {row.scheduled_date ? (
             <div>
               <span className="text-content-primary flex items-center gap-1 font-mono text-[11px]">
-                <Calendar className="h-3 w-3 text-amber-500" />
+                <Calendar className="h-3 w-3 text-amber-500 shrink-0" />
                 {new Date(row.scheduled_date).toLocaleDateString()}
               </span>
               {row.due_date && (
@@ -800,7 +731,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   notes: row.notes || '',
                 });
               }}
-              className="text-[11px] text-amber-400 font-semibold hover:underline flex items-center gap-1"
+              className="text-[10px] text-amber-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Calendar className="h-3 w-3" /> Set Schedule
             </button>
@@ -811,89 +742,93 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     {
       key: 'id',
       label: 'Actions',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          {row.status === 'completed' && (
-            <Link
-              href={`/crm/feedback?customer_id=${row.customer_id}&job_order_id=${row.id}`}
-              className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-all border border-amber-500/20"
-              title="Record CSAT Feedback"
-            >
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            </Link>
-          )}
+      stickyRight: true,
+      width: '12%',
+      render: (_, row) => {
+        const isCompleted = row.status === 'completed' || row.status === 'cancelled';
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {/* Forward to Ops button — hidden for completed/cancelled */}
+            {!isCompleted && (
+              <button
+                type="button"
+                onClick={() => setHandoffModalJob(row)}
+                className="p-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition-all border border-emerald-500/30 cursor-pointer shadow-xs"
+                title="Forward to Operations & Dispatch"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            )}
 
-          {/* Sales Manager: Approve pending Job Orders */}
-          {isSalesManager && row.status === 'pending' && (
+            {/* Sales Manager: Approve pending Job Orders */}
+            {isSalesManager && row.status === 'pending' && (
+              <button
+                type="button"
+                onClick={() => handleStatusTransition(row.id, 'registered')}
+                className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20 cursor-pointer"
+                title="Approve & Register Job Order"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* SBD or SM: Submit Registered Job Order to Operations */}
+            {canManage && (row.status === 'registered' || row.status === 'approved') && (
+              <button
+                type="button"
+                onClick={() => void handleSubmitToOperations(row)}
+                className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold flex items-center gap-1 transition-all border border-blue-500/20 cursor-pointer"
+                title="Submit to Operations & Dispatch"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* CSAT Feedback — only for completed */}
+            {row.status === 'completed' && (
+              <Link
+                href={`/crm/feedback?customer_id=${row.customer_id}&job_order_id=${row.id}`}
+                className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-all border border-amber-500/20"
+                title="Record CSAT Feedback"
+              >
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              </Link>
+            )}
+
+            {/* View Full Dossier */}
             <button
-              type="button"
-              onClick={() => handleStatusTransition(row.id, 'registered')}
-              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20"
-              title="Approve & Register Job Order"
+              onClick={() => setSelectedJob(row)}
+              className="p-1.5 hover:bg-surface-input rounded-lg text-content-secondary hover:text-amber-500 transition-colors cursor-pointer"
+              title="View Full Dossier"
             >
-              <CheckCircle className="w-3.5 h-3.5" />
+              <Eye className="w-4 h-4" />
             </button>
-          )}
 
-          {/* SBD or SM: Submit Registered Job Order to Core 2 Operations */}
-          {canManage && (row.status === 'registered' || row.status === 'approved') && (
-            <button
-              type="button"
-              onClick={() => void handleSubmitToOperations(row)}
-              className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold flex items-center gap-1 transition-all border border-blue-500/20"
-              title="Submit to Core 2 Operations (Handoff for dispatch & scheduling)"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
-          )}
+            {/* Edit — hidden for completed/cancelled */}
+            {!isCompleted && (
+              <button
+                onClick={() => setEditingJob({ ...row })}
+                className="p-1.5 hover:bg-surface-input rounded-lg text-content-secondary hover:text-amber-500 transition-colors cursor-pointer"
+                title="Edit"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
 
-          {/* Operational status badge — read-only, integrated from Core 2 */}
-          {(row as any).operational_status && (
-            <span
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-700/50 text-slate-400 border border-slate-600/40"
-              title="Integrated from Core 2 Operations — read only"
-            >
-              ⬡ Core 2
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setHandoffModalJob(row)}
-            className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer shadow-xs"
-            title="Forward to Core 2 Dispatch"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span className="text-[11px] hidden sm:inline">Forward to Core 2 Dispatch</span>
-          </button>
-
-          <button
-            onClick={() => setSelectedJob(row)}
-            className="p-1.5 hover:bg-surface-card rounded-lg text-content-secondary hover:text-amber-500 transition-colors"
-            title="View Full Dossier"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setEditingJob({ ...row })}
-            className="p-1.5 hover:bg-surface-card rounded-lg text-content-secondary hover:text-amber-500 transition-colors"
-            title="Edit"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          {isSalesManager && (
-            <button
-              onClick={() => void deleteJob(row)}
-              className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-400 transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      ),
+            {/* Delete */}
+            {isSalesManager && (
+              <button
+                onClick={() => void deleteJob(row)}
+                className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-400 transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        );
+      },
     },
-
   ];
 
   return (
@@ -922,34 +857,34 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-2xl bg-surface-card border border-border-default/60 relative overflow-hidden group hover:border-amber-500/40 transition-all">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Active Work Orders</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Total Job Orders</span>
                 <Briefcase className="h-4 w-4 text-amber-500" />
               </div>
-              <p className="mt-2 text-2xl font-black text-content-primary">{telemetry.active}</p>
-              <p className="mt-1 text-[11px] text-content-secondary">Approved & on-site operations</p>
+              <p className="mt-2 text-2xl font-black text-content-primary">{telemetry.total}</p>
+              <p className="mt-1 text-[11px] text-content-secondary">Commercial work orders registered</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-surface-card border border-border-default/60 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Pending Authorization</span>
+                <Clock className="h-4 w-4 text-amber-400" />
+              </div>
+              <p className="mt-2 text-2xl font-black text-amber-400">{telemetry.pendingAuth}</p>
+              <p className="mt-1 text-[11px] text-content-secondary">Awaiting Sales Manager release</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-surface-card border border-border-default/60 relative overflow-hidden group hover:border-blue-500/40 transition-all">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Dispatched Staff</span>
-                <UserCheck className="h-4 w-4 text-blue-400" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">In Field Operations</span>
+                <Activity className="h-4 w-4 text-blue-400" />
               </div>
-              <p className="mt-2 text-2xl font-black text-content-primary">{telemetry.dispatched}</p>
-              <p className="mt-1 text-[11px] text-content-secondary">Technical leads in the field</p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-surface-card border border-border-default/60 relative overflow-hidden group hover:border-purple-500/40 transition-all">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Awaiting Dispatch</span>
-                <Clock className="h-4 w-4 text-purple-400" />
-              </div>
-              <p className="mt-2 text-2xl font-black text-content-primary">{counts.assignment}</p>
-              <p className="mt-1 text-[11px] text-content-secondary">Orders needing personnel lead</p>
+              <p className="mt-2 text-2xl font-black text-blue-400">{telemetry.activeOperations}</p>
+              <p className="mt-1 text-[11px] text-content-secondary">Forwarded to Operations for field dispatch</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-surface-card border border-border-default/60 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Total Order Value</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">Total Contract Value</span>
                 <DollarSign className="h-4 w-4 text-emerald-400" />
               </div>
               <p className="mt-2 text-2xl font-black text-emerald-400 font-mono">{formatPeso(telemetry.totalVal)}</p>
@@ -957,8 +892,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </div>
           </div>
 
-          {/* Sub-Navigation Workflow Tabs for Core 1 */}
+          {/* Sub-Navigation Workflow Tabs (Sales Manager Job Order Lifecycle) */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
+            {/* Tab 1: All Orders (Master Registry) */}
             <button
               onClick={() => handleTabChange('all')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
@@ -968,7 +904,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
               }`}
             >
               <FileText className="h-4 w-4" />
-              <span>Registration</span>
+              <span>All Orders</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
                 activeTab === 'all' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
               }`}>
@@ -976,59 +912,62 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
               </span>
             </button>
 
+            {/* Tab 2: Registration & Queue (Manager Authorization) */}
             <button
-              onClick={() => handleTabChange('requirements_review')}
+              onClick={() => handleTabChange('requests')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'requirements_review' || activeTab === 'requests'
+                activeTab === 'requests' || (activeTab as string) === 'requirements_review'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
               }`}
             >
-              <ClipboardCheck className="h-4 w-4" />
-              <span>Requirements Review</span>
-              {counts.requirements_review > 0 && (
+              <Clock className="h-4 w-4" />
+              <span>Registration & Queue</span>
+              {counts.requests > 0 && (
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  activeTab === 'requirements_review' ? 'bg-slate-950 text-amber-500' : 'bg-amber-500/20 text-amber-400'
+                  activeTab === 'requests' || (activeTab as string) === 'requirements_review' ? 'bg-slate-950 text-amber-500' : 'bg-amber-500/20 text-amber-400'
                 }`}>
-                  {counts.requirements_review}
+                  {counts.requests}
                 </span>
               )}
             </button>
 
+            {/* Tab 3: Operations Tracking & Coordination */}
             <button
-              onClick={() => handleTabChange('cost_estimate')}
+              onClick={() => handleTabChange('tracking')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'cost_estimate'
+                activeTab === 'tracking'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
               }`}
             >
-              <Calculator className="h-4 w-4" />
-              <span>Cost Estimate</span>
+              <Activity className="h-4 w-4" />
+              <span>Operations Tracking</span>
+              {counts.tracking > 0 && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  activeTab === 'tracking' ? 'bg-slate-950 text-amber-500' : 'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {counts.tracking}
+                </span>
+              )}
+            </button>
+
+            {/* Tab 4: Completed Orders (CSAT & Billing Handoff) */}
+            <button
+              onClick={() => handleTabChange('completion')}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'completion'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
+              }`}
+            >
+              <CheckCircle className="h-4 w-4" />
+              <span>Completed Orders</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                activeTab === 'cost_estimate' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
+                activeTab === 'completion' ? 'bg-slate-950 text-amber-500' : 'bg-surface-input text-content-muted'
               }`}>
-                {counts.cost_estimate}
+                {counts.completion}
               </span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange('pending_dispatch')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'pending_dispatch'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-surface-card text-content-secondary hover:text-content-primary border border-border-default/60'
-              }`}
-            >
-              <Send className="h-4 w-4" />
-              <span>Pending Dispatch</span>
-              {counts.pending_dispatch > 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  activeTab === 'pending_dispatch' ? 'bg-slate-950 text-amber-500' : 'bg-blue-500/20 text-blue-400'
-                }`}>
-                  {counts.pending_dispatch}
-                </span>
-              )}
             </button>
           </div>
 
@@ -1080,6 +1019,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                 <Table
                   columns={columns}
                   data={filtered}
+                  compact
                   emptyMessage="No job orders found matching your criteria. Create a new job order or convert from an accepted sales quotation."
                   sortBy={sortBy}
                   sortOrder={sortOrder}
@@ -1213,366 +1153,269 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </div>
           )}
 
-          {/* TAB 3: PERSONNEL ASSIGNMENT & DISPATCH COCKPIT */}
-          {activeTab === 'assignment' && (
+          {/* TAB 3: OPERATIONS COORDINATION & DISPATCH TRACKING */}
+          {activeTab === 'tracking' && (
             <div className="space-y-6">
-              {/* Staff Workload Overview Strip */}
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-content-muted mb-3">Available Field Personnel & Engineers</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {staffList.map((staff) => {
-                    const activeCount = staffWorkload[staff.id] || 0;
-                    return (
-                      <div key={staff.id} className="p-3.5 rounded-xl bg-surface-card border border-border-default flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center font-bold text-amber-400 text-xs shrink-0">
-                            {staff.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-xs text-content-primary truncate max-w-[120px]">{staff.name}</p>
-                            <p className="text-[10px] text-content-muted capitalize truncate max-w-[120px]">{staff.role.replaceAll('_', ' ')}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            activeCount === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                          }`}>
-                            {activeCount} active job{activeCount !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Unassigned Work Orders (Priority Queue) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-content-primary flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-                    Unassigned Orders Needing Designated Lead Engineer
-                  </h3>
-                  <span className="text-xs font-mono text-content-muted">{filtered.length} Orders in Queue</span>
-                </div>
-
-                {filtered.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-surface-card border border-border-default">
-                    <CheckCircle className="h-10 w-10 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-content-primary">All approved orders have assigned engineering personnel!</p>
-                    <p className="text-[11px] text-content-secondary mt-1">Great job! No pending field dispatches.</p>
+              {/* Coordination Cockpit Header & Scope Notice */}
+              <div className="p-4 rounded-2xl bg-surface-card border border-border-default/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                      <Activity className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-content-primary">
+                      Operations Tracking & Service Coordination Cockpit
+                    </h3>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filtered.map((job) => (
-                      <div
-                        key={job.id}
-                        className="p-5 rounded-2xl bg-surface-card border border-rose-500/30 hover:border-rose-500/60 transition-all shadow-sm flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between border-b border-border-default pb-3">
-                            <span className="font-bold text-amber-500 text-sm">{job.job_number}</span>
-                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase">
-                              Unassigned
-                            </span>
-                          </div>
-
-                          <div className="mt-3">
-                            <h4 className="font-bold text-content-primary text-sm">{job.customer_name}</h4>
-                            <p className="text-xs text-content-secondary flex items-center gap-1 mt-1">
-                              <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                              {job.location || 'Site location pending'}
-                            </p>
-                            <p className="text-xs text-content-secondary mt-2 line-clamp-2 bg-surface-input p-2.5 rounded-xl border border-border-default/60">
-                              {job.description}
-                            </p>
-                          </div>
-
-                          {job.job_order_items && job.job_order_items.length > 0 && (
-                            <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-                              {job.job_order_items.map((i) => (
-                                <span key={i.id} className="text-[10px] px-2 py-0.5 rounded bg-surface-input border border-border-default text-content-secondary font-mono">
-                                  {i.equipment?.name || i.equipment?.code}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-border-default flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedJob(job)}
-                            className="text-xs text-content-secondary hover:text-amber-500"
-                          >
-                            View Details
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAssigningJob(job);
-                              setAssignedUserId('');
-                            }}
-                            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20"
-                          >
-                            <UserCheck className="h-3.5 w-3.5" />
-                            Assign Lead Engineer
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Already Dispatched Orders Table */}
-              <div className="mt-8 space-y-3">
-                <h3 className="text-sm font-bold text-content-primary">Active Field Dispatches (Assigned Orders)</h3>
-                <Card noPadding>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-surface-card border-b border-border-default text-content-muted uppercase text-[10px] font-bold">
-                        <tr>
-                          <th className="p-3">Job #</th>
-                          <th className="p-3">Client</th>
-                          <th className="p-3">Designated Lead</th>
-                          <th className="p-3">Role</th>
-                          <th className="p-3">Site Location</th>
-                          <th className="p-3">Mobilization Date</th>
-                          <th className="p-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border-default/60">
-                        {records.filter(r => !!r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled').map((r) => {
-                          const staff = staffList.find(s => s.id === r.assigned_to) || r.assigned_to_user;
-                          return (
-                            <tr key={r.id} className="hover:bg-surface-card/60 transition-colors">
-                              <td className="p-3 font-semibold text-amber-500">{r.job_number}</td>
-                              <td className="p-3 font-medium text-content-primary">{r.customer_name}</td>
-                              <td className="p-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-6 w-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-[10px]">
-                                    {staff?.name?.charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="font-semibold text-content-primary">{staff?.name || 'Assigned'}</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-content-secondary capitalize">{staff?.role?.replaceAll('_', ' ') || '-'}</td>
-                              <td className="p-3 text-content-secondary truncate max-w-[150px]">📍 {r.location || 'Site'}</td>
-                              <td className="p-3 text-content-secondary font-mono">
-                                {r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString() : 'Pending'}
-                              </td>
-                              <td className="p-3 text-right">
-                                <button
-                                  onClick={() => {
-                                    setAssigningJob(r);
-                                    setAssignedUserId(String(r.assigned_to));
-                                  }}
-                                  className="text-amber-500 hover:underline font-semibold text-[11px]"
-                                >
-                                  Reassign Staff
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: SCHEDULING & MOBILIZATION LOGISTICS BOARD */}
-          {activeTab === 'scheduling' && (
-            <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-surface-card border border-border-default flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-sm font-bold text-content-primary flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-amber-500" />
-                    Fleet Mobilization & Site Deployment Cockpit
-                  </h3>
-                  <p className="text-xs text-content-secondary mt-0.5">
-                    Track equipment haulage, on-site heavy crane assembly, gate pass clearances, and project execution timelines.
+                  <p className="text-xs text-content-secondary max-w-3xl">
+                    Commercial tracking of Job Orders forwarded to the <strong className="text-content-primary">Operations & Dispatch Department</strong>. Sales Management maintains oversight of mobilization milestones, crane erection, and safety compliance without direct driver, rigger, or fleet dispatching.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-xs font-bold">
-                    {records.filter(r => r.status === 'in-progress').length} Fleets Active On-Site
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs font-bold flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+                    {records.filter(r => r.status === 'in-progress' || r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').length} Active in Operations
                   </span>
                 </div>
               </div>
 
-              {/* Mobilization Columns / Stages */}
+              {/* Inter-Department Coordination Cards (Sales Commercial Oversight vs Operations Execution vs Finance) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-surface-card border border-border-default space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Sales & Commercial</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400">Sales Department</span>
+                  </div>
+                  <p className="text-xs font-bold text-content-primary">Customer Scoping & JO Registration</p>
+                  <p className="text-[11px] text-content-secondary">
+                    Quote acceptance, Down Payment verification, technical specs definition, DOLE safety requirements, and commercial authorization.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-surface-card border border-border-default space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Operations & Dispatch</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400">Operations Department</span>
+                  </div>
+                  <p className="text-xs font-bold text-content-primary">Personnel & Equipment Dispatching</p>
+                  <p className="text-[11px] text-content-secondary">
+                    Crane operator, supervisor & driver assignment, heavy haulage mobilization trips, and on-site assembly.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-surface-card border border-border-default space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Finance & Billing</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400">Finance Department</span>
+                  </div>
+                  <p className="text-xs font-bold text-content-primary">Billing & Payment Collection</p>
+                  <p className="text-[11px] text-content-secondary">
+                    Accounts Receivable (AR) invoicing, progress billing releases, and payment receipts once CSAT is closed.
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Columns: 1. Awaiting Operations Dispatch | 2. On-Site Mobilization & Execution | 3. Operations Handshake Dossier */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* 1. Needs Schedule */}
+                {/* Column 1: Awaiting Operations Dispatch */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-border-default">
                     <div className="flex items-center gap-2">
                       <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">Needs Mobilization Date</h4>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">Awaiting Operations Dispatch</h4>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-card text-content-muted">
-                      {records.filter(r => !r.scheduled_date && (r.status === 'approved' || r.status === 'pending')).length}
+                      {records.filter(r => r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').length}
                     </span>
                   </div>
 
-                  {records.filter(r => !r.scheduled_date && (r.status === 'approved' || r.status === 'pending')).map(job => (
-                    <div key={job.id} className="p-4 rounded-2xl bg-surface-card border border-border-default hover:border-amber-500/40 transition-all space-y-3">
-                      <div>
-                        <span className="text-xs font-bold text-amber-500">{job.job_number}</span>
-                        <h5 className="font-semibold text-content-primary text-xs mt-0.5">{job.customer_name}</h5>
-                        <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
-                          {job.location || 'Location not set'}
-                        </p>
-                      </div>
-
-                      <div className="pt-2 border-t border-border-default flex items-center justify-between">
-                        <span className="text-[10px] text-content-muted">Target: {job.due_date ? new Date(job.due_date).toLocaleDateString() : 'TBD'}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSchedulingJob(job);
-                            setScheduleData({
-                              scheduled_date: job.scheduled_date || '',
-                              start_date: job.start_date || '',
-                              due_date: job.due_date || '',
-                              location: job.location || '',
-                              notes: job.notes || '',
-                            });
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] flex items-center gap-1 transition-all"
-                        >
-                          <Calendar className="h-3 w-3" /> Set Date
-                        </button>
-                      </div>
+                  {records.filter(r => r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').length === 0 ? (
+                    <div className="p-6 text-center rounded-2xl bg-surface-card border border-border-default">
+                      <CheckCircle className="h-8 w-8 text-emerald-400/60 mx-auto mb-2" />
+                      <p className="text-xs font-semibold text-content-primary">No orders awaiting dispatch</p>
+                      <p className="text-[11px] text-content-secondary mt-1">All approved orders have been mobilized or completed.</p>
                     </div>
-                  ))}
-                </div>
-
-                {/* 2. Mobilization Scheduled */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-border-default">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2.5 w-2.5 rounded-full bg-blue-400" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">Scheduled for Mobilization</h4>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-card text-content-muted">
-                      {records.filter(r => !!r.scheduled_date && r.status === 'approved').length}
-                    </span>
-                  </div>
-
-                  {records.filter(r => !!r.scheduled_date && r.status === 'approved').map(job => (
-                    <div key={job.id} className="p-4 rounded-2xl bg-surface-card border border-blue-500/30 hover:border-blue-500/60 transition-all space-y-3">
-                      <div>
+                  ) : (
+                    records.filter(r => r.status === 'approved' || r.status === 'registered' || r.status === 'pending_dispatch').map(job => (
+                      <div key={job.id} className="p-4 rounded-2xl bg-surface-card border border-amber-500/30 hover:border-amber-500/60 transition-all space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-amber-500">{job.job_number}</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-semibold">
-                            {new Date(job.scheduled_date!).toLocaleDateString()}
+                          <span className="text-xs font-bold text-amber-500 font-mono">{job.job_number}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                            Forwarded to Ops
                           </span>
                         </div>
-                        <h5 className="font-semibold text-content-primary text-xs mt-1">{job.customer_name}</h5>
-                        <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
-                          {job.location}
-                        </p>
-                      </div>
 
-                      {job.notes && (
-                        <p className="text-[10px] text-content-secondary bg-surface-input p-2 rounded-lg border border-border-default/60 line-clamp-2">
-                          {job.notes}
-                        </p>
-                      )}
+                        <div>
+                          <h5 className="font-semibold text-content-primary text-xs">{job.customer_name}</h5>
+                          <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+                            {job.location || 'Construction Site Address Pending'}
+                          </p>
+                          <p className="text-xs text-content-secondary mt-2 line-clamp-2 bg-surface-input p-2 rounded-xl border border-border-default/60">
+                            {job.description}
+                          </p>
+                        </div>
 
-                      <div className="pt-2 border-t border-border-default flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSchedulingJob(job);
-                            setScheduleData({
-                              scheduled_date: job.scheduled_date || '',
-                              start_date: job.start_date || '',
-                              due_date: job.due_date || '',
-                              location: job.location || '',
-                              notes: job.notes || '',
-                            });
-                          }}
-                          className="text-[11px] text-content-muted hover:text-amber-500"
-                        >
-                          Reschedule
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeployNow(job)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-[11px] flex items-center gap-1 transition-all shadow-sm"
-                        >
-                          <Truck className="h-3 w-3" /> Mobilize Now
-                        </button>
+                        {job.job_order_items && job.job_order_items.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {job.job_order_items.map((i) => (
+                              <span key={i.id} className="text-[10px] px-2 py-0.5 rounded bg-surface-input border border-border-default text-content-secondary font-mono">
+                                {i.equipment?.name || i.equipment?.code}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-border-default flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-content-muted">
+                            Target: {job.due_date ? new Date(job.due_date).toLocaleDateString() : 'TBD'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedJob(job)}
+                              className="text-[11px] text-content-secondary hover:text-amber-500 font-medium"
+                            >
+                              View Dossier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHandoffModalJob(job)}
+                              className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[10px] font-bold flex items-center gap-1 transition-all"
+                            >
+                              <Send className="h-3 w-3" /> Re-sync
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
-                {/* 3. On-Site Active Execution */}
+                {/* Column 2: On-Site Mobilization & Assembly (Active) */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-border-default">
                     <div className="flex items-center gap-2">
                       <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">On-Site Execution (Active)</h4>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">On-Site Execution & Erection</h4>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
                       {records.filter(r => r.status === 'in-progress').length}
                     </span>
                   </div>
 
-                  {records.filter(r => r.status === 'in-progress').map(job => (
-                    <div key={job.id} className="p-4 rounded-2xl bg-surface-card border border-emerald-500/30 hover:border-emerald-500/60 transition-all space-y-3">
-                      <div>
+                  {records.filter(r => r.status === 'in-progress').length === 0 ? (
+                    <div className="p-6 text-center rounded-2xl bg-surface-card border border-border-default">
+                      <Clock className="h-8 w-8 text-content-muted mx-auto mb-2" />
+                      <p className="text-xs font-semibold text-content-primary">No active on-site jobs right now</p>
+                      <p className="text-[11px] text-content-secondary mt-1">Orders dispatched by Operations will appear here.</p>
+                    </div>
+                  ) : (
+                    records.filter(r => r.status === 'in-progress').map(job => (
+                      <div key={job.id} className="p-4 rounded-2xl bg-surface-card border border-emerald-500/30 hover:border-emerald-500/60 transition-all space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-amber-500">{job.job_number}</span>
+                          <span className="text-xs font-bold text-amber-500 font-mono">{job.job_number}</span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                            In-Progress
+                            On-Site Active
                           </span>
                         </div>
-                        <h5 className="font-semibold text-content-primary text-xs mt-1">{job.customer_name}</h5>
-                        <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
-                          {job.location}
-                        </p>
-                      </div>
 
-                      <div className="bg-surface-input p-2.5 rounded-xl border border-border-default/60 space-y-1 text-[11px]">
-                        <div className="flex justify-between text-content-muted">
-                          <span>Mobilized Since:</span>
-                          <span className="font-mono text-content-primary">{job.start_date ? new Date(job.start_date).toLocaleDateString() : 'Active'}</span>
+                        <div>
+                          <h5 className="font-semibold text-content-primary text-xs">{job.customer_name}</h5>
+                          <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+                            {job.location}
+                          </p>
                         </div>
-                        <div className="flex justify-between text-content-muted">
-                          <span>Target Due:</span>
-                          <span className="font-mono text-content-primary">{job.due_date ? new Date(job.due_date).toLocaleDateString() : 'Open'}</span>
-                        </div>
-                      </div>
 
-                      <div className="pt-2 border-t border-border-default flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedJob(job)}
-                          className="text-[11px] text-content-secondary hover:text-amber-500"
-                        >
-                          View Site Dossier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStatusTransition(job.id, 'completed')}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-[11px] flex items-center gap-1 transition-all"
-                        >
-                          <CheckCircle className="h-3 w-3" /> Complete & Demobilize
-                        </button>
+                        <div className="bg-surface-input p-2.5 rounded-xl border border-border-default/60 space-y-1 text-[11px]">
+                          <div className="flex justify-between text-content-muted">
+                            <span>Mobilized Since:</span>
+                            <span className="font-mono text-content-primary">{job.start_date ? new Date(job.start_date).toLocaleDateString() : 'In Progress'}</span>
+                          </div>
+                          <div className="flex justify-between text-content-muted">
+                            <span>Target Completion:</span>
+                            <span className="font-mono text-content-primary">{job.due_date ? new Date(job.due_date).toLocaleDateString() : 'TBD'}</span>
+                          </div>
+                          <div className="flex justify-between text-content-muted">
+                            <span>DOLE Safety Permit:</span>
+                            <span className="text-emerald-400 font-bold">100% Verified</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-border-default flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedJob(job)}
+                            className="text-[11px] text-content-secondary hover:text-amber-500 font-medium"
+                          >
+                            View Site Dossier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusTransition(job.id, 'completed')}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <CheckCircle className="h-3 w-3" /> Mark Completed
+                          </button>
+                        </div>
                       </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Column 3: Handoff & Dispatch Interface Dossier */}
+                <div className="space-y-3">
+                  <div className="pb-2 border-b border-border-default flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-content-primary">Operations Dispatch Transmission Log</h4>
+                    <span className="text-[10px] font-mono text-content-muted">Standard Operating Protocol</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-surface-card border border-border-default space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] space-y-1">
+                      <p className="font-bold flex items-center gap-1.5 text-blue-400">
+                        <Info className="h-3.5 w-3.5" />
+                        Service & Coordination Protocol
+                      </p>
+                      <p className="text-[10px] text-content-secondary leading-relaxed">
+                        Sales Manager creates official Job Orders once down payment is secured, transmitting technical specs (boom height, load charts, attachments) to Operations for trip scheduling and assembly.
+                      </p>
                     </div>
-                  ))}
+
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-content-primary uppercase">Transmitted Data Elements to Operations:</p>
+                      <ul className="space-y-1 text-[11px] text-content-secondary">
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>Customer Name & Verified Site Address</span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>Service Task Type (Erection / Dismantling / Rigging)</span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>Required Crane Model & Mast/Jib Configuration</span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>DOLE Safety Directives & PPE Compliance Terms</span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>Official Sales Manager Authorization Stamp</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-surface-input border border-border-default/60 text-[10px] font-mono text-content-muted">
+                      <p className="text-amber-400 font-bold mb-1">// Operations Department Handshake Status</p>
+                      <p>ENDPOINT: /api/operations/dispatch-queue</p>
+                      <p>STATUS: OPERATIONAL (200 OK)</p>
+                      <p>DISPATCH TARGET: Operations & Dispatch Department</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1694,8 +1537,8 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.print()}
-                    title="Print Official Work Order Slip"
+                    onClick={() => selectedJob && setPrintingJob(selectedJob)}
+                    title="Print Official Work Order Document"
                   >
                     <Printer className="h-3.5 w-3.5 mr-1.5" />
                     Print Work Order
@@ -1711,11 +1554,26 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                     </Link>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => selectedJob && setEditingJob({ ...selectedJob })}>
-                    <Edit2 className="h-3.5 w-3.5 mr-1.5" />
-                    Edit Order
-                  </Button>
+                <div className="flex items-center gap-2">
+                  {isSalesManager && (selectedJob?.status === 'pending' || selectedJob?.status === 'draft') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleStatusTransition(selectedJob.id, 'approved');
+                        setSelectedJob(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Authorize & Approve
+                    </button>
+                  )}
+                  {selectedJob?.status !== 'completed' && selectedJob?.status !== 'cancelled' && (
+                    <Button variant="outline" onClick={() => selectedJob && setEditingJob({ ...selectedJob })}>
+                      <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                      Edit Order
+                    </Button>
+                  )}
                   <Button onClick={() => setSelectedJob(null)}>Close</Button>
                 </div>
               </div>
@@ -1749,29 +1607,29 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   </div>
                 </div>
 
-                {/* 2. Visual 5-Stage Lifecycle Stepper */}
+                {/* 2. Visual 5-Stage Commercial Lifecycle Stepper */}
                 <div className="p-4 rounded-2xl bg-surface-input border border-border-default/60">
-                  <p className="text-[10px] font-bold uppercase text-content-muted mb-3">Work Order Lifecycle Flow</p>
+                  <p className="text-[10px] font-bold uppercase text-content-muted mb-3">Commercial Work Order Lifecycle Flow</p>
                   <div className="grid grid-cols-5 gap-2 text-center text-[10px]">
                     <div className={`p-2 rounded-xl ${selectedJob.status !== 'cancelled' ? 'bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30' : 'bg-surface-card text-content-muted'}`}>
-                      1. Requested
+                      1. Scoped & Created
                     </div>
                     <div className={`p-2 rounded-xl ${selectedJob.status !== 'draft' && selectedJob.status !== 'pending' && selectedJob.status !== 'cancelled' ? 'bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30' : 'bg-surface-card text-content-muted'}`}>
-                      2. Approved
+                      2. Sales Authorized
                     </div>
-                    <div className={`p-2 rounded-xl ${selectedJob.assigned_to ? 'bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30' : 'bg-surface-card text-content-muted'}`}>
-                      3. Staff Assigned
+                    <div className={`p-2 rounded-xl ${selectedJob.status === 'approved' || selectedJob.status === 'registered' || selectedJob.status === 'pending_dispatch' || selectedJob.status === 'in-progress' || selectedJob.status === 'completed' ? 'bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30' : 'bg-surface-card text-content-muted'}`}>
+                      3. Forwarded to Ops
                     </div>
                     <div className={`p-2 rounded-xl ${selectedJob.status === 'in-progress' || selectedJob.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30' : 'bg-surface-card text-content-muted'}`}>
-                      4. Site Mobilized
+                      4. On-Site Mobilized
                     </div>
                     <div className={`p-2 rounded-xl ${selectedJob.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30' : 'bg-surface-card text-content-muted'}`}>
-                      5. Done & CSAT
+                      5. Closed & Billed
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Client, Logistics & Staff Assignment Grid */}
+                {/* 3. Client, Logistics & Operations Coordination Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Client & Site Logistics */}
                   <div className="p-4 rounded-2xl bg-surface-card border border-border-default space-y-2">
@@ -1796,52 +1654,47 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                     </div>
                   </div>
 
-                  {/* Designated Lead Engineer Card */}
+                  {/* Operations Coordination Card */}
                   <div className="p-4 rounded-2xl bg-surface-card border border-border-default space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-content-primary flex items-center gap-1.5 text-xs">
-                        <UserCheck className="h-4 w-4 text-blue-400" />
-                        Designated Technical Lead
+                        <Activity className="h-4 w-4 text-blue-400" />
+                        Operations & Dispatch Coordination
                       </h4>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAssigningJob(selectedJob);
-                          setAssignedUserId(String(selectedJob.assigned_to || ''));
-                        }}
-                        className="text-[11px] font-bold text-amber-500 hover:underline"
-                      >
-                        {selectedJob.assigned_to ? 'Change Lead' : '+ Assign Lead'}
-                      </button>
+                      {selectedJob?.status !== 'completed' && selectedJob?.status !== 'cancelled' && (
+                        <button
+                          type="button"
+                          onClick={() => setHandoffModalJob(selectedJob)}
+                          className="text-[11px] font-bold text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Send className="h-3 w-3" /> Transmit to Ops
+                        </button>
+                      )}
                     </div>
 
-                    {selectedJob.assigned_to ? (
-                      <div className="p-3 rounded-xl bg-surface-input border border-border-default/60 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-sm shrink-0">
-                          {staffList.find(s => s.id === selectedJob.assigned_to)?.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div>
-                          <p className="font-bold text-content-primary text-xs">
-                            {staffList.find(s => s.id === selectedJob.assigned_to)?.name || 'Assigned Staff'}
-                          </p>
-                          <p className="text-[11px] text-content-muted capitalize">
-                            {staffList.find(s => s.id === selectedJob.assigned_to)?.role?.replaceAll('_', ' ')}
-                          </p>
-                          <p className="text-[10px] text-content-secondary font-mono mt-0.5">
-                            {staffList.find(s => s.id === selectedJob.assigned_to)?.email}
-                          </p>
-                        </div>
+                    <div className="p-3 rounded-xl bg-surface-input border border-border-default/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-content-muted">Operations Unit</span>
+                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">Operations & Dispatch Department</span>
                       </div>
-                    ) : (
-                      <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
-                        <p className="text-xs font-semibold text-rose-400">No Lead Engineer Assigned</p>
-                        <p className="text-[11px] text-content-secondary mt-1">Designate a technical specialist to supervise site operations.</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-content-muted">Operational Status</span>
+                        <span className="text-xs font-semibold text-content-primary">
+                          {selectedJob.status === 'completed' ? 'Completed & Demobilized' :
+                           selectedJob.status === 'in-progress' ? 'Active On-Site Erection' :
+                           selectedJob.status === 'approved' || selectedJob.status === 'registered' || selectedJob.status === 'pending_dispatch' ? 'Forwarded — Pending Field Dispatch' :
+                           'Awaiting Sales Manager Authorization'}
+                        </span>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-content-muted">DOLE Safety Compliance</span>
+                        <span className="text-xs font-semibold text-emerald-400">100% Verified</span>
+                      </div>
+                    </div>
 
                     <div className="text-[11px] text-content-secondary space-y-1">
-                      <p><strong className="text-content-primary">Priority Level:</strong> <span className="capitalize font-bold text-amber-500">{selectedJob.priority || 'Medium'}</span></p>
-                      <p><strong className="text-content-primary">Order Creator:</strong> {selectedJob.creator?.name || 'Sales Representative'}</p>
+                      <p><strong className="text-content-primary">Commercial Priority:</strong> <span className="capitalize font-bold text-amber-500">{selectedJob.priority || 'Medium'}</span></p>
+                      <p><strong className="text-content-primary">Registered By:</strong> {selectedJob.creator?.name || 'Sales Management'}</p>
                     </div>
                   </div>
                 </div>
@@ -1853,13 +1706,15 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                       <Layers className="h-4 w-4 text-amber-500" />
                       Allocated Heavy Equipment & Line Items (BOM)
                     </h4>
-                    <button
-                      type="button"
-                      onClick={() => setAddingEquipmentJob(selectedJob)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
-                    >
-                      <Plus className="h-3 w-3" /> Add Equipment to Order
-                    </button>
+                    {selectedJob?.status !== 'completed' && selectedJob?.status !== 'cancelled' && (
+                      <button
+                        type="button"
+                        onClick={() => setAddingEquipmentJob(selectedJob)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
+                      >
+                        <Plus className="h-3 w-3" /> Add Equipment to Order
+                      </button>
+                    )}
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-border-default bg-surface-card">
@@ -1899,14 +1754,18 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                                 {formatPeso(Number(item.total_price))}
                               </td>
                               <td className="p-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteEquipmentItem(selectedJob.id, item.id)}
-                                  className="text-rose-400 hover:text-rose-300 p-1"
-                                  title="Remove item"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                {selectedJob?.status !== 'completed' && selectedJob?.status !== 'cancelled' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteEquipmentItem(selectedJob.id, item.id)}
+                                    className="text-rose-400 hover:text-rose-300 p-1"
+                                    title="Remove item"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : (
+                                  <span className="text-content-muted text-[10px]">—</span>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -2084,126 +1943,6 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </form>
           </Modal>
 
-          {/* ASSIGN PERSONNEL MODAL */}
-          <Modal
-            isOpen={!!assigningJob}
-            onClose={() => setAssigningJob(null)}
-            title={`Assign Staff Lead: ${assigningJob?.job_number || ''}`}
-            size="md"
-            footer={
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setAssigningJob(null)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAssignStaff} loading={saving} disabled={!assignedUserId}>
-                  Confirm Dispatch
-                </Button>
-              </div>
-            }
-          >
-            <div className="space-y-4 text-xs">
-              <p className="text-content-secondary">
-                Select a certified field engineer or operations manager to oversee the execution, rigging, and safety standards of this work order.
-              </p>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Designated Staff Member *
-                </label>
-                <select
-                  required
-                  value={assignedUserId}
-                  onChange={(e) => setAssignedUserId(e.target.value)}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2.5 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                >
-                  <option value="">-- Choose Personnel --</option>
-                  {staffList.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email}) - {user.role.replaceAll('_', ' ')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </Modal>
-
-          {/* SCHEDULE & MOBILIZE MODAL */}
-          <Modal
-            isOpen={!!schedulingJob}
-            onClose={() => setSchedulingJob(null)}
-            title={`Mobilization & Site Schedule: ${schedulingJob?.job_number || ''}`}
-            size="lg"
-            footer={
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setSchedulingJob(null)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleScheduleOrder} loading={saving}>
-                  Save Schedule
-                </Button>
-              </div>
-            }
-          >
-            <form onSubmit={handleScheduleOrder} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Scheduled Mobilization Date
-                </label>
-                <input
-                  type="date"
-                  value={scheduleData.scheduled_date ? scheduleData.scheduled_date.slice(0, 10) : ''}
-                  onChange={(e) => setScheduleData({ ...scheduleData, scheduled_date: e.target.value })}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Execution Start Date (Sets to In-Progress)
-                </label>
-                <input
-                  type="date"
-                  value={scheduleData.start_date ? scheduleData.start_date.slice(0, 10) : ''}
-                  onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Target Completion Due Date
-                </label>
-                <input
-                  type="date"
-                  value={scheduleData.due_date ? scheduleData.due_date.slice(0, 10) : ''}
-                  onChange={(e) => setScheduleData({ ...scheduleData, due_date: e.target.value })}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Project Site Location
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Fairview Commercial Complex, QC"
-                  value={scheduleData.location}
-                  onChange={(e) => setScheduleData({ ...scheduleData, location: e.target.value })}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">
-                  Logistics & Transport Notes
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Heavy haulage permits, MMDA night transport coordination, security gate pass requirements..."
-                  value={scheduleData.notes}
-                  onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-            </form>
-          </Modal>
-
           {/* CREATE JOB ORDER MODAL */}
           <Modal
             isOpen={creatingJob}
@@ -2243,6 +1982,22 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                       {c.company_name || c.name}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">Service Task Type *</label>
+                <select
+                  required
+                  value={newJob.service_type}
+                  onChange={(e) => setNewJob({ ...newJob, service_type: e.target.value })}
+                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2.5 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
+                >
+                  <option value="Tower Crane Erection">Tower Crane Erection</option>
+                  <option value="Tower Crane Dismantling">Tower Crane Dismantling</option>
+                  <option value="Preventative Maintenance & Inspection">Preventative Maintenance & Inspection</option>
+                  <option value="Mobile Crane Rigging & Lifting">Mobile Crane Rigging & Lifting</option>
+                  <option value="Equipment Mobilization & Hauling">Equipment Mobilization & Hauling</option>
+                  <option value="General Commercial Rental">General Commercial Rental</option>
                 </select>
               </div>
               <div>
@@ -2304,6 +2059,25 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                   placeholder="Detailed engineering scope, crane height, load capacity, core wall requirements..."
                   value={newJob.description}
                   onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
+                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">Equipment & Materials Required</label>
+                <input
+                  placeholder="e.g. 12T Flat Top Tower Crane, 50T Mobile Crane for Erection, 4x 50T Rigging Shackles..."
+                  value={newJob.required_equipment}
+                  onChange={(e) => setNewJob({ ...newJob, required_equipment: e.target.value })}
+                  className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">Safety Instructions & PPE Compliance (DOLE Guidelines)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. 100% Tie-off safety harness, Hard Hat, Steel toe boots required on-site. Gate pass & DOLE safety permit verified..."
+                  value={newJob.special_instructions}
+                  onChange={(e) => setNewJob({ ...newJob, special_instructions: e.target.value })}
                   className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
                 />
               </div>
@@ -2420,12 +2194,12 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           <Modal
             isOpen={!!handoffModalJob}
             onClose={() => setHandoffModalJob(null)}
-            title="Forward to Core 2 Dispatch (Operations Hand-off)"
+            title="Forward to Operations & Dispatch"
             size="lg"
             footer={
               <div className="flex items-center justify-between w-full">
                 <div className="text-xs text-content-muted">
-                  Receiving: <span className="font-semibold text-emerald-500">Core 2: Operations & Dispatch Department</span>
+                  Receiving: <span className="font-semibold text-emerald-500">Operations & Dispatch Department</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => setHandoffModalJob(null)}>
@@ -2436,7 +2210,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                     onClick={async () => {
                       if (handoffModalJob) {
                         await handleStatusTransition(handoffModalJob.id, 'pending_dispatch');
-                        setMessage(`Job Order ${handoffModalJob.job_number} forwarded to Core 2 Dispatch! Status updated to Pending Core 2 Dispatch.`);
+                        setMessage(`Job Order ${handoffModalJob.job_number} forwarded to Operations & Dispatch! Status updated to Pending Operations Dispatch.`);
                         setHandoffModalJob(null);
                         setTimeout(() => setMessage(''), 5000);
                       }
@@ -2444,7 +2218,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5 mr-1" />
-                    Forward to Core 2 Dispatch
+                    Forward to Operations
                   </Button>
                 </div>
               </div>
@@ -2489,9 +2263,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                 </div>
 
                 <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-600 dark:text-blue-300">
-                  <strong>Core 2 Operations Integration Protocol:</strong>
+                  <strong>Operations & Dispatch Integration Protocol:</strong>
                   <ul className="mt-1 list-disc list-inside space-y-0.5 text-content-secondary text-[10px]">
-                    <li>Direct status hand-off to Core 2: Operations & Dispatch</li>
+                    <li>Direct status hand-off to Operations & Dispatch Department</li>
                     <li>Hands off site technical specs and mobilized equipment requirements for scheduling</li>
                   </ul>
                 </div>
@@ -2500,6 +2274,14 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           </Modal>
         </div>
       </AppLayout>
+
+      {/* Print Work Order Document Overlay */}
+      {printingJob && (
+        <WorkOrderPrint
+          job={printingJob}
+          onClose={() => setPrintingJob(null)}
+        />
+      )}
     </>
   );
 };

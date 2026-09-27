@@ -20,8 +20,8 @@ class SubsystemIntegrationController extends Controller
     /**
      * 1. EXTERNAL CUSTOMER INQUIRY INTAKE (Alibaton Website: https://alibaton.com.ph/)
      *
-     * Core 1 receives inquiry from the external website.
-     * The website itself is NOT part of Core 1; Core 1 only processes inquiry info.
+     * Sales & Commercial Department receives inquiries from the external corporate website.
+     * The website itself is NOT internal; the department processes inquiry records into leads and opportunities.
      * Flow: WEBSITE INQUIRY -> CRM -> LEAD/OPPORTUNITY -> CUSTOMER -> CLIENT -> QUOTATION
      */
     public function ingestWebsiteInquiry(Request $request)
@@ -91,11 +91,11 @@ class SubsystemIntegrationController extends Controller
     }
 
     /**
-     * 2. CORE TRANSACTION 2 (OPERATIONS) INTEGRATION
+     * 2. OPERATIONS & DISPATCH DEPARTMENT INTEGRATION
      *
-     * Core 1 SENDS: Job Order information, equipment requirements, rental requirements,
+     * Sales & Commercial SENDS: Job Order information, equipment requirements, rental requirements,
      * dates, location, service requirements.
-     * Core 1 does NOT perform dispatch, driver assignment, or equipment operations.
+     * Sales does NOT perform dispatch, driver assignment, or equipment operations.
      */
     public function submitJobOrderToOperations(Request $request, JobOrder $jobOrder)
     {
@@ -113,18 +113,18 @@ class SubsystemIntegrationController extends Controller
         $jobOrder->update([
             'status' => 'submitted',
             'operations_submitted_at' => now(),
-            'operational_status' => 'Transmitted to Core 2 — Operations & Dispatch Management',
-            'dispatch_status' => 'Pending Core 2 Dispatch Schedule',
-            'operational_equipment_status' => 'Allocating Heavy Equipment in Core 2 Yard',
+            'operational_status' => 'Transmitted to Operations & Dispatch Department',
+            'dispatch_status' => 'Pending Operations Dispatch Schedule',
+            'operational_equipment_status' => 'Allocating Heavy Equipment in Operations Yard',
             'special_instructions' => $validated['special_instructions'] ?? $jobOrder->special_instructions,
             'job_requirements' => $validated['job_requirements'] ?? $jobOrder->job_requirements,
             'service_type' => $validated['service_type'] ?? $jobOrder->service_type,
         ]);
 
-        // Build structured payload handed off to Core 2 Operations
+        // Build structured payload handed off to Operations & Dispatch
         $operationalHandoffPayload = [
-            'subsystem_source' => 'Core Transaction 1 — Sales, Customer & Job Order Management',
-            'subsystem_destination' => 'Core Transaction 2 — Operations, Dispatch & Resource Management',
+            'subsystem_source' => 'Sales & Commercial Department',
+            'subsystem_destination' => 'Operations & Dispatch Department',
             'handed_off_at' => now()->toIso8601String(),
             'handed_off_by' => [
                 'id' => $user->id,
@@ -173,17 +173,17 @@ class SubsystemIntegrationController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Job Order successfully submitted to Core Transaction 2 (Operations).',
+            'message' => 'Job Order successfully submitted to Operations & Dispatch Department.',
             'job_order' => $jobOrder->fresh()->load(['customer', 'project', 'quotation', 'jobOrderItems.equipment']),
             'handoff_payload' => $operationalHandoffPayload,
         ]);
     }
 
     /**
-     * 2.1 RECEIVE OPERATIONAL STATUS UPDATE FROM CORE 2 (OPERATIONS)
+     * 2.1 RECEIVE OPERATIONAL STATUS UPDATE FROM OPERATIONS & DISPATCH
      *
      * Operations returns schedule/dispatch status, equipment status, assignment info,
-     * job progress, and completion details to Core 1 for read/monitoring only.
+     * job progress, and completion details to Sales for read/monitoring only.
      */
     public function receiveOperationsStatus(Request $request, JobOrder $jobOrder)
     {
@@ -217,23 +217,23 @@ class SubsystemIntegrationController extends Controller
             'operational_status_received',
             JobOrder::class,
             $jobOrder->id,
-            "Received operational telemetry from Core 2 for Job Order {$jobOrder->job_order_number}: {$validated['operational_status']}",
+            "Received operational telemetry from Operations & Dispatch for Job Order {$jobOrder->job_order_number}: {$validated['operational_status']}",
             null,
             $validated
         );
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Operational status updated from Core Transaction 2.',
+            'message' => 'Operational status updated from Operations & Dispatch Department.',
             'job_order' => $jobOrder->fresh()->load(['customer', 'project', 'quotation']),
         ]);
     }
 
     /**
-     * 3. GROUP 185 CONNECTION: FINANCIAL MANAGEMENT SYSTEM (TRANSACTION CORE)
+     * 3. FINANCE & BILLING DEPARTMENT INTEGRATION
      *
      * IMPORTANT REQUIREMENT:
-     * Core Transaction 1 provides ONLY CUSTOMER MASTER DATA to Group 185.
+     * Sales & Commercial Department provides ONLY CUSTOMER MASTER DATA to Finance & Billing.
      * DO NOT send financial transactions (No AR, No collection, No disbursements, No billing).
      */
     public function syncCustomerMasterToGroup185(Request $request, Customer $customer)
@@ -245,7 +245,7 @@ class SubsystemIntegrationController extends Controller
 
         // STRICT ENFORCEMENT: ONLY CUSTOMER MASTER DATA
         $masterDataPayload = [
-            'target_subsystem' => 'Group 185 — Financial Management System (Transaction Core)',
+            'target_subsystem' => 'Finance & Billing Department (Financial Management System)',
             'data_classification' => 'CUSTOMER_MASTER_DATA_ONLY',
             'synced_at' => now()->toIso8601String(),
             'synced_by' => [
@@ -279,11 +279,11 @@ class SubsystemIntegrationController extends Controller
                 'billing_included' => false,
                 'collections_included' => false,
                 'financial_transactions_included' => false,
-                'notice' => 'Strict Core 1 to Group 185 boundary enforced. Financial transactions remain owned by Group 185.',
+                'notice' => 'Strict Sales to Finance boundary enforced. Financial transactions remain owned by Finance & Billing Department.',
             ],
         ];
 
-        $refId = 'G185-CUS-' . str_pad($customer->id, 5, '0', STR_PAD_LEFT);
+        $refId = 'FIN-CUS-' . str_pad($customer->id, 5, '0', STR_PAD_LEFT);
         $customer->update([
             'group185_synced_at' => now(),
             'group185_reference_id' => $refId,
@@ -291,17 +291,17 @@ class SubsystemIntegrationController extends Controller
 
         ActivityLogService::log(
             $user,
-            'group185_master_data_sync',
+            'finance_master_data_sync',
             Customer::class,
             $customer->id,
-            "Customer Master Data for '{$customer->name}' synchronized to Group 185 (Financial Management).",
+            "Customer Master Data for '{$customer->name}' synchronized to Finance & Billing Department.",
             null,
             $masterDataPayload
         );
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Customer master data synchronized to Group 185 Financial Management System.',
+            'message' => 'Customer master data synchronized to Finance & Billing Department.',
             'group185_reference_id' => $refId,
             'payload' => $masterDataPayload,
         ]);

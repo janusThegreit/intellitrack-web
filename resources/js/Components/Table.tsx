@@ -9,6 +9,7 @@ export interface TableColumn<T> {
   render?: (value: any, row: T) => React.ReactNode;
   className?: string;
   width?: string;
+  stickyRight?: boolean;
 }
 
 interface TableProps<T> {
@@ -63,17 +64,19 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
 
     return (
       <div ref={ref} className="overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 shadow-sm backdrop-blur-md transition-all">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="border-b border-border-subtle/80 bg-surface-app/60 backdrop-blur-sm">
+        <div className="overflow-x-auto relative">
+          <table className="w-full text-left border-separate border-spacing-0">
+            <thead className="bg-surface-app/90 backdrop-blur-sm">
               <tr>
                 {columns.map((column) => (
                   <th
                     key={String(column.key)}
                     onClick={() => handleSort(column)}
                     className={clsx(
-                      'px-6 py-4 text-xs font-bold uppercase tracking-wider text-content-secondary select-none',
+                      compact ? 'px-3 py-2.5 text-[11px]' : 'px-4 py-3 text-xs',
+                      'font-bold uppercase tracking-wider text-content-secondary select-none border-b border-border-subtle/80',
                       column.sortable && 'cursor-pointer hover:text-amber-500 transition-colors',
+                      column.stickyRight && 'sticky right-0 z-20 bg-surface-card border-l border-border-default shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.35)]',
                       column.className
                     )}
                     style={column.width ? { width: column.width } : undefined}
@@ -86,10 +89,10 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-subtle/60">
+            <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-16 text-center">
+                  <td colSpan={columns.length} className="px-6 py-16 text-center border-b border-border-subtle/60">
                     <div className="flex flex-col justify-center items-center gap-3">
                       <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent shadow-sm shadow-amber-500/30" />
                       <span className="text-xs font-medium text-content-secondary">Fetching real-time records...</span>
@@ -99,14 +102,14 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
               )}
               {error && (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-12 text-center">
+                  <td colSpan={columns.length} className="px-6 py-12 text-center border-b border-border-subtle/60">
                     <p className="text-sm font-semibold text-rose-500">{error}</p>
                   </td>
                 </tr>
               )}
               {!loading && !error && (data.length === 0 || empty) && (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-16 text-center">
+                  <td colSpan={columns.length} className="px-6 py-16 text-center border-b border-border-subtle/60">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-input border border-border-default text-content-secondary">
                         <Inbox className="h-6 w-6" />
@@ -121,8 +124,8 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                   key={String(row[rowKey as keyof typeof row] || idx)}
                   onClick={() => onRowClick?.(row)}
                   className={clsx(
-                    'transition-colors duration-150',
-                    striped && idx % 2 === 0 ? 'bg-transparent' : 'bg-surface-app/40',
+                    'group transition-colors duration-150',
+                    striped && idx % 2 === 0 ? 'bg-surface-card' : 'bg-surface-app/40',
                     hoverable && 'cursor-pointer hover:bg-amber-500/5 dark:hover:bg-amber-500/10'
                   )}
                 >
@@ -130,8 +133,13 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                     <td
                       key={String(column.key)}
                       className={clsx(
-                        'px-6 text-sm text-content-primary',
-                        compact ? 'py-3' : 'py-4',
+                        compact ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm',
+                        'text-content-primary border-b border-border-subtle/60',
+                        column.stickyRight && clsx(
+                          'sticky right-0 z-10 border-l border-border-default shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.35)]',
+                          striped && idx % 2 === 0 ? 'bg-surface-card' : 'bg-[#0e1626] dark:bg-[#0e1626]',
+                          'group-hover:bg-amber-500/10'
+                        ),
                         column.className
                       )}
                     >

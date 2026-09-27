@@ -20,16 +20,22 @@ export const CrmNavTabs: React.FC<CrmNavTabsProps> = ({ actionButton }) => {
 
   const tabs = [
     {
-      label: 'Customers',
-      href: '/customers',
-      icon: <Users className="h-4 w-4" />,
-      active: currentPath === '/customers' || currentPath === '/crm/customers' || currentPath.startsWith('/customers/'),
-    },
-    {
       label: 'Inquiries',
       href: '/inquiries',
       icon: <MessageSquare className="h-4 w-4" />,
       active: currentPath === '/inquiries' || currentPath === '/crm' || currentPath === '/crm/inquiries' || currentPath.startsWith('/inquiries/'),
+    },
+    {
+      label: 'Customers & Clients',
+      href: '/customers',
+      icon: <Users className="h-4 w-4" />,
+      active: currentPath === '/customers' || currentPath === '/clients' || currentPath === '/crm/customers' || currentPath.startsWith('/customers') || currentPath.startsWith('/clients'),
+    },
+    {
+      label: 'Quotations',
+      href: '/quotations',
+      icon: <FileStack className="h-4 w-4" />,
+      active: currentPath === '/quotations' || currentPath === '/crm/quotations' || currentPath.startsWith('/quotations/'),
     },
     {
       label: 'Follow-Ups',
@@ -42,12 +48,6 @@ export const CrmNavTabs: React.FC<CrmNavTabsProps> = ({ actionButton }) => {
       href: '/crm/communications',
       icon: <Mail className="h-4 w-4" />,
       active: currentPath === '/crm/communications' || currentPath.startsWith('/crm/communications/'),
-    },
-    {
-      label: 'Quotations',
-      href: '/quotations',
-      icon: <FileStack className="h-4 w-4" />,
-      active: currentPath === '/quotations' || currentPath === '/crm/quotations' || currentPath.startsWith('/quotations/'),
     },
     {
       label: 'Feedback',

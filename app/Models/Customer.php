@@ -35,6 +35,7 @@ class Customer extends Model
         'credit_limit',
         'accreditation_status',
         'accreditation_valid_until',
+        'bidding_status',
         'notes',
         'project_location',
         'technical_requirements',

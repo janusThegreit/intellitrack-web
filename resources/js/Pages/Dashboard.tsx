@@ -24,7 +24,7 @@ import {
   History,
   Settings,
   Lock,
-  Calendar,
+  AlertTriangle,
   HardHat,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -169,7 +169,7 @@ interface FleetBreakdownProps {
   data: DashboardData | null;
 }
 
-const FleetAvailabilityBreakdown = ({ data }: FleetBreakdownProps) => {
+export const FleetAvailabilityBreakdown = ({ data }: FleetBreakdownProps) => {
   const totalFleet = data?.fleet_breakdown?.total_fleet ?? data?.total_equipment ?? 10;
   const availableUnits = data?.fleet_breakdown?.available ?? data?.available_equipment ?? 8;
   const deployedUnits =
@@ -457,6 +457,8 @@ const Dashboard = () => {
 
   const totalEquipment = data?.total_equipment || 24;
   const availableEquipment = data?.available_equipment || 18;
+  const rentedEquipment = Math.max(0, totalEquipment - availableEquipment);
+  const utilizationRate = totalEquipment > 0 ? Math.round((rentedEquipment / totalEquipment) * 100) : 0;
 
   if (loading) {
     if (isAdmin) {
@@ -852,7 +854,7 @@ const Dashboard = () => {
   }
 
   // =========================================================================
-  // SALES BUSINESS DEVELOPMENT (SBD) â€” CORE TRANSACTION 1 WORKSPACE
+  // SALES BUSINESS DEVELOPMENT (SBD) — SALES & COMMERCIAL WORKSPACE
   // =========================================================================
   if (isSBD || (data && !isAdmin && !isSalesManager && !data?.sales_manager_summary)) {
     const totalCustomers = data?.total_customers || 0;
@@ -867,7 +869,7 @@ const Dashboard = () => {
 
     return (
       <AppLayout title="Sales & CRM Workspace">
-        <Head title="Sales Business Development â€” Core Transaction 1" />
+        <Head title="Sales & Commercial Workspace" />
 
         <div className="space-y-8 pb-12">
           {/* SBD Hero Banner */}
@@ -882,7 +884,7 @@ const Dashboard = () => {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
                   </span>
-                  Core Transaction 1 â€” Sales, Customer & Job Order Management
+                  Sales & Commercial — Customer & Job Order Management
                 </div>
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                   Sales & CRM Workspace
@@ -927,7 +929,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Core 1 KPI Cards */}
+          {/* Sales KPI Cards */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {/* KPI 1: Customers */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/5">
@@ -941,7 +943,7 @@ const Dashboard = () => {
                 <span className="text-3xl font-extrabold tracking-tight text-content-primary">{totalCustomers}</span>
                 <span className="text-xs font-medium text-emerald-400">{activeClients} active</span>
               </div>
-              <p className="mt-2 text-xs text-content-secondary">Registered client accounts in Core 1</p>
+              <p className="mt-2 text-xs text-content-secondary">Registered client accounts in Sales & Commercial</p>
               <Link href="/customers" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-400 hover:underline">
                 View Clients <ArrowUpRight className="h-3 w-3" />
               </Link>
@@ -984,7 +986,7 @@ const Dashboard = () => {
               </div>
 
               <p className="mt-2 text-xs text-content-secondary">
-                Registered job orders under Core 1
+                Registered job orders in Sales & Commercial
               </p>
 
               <Link
@@ -1162,9 +1164,9 @@ const Dashboard = () => {
                           {job.status || 'draft'}
                         </span>
                         {job.operational_status && (
-
-                          â¬¡ {job.operational_status}
-                      </span>
+                          <span className="text-[9px] text-content-muted">
+                            &bull; {job.operational_status}
+                          </span>
                         )}
                     </div>
                     </div>
@@ -1190,7 +1192,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-content-primary">Rental Requirements</h3>
-                  <p className="text-xs text-content-secondary">Crane & Truck requirements registered by Core 1</p>
+                  <p className="text-xs text-content-secondary">Crane & Truck requirements registered by Sales & Commercial</p>
                 </div>
               </div>
               <Link href="/rentals" className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-1">
@@ -1283,6 +1285,12 @@ return (
               <Button variant="glass" size="md">
                 <MessageSquare className="h-4 w-4 text-amber-400" />
                 <span>New Inquiry</span>
+              </Button>
+            </Link>
+            <Link href="/job-orders">
+              <Button variant="glass" size="md">
+                <ClipboardList className="h-4 w-4 text-amber-400" />
+                <span>Job Orders</span>
               </Button>
             </Link>
           </div>
