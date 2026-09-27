@@ -857,13 +857,12 @@ const Login = () => {
                       <div>
                         <h3 className="text-lg font-bold text-white">Reset Password</h3>
                         <p className="text-xs text-amber-400/90 font-medium">
-                          Administrator Authorization Required
+                          Direct Registered Email Link
                         </p>
                       </div>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed mt-2">
-                      For enterprise security compliance, password resets are verified and authorized
-                      by an authorized <span className="text-[#f2b600] font-semibold">System Administrator</span>.
+                      Enter your registered work email address. We will dispatch a secure, single-use password reset link directly to your inbox.
                     </p>
                   </div>
 
@@ -871,14 +870,14 @@ const Login = () => {
                   <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400 space-y-1">
                     <div className="flex items-center gap-1.5 text-slate-200 font-semibold text-[11px]">
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>How it works:</span>
+                      <span>Direct Email Reset Flow:</span>
                     </div>
                     <p className="text-[11px] leading-relaxed">
-                      1. Submitting notifies all System Administrators immediately.
+                      1. A secure link will be sent to your registered work email.
                       <br />
-                      2. The administrator will issue a <strong className="text-slate-200">single-use one-time link</strong>.
+                      2. Click the link to securely set your new password.
                       <br />
-                      3. Once you reset your password, the link is permanently deactivated.
+                      3. All password modifications are audited and logged for system administrators.
                     </p>
                   </div>
 
@@ -921,14 +920,14 @@ const Login = () => {
                         className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5"
                         htmlFor="forgot-reason"
                       >
-                        Reason / Notes <span className="text-slate-500 font-normal">(Optional)</span>
+                        Reason / Remarks <span className="text-slate-500 font-normal">(Optional)</span>
                       </label>
                       <input
                         id="forgot-reason"
                         type="text"
                         value={forgotReason}
                         onChange={e => setForgotReason(e.target.value)}
-                        placeholder="e.g. Forgot password, locked out of account"
+                        placeholder="e.g. Forgot password, seasonal security update"
                         className="w-full rounded-xl border border-slate-700 bg-slate-950/80 py-2.5 px-3.5 text-xs text-white placeholder:text-slate-500 focus:border-[#f2b600] focus:outline-none focus:ring-2 focus:ring-[#f2b600]/20"
                       />
                     </div>
@@ -968,12 +967,12 @@ const Login = () => {
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                               ></path>
                             </svg>
-                            <span>Notifying Admin...</span>
+                            <span>Sending Email...</span>
                           </>
                         ) : (
                           <>
                             <Send className="h-3.5 w-3.5" />
-                            <span>Notify Administrator</span>
+                            <span>Send Reset Link to Email</span>
                           </>
                         )}
                       </button>
@@ -987,7 +986,7 @@ const Login = () => {
                     <CheckCircle2 className="h-8 w-8" />
                   </div>
 
-                  <h3 className="text-xl font-bold text-white">Administrator Notified</h3>
+                  <h3 className="text-xl font-bold text-white">Reset Link Dispatched</h3>
 
                   <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
                     {forgotSuccess}
@@ -996,12 +995,10 @@ const Login = () => {
                   <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200 text-left space-y-2">
                     <div className="flex items-center gap-2 font-bold text-amber-300 text-[11px] uppercase tracking-wider">
                       <ShieldAlert className="h-4 w-4 shrink-0" />
-                      <span>One-Time Link Rule</span>
+                      <span>Security & Audit Tracking</span>
                     </div>
                     <p className="text-[11px] leading-relaxed">
-                      Your administrator will generate and provide you with a single-use reset link.
-                      Once you enter your new password, that link will immediately expire. If you need
-                      another reset in the future, you must submit a new request.
+                      Please open the link sent to your email to choose a new password. The link is valid for 60 minutes. Your password change history is permanently logged for system governance.
                     </p>
                   </div>
 

@@ -7,11 +7,14 @@ use App\Models\PasswordResetRequest;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Mail\PasswordResetLinkMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -20,7 +23,9 @@ use Inertia\Response;
 class PasswordResetRequestController extends Controller
 {
     /**
-     * Public: User requests a password reset from the administrator.
+     * Public: User requests a password reset. A single-use link is automatically
+     * generated and dispatched directly to their registered email address.
+     * System Administrators are notified and audit logs are recorded.
      */
     public function submitRequest(Request $request, NotificationService $notificationService): JsonResponse
     {
@@ -45,50 +50,44 @@ class PasswordResetRequestController extends Controller
             ], 403);
         }
 
-        // Check if an active, unused request is already pending or has an active unexpired link
-        $existing = PasswordResetRequest::where('user_id', $user->id)
+        // Expire any previous uncompleted reset requests for this user
+        PasswordResetRequest::where('user_id', $user->id)
             ->where('is_used', false)
-            ->whereIn('status', ['pending', 'approved'])
-            ->where(function ($query) {
-                $query->whereNull('token_expires_at')
-                      ->orWhere('token_expires_at', '>', now());
-            })
-            ->latest()
-            ->first();
+            ->where('status', 'approved')
+            ->update(['status' => 'expired']);
 
-        if ($existing) {
-            if ($existing->status === 'approved' && !empty($existing->token)) {
-                return response()->json([
-                    'success' => true,
-                    'already_exists' => true,
-                    'message' => 'An active, one-time reset link has already been authorized by your administrator. Please contact your administrator to receive your link.',
-                ]);
-            }
+        // Generate 64-character cryptographically secure token valid for 60 minutes
+        $token = Str::random(64);
+        $tokenExpiresAt = now()->addMinutes(60);
 
-            return response()->json([
-                'success' => true,
-                'already_exists' => true,
-                'message' => 'A password reset request is already pending review with the System Administrator. Please wait for them to generate your link.',
-            ]);
-        }
-
-        // Create new request
+        // Create new approved reset request record (retaining full audit history)
         $resetRequest = PasswordResetRequest::create([
             'user_id' => $user->id,
             'email' => $user->email,
-            'reason' => $validated['reason'] ?? 'User requested password reset from login portal.',
-            'status' => 'pending',
+            'reason' => $validated['reason'] ?? 'User requested self-service password reset from login portal.',
+            'status' => 'approved',
+            'token' => $token,
+            'token_expires_at' => $tokenExpiresAt,
             'requested_at' => now(),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
 
-        // Inform all Administrator role users via NotificationService
+        $resetUrl = url('/reset-password/' . $token);
+
+        // Send Email directly to user's registered inbox
+        try {
+            Mail::to($user->email)->send(new PasswordResetLinkMail($user, $resetUrl, 60));
+        } catch (\Throwable $e) {
+            Log::error("Failed to send password reset email to {$user->email}: " . $e->getMessage());
+        }
+
+        // Inform all Administrator role users via NotificationService for real-time visibility
         $notificationService->notifyRoles(
             ['administrator'],
-            'urgent',
-            'Password Reset Requested: ' . $user->name,
-            "User '{$user->name}' ({$user->email}) has requested a password reset. Open User Management to generate a secure one-time link.",
+            'info',
+            'Password Reset Link Sent: ' . $user->name,
+            "User '{$user->name}' ({$user->email}) requested a password reset. A secure reset link was dispatched directly to their email on " . now()->format('M d, Y h:i A') . ".",
             PasswordResetRequest::class,
             $resetRequest->id,
             [
@@ -101,21 +100,23 @@ class PasswordResetRequestController extends Controller
             ]
         );
 
-        // Security Activity Logging
+        // Security Activity Logging for complete audit history
         ActivityLogService::logSecurity(
             'password_reset_request',
-            "User '{$user->name}' ({$user->email}) submitted a password reset request awaiting administrator link generation.",
+            "Password reset link generated and dispatched to registered email for User '{$user->name}' ({$user->email}).",
             $user,
             [
                 'request_id' => $resetRequest->id,
                 'ip' => $request->ip(),
                 'reason' => $validated['reason'] ?? null,
+                'expires_at' => $tokenExpiresAt->toIso8601String(),
             ]
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Password reset request submitted successfully! An administrator has been notified. They will generate and provide you with a secure, one-time reset link.',
+            'message' => "A secure password reset link has been sent to your registered email ({$user->email}). Please check your inbox and spam folder to set your new password.",
+            'reset_url' => app()->environment('local') ? $resetUrl : null,
         ]);
     }
 
@@ -329,17 +330,39 @@ class PasswordResetRequestController extends Controller
             'token' => null, // Burn token so it cannot ever be used again
         ]);
 
-        // Security Activity Logging
+        $changedDateFormatted = now()->format('F j, Y \a\t g:i A');
+
+        // Security Activity Logging (Permanent User & Admin Audit History)
         ActivityLogService::logSecurity(
             'password_reset_completed',
-            "User '{$user->name}' ({$user->email}) successfully reset their password using one-time administrator link.",
+            "User '{$user->name}' ({$user->email}, Role: {$user->role}) changed their password on {$changedDateFormatted} via registered email reset link.",
             $user,
             [
                 'request_id' => $resetRequest->id,
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role,
+                'changed_at' => now()->toIso8601String(),
+                'formatted_date' => $changedDateFormatted,
                 'ip' => $request->ip(),
             ]
         );
 
-        return redirect('/login')->with('status', 'Your password has been successfully updated! Your one-time link is now deactivated. You can now sign in with your new password.');
+        // Notify all System Administrators so they know the user changed password on that day
+        app(NotificationService::class)->notifyRoles(
+            ['administrator'],
+            'warning',
+            "Password Changed: {$user->name}",
+            "User '{$user->name}' ({$user->email}, Role: {$user->role}) successfully changed their password on {$changedDateFormatted}.",
+            PasswordResetRequest::class,
+            $resetRequest->id,
+            [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'changed_at' => now()->toIso8601String(),
+            ]
+        );
+
+        return redirect('/login')->with('status', "Your password has been successfully updated on {$changedDateFormatted}! You can now sign in with your new password.");
     }
 }
