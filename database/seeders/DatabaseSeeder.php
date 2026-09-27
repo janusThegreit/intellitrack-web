@@ -17,7 +17,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Primary Owner & Administrator
+        // PRIMARY ADMIN — Main login account
+        User::updateOrCreate(
+            ['email' => 'johnnerryvallescamarig@gmail.com'],
+            [
+                'name' => 'John Nerry Valle Camarig',
+                'first_name' => 'John Nerry',
+                'last_name' => 'Valle Camarig',
+                'nickname' => 'Janus',
+                'password' => Hash::make('Januspogi123@'),
+                'phone' => '1234567890',
+                'role' => 'administrator',
+                'is_active' => true,
+            ]
+        );
+
+        // Secondary Admin
         User::updateOrCreate(
             ['email' => 'johnnerrycamarig@gmail.com'],
             [
