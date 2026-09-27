@@ -9,6 +9,7 @@ export interface TableColumn<T> {
   render?: (value: any, row: T) => React.ReactNode;
   className?: string;
   width?: string;
+  minWidth?: string;
   stickyLeft?: boolean;
   stickyRight?: boolean;
 }
@@ -30,6 +31,8 @@ interface TableProps<T> {
   compact?: boolean;
   stickyHeader?: boolean;
   maxHeight?: string;
+  minWidth?: string;
+  tableClassName?: string;
 }
 
 const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
@@ -50,6 +53,8 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     compact = false,
     stickyHeader = true,
     maxHeight,
+    minWidth,
+    tableClassName,
   }, ref) => {
     const handleSort = (column: any) => {
       if (!column.sortable || !onSort) return;
@@ -70,7 +75,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     return (
       <div ref={ref} className="overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 shadow-sm backdrop-blur-md transition-all">
         <div className={clsx("overflow-x-auto relative", stickyHeader && (maxHeight || "max-h-[calc(100vh-250px)] overflow-y-auto"))}>
-          <table className="w-full text-left border-separate border-spacing-0">
+          <table className={clsx("w-full text-left border-separate border-spacing-0", minWidth || "min-w-full", tableClassName)}>
             <thead className={clsx("bg-surface-app/95 backdrop-blur-md", stickyHeader && "sticky top-0 z-20 shadow-xs")}>
               <tr>
                 {columns.map((column) => (
@@ -86,7 +91,10 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                       column.stickyRight && 'sticky right-0 z-30 border-l border-border-default shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
                       column.className
                     )}
-                    style={column.width ? { width: column.width } : undefined}
+                    style={{
+                      ...(column.width ? { width: column.width } : {}),
+                      ...(column.minWidth ? { minWidth: column.minWidth } : column.width ? { minWidth: column.width } : {}),
+                    }}
                   >
                     <div className="flex items-center gap-1.5">
                       {column.label}
@@ -154,6 +162,10 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                         ),
                         column.className
                       )}
+                      style={{
+                        ...(column.width ? { width: column.width } : {}),
+                        ...(column.minWidth ? { minWidth: column.minWidth } : column.width ? { minWidth: column.width } : {}),
+                      }}
                     >
                       {column.render
                         ? column.render(row[column.key], row)

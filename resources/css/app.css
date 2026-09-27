@@ -209,3 +209,15 @@ button, a, input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0ms !important; animation-duration: 0ms !important; }
 }
+
+/* Remove ugly browser-native number input up/down spinners on dark and light themes */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}

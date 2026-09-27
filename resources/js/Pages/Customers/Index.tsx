@@ -7,7 +7,6 @@ import Button from '../../Components/Button';
 import { Input } from '../../Components/Form';
 import { StatusBadge } from '../../Components/Badge';
 import Modal from '../../Components/Modal';
-import ClientNavTabs from '../../Components/ClientNavTabs';
 import CrmNavTabs from '../../Components/CrmNavTabs';
 
 import {
@@ -484,7 +483,6 @@ const CustomersList = ({
   const [sourceFilter, setSourceFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'active' | 'archived' | 'trash'>('active');
-  const showArchived = viewMode === 'archived';
   const [trashCount, setTrashCount] = useState<number>(0);
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [activeCount, setActiveCount] = useState<number>(0);
@@ -1229,9 +1227,9 @@ const CustomersList = ({
       label: 'CUSTOMER ID',
       sortable: true,
       stickyLeft: true,
-      width: '10%',
+      width: '120px',
       render: (value, row) => (
-        <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
+        <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 whitespace-nowrap">
           {value || row.customer_reference || `CUS-${String(row.id).padStart(4, '0')}`}
         </span>
       ),
@@ -1240,26 +1238,26 @@ const CustomersList = ({
       key: 'company_name',
       label: 'CUSTOMER / CLIENT',
       sortable: true,
-      width: '20%',
+      width: '280px',
       render: (value, row) => (
-        <div>
-          <p className="font-bold text-content-primary">
+        <div className="min-w-[240px]">
+          <p className="font-bold text-content-primary text-sm leading-snug">
             {value || row.name}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-content-secondary font-medium">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-app text-[11px] text-content-secondary border border-border-subtle">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-app text-[11px] text-content-secondary border border-border-subtle shrink-0">
               <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
               <span>{row.region || row.city || 'NCR'}</span>
             </span>
             {row.industry && (
-              <span className="text-[11px] text-content-secondary truncate max-w-[130px]">
+              <span className="text-[11px] text-content-secondary truncate max-w-[200px]">
                 • {row.industry}
               </span>
             )}
           </div>
           {row.contact_person && (
-            <p className="text-[11px] text-content-secondary mt-0.5 truncate max-w-[180px]">
-              Attn: {row.contact_person}
+            <p className="text-[11px] text-content-secondary mt-0.5 truncate max-w-[240px]">
+              Attn: <span className="font-medium text-content-primary">{row.contact_person}</span>
             </p>
           )}
         </div>
@@ -1269,12 +1267,12 @@ const CustomersList = ({
       key: 'active_lease_summary',
       label: 'ACTIVE PROJECT / LEASE',
       sortable: true,
-      width: '21%',
+      width: '240px',
       render: (_value, row) => {
         const hasLease = row.active_lease_summary && row.active_lease_summary !== 'No Active Lease';
 
         return (
-          <div className="space-y-1">
+          <div className="min-w-[200px] space-y-1">
             {hasLease ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold shadow-xs">
                 <Truck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -1287,7 +1285,7 @@ const CustomersList = ({
             )}
 
             {row.active_project_name && (
-              <p className="text-xs text-content-secondary truncate max-w-[210px] font-medium" title={row.active_project_name}>
+              <p className="text-xs text-content-secondary truncate max-w-[230px] font-medium" title={row.active_project_name}>
                 {row.active_project_name}
               </p>
             )}
@@ -1299,13 +1297,13 @@ const CustomersList = ({
       key: 'total_contract_value',
       label: 'TOTAL VALUE / LTV',
       sortable: true,
-      width: '13%',
+      width: '160px',
       render: (_value, row) => {
         const amount = row.total_contract_value || row.lifetime_value || row.total_spending || 0;
         const isEnterprise = amount >= 4000000;
 
         return (
-          <div>
+          <div className="min-w-[130px]">
             <p className="font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {formatPeso(amount)}
             </p>
@@ -1326,7 +1324,7 @@ const CustomersList = ({
       key: 'last_interaction_date',
       label: 'LAST INTERACTION',
       sortable: true,
-      width: '13%',
+      width: '150px',
       render: (_value, row) => {
         if (!row.last_interaction_date) {
           return <span className="text-xs text-content-secondary font-mono">—</span>;
@@ -1340,7 +1338,7 @@ const CustomersList = ({
           : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
 
         return (
-          <div>
+          <div className="min-w-[120px]">
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5 text-content-secondary shrink-0" />
               <span className="font-mono text-xs font-semibold text-content-primary">
@@ -1358,7 +1356,7 @@ const CustomersList = ({
       key: 'customer_type',
       label: 'TYPE',
       sortable: true,
-      width: '8%',
+      width: '110px',
       render: (value) => {
         const type = String(value || 'corporate').toLowerCase();
         const displayType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -1380,7 +1378,7 @@ const CustomersList = ({
       key: 'accreditation_status',
       label: 'ACCREDITATION & TERMS',
       sortable: true,
-      width: '13%',
+      width: '190px',
       render: (_value, row) => {
         const acc = String(row.accreditation_status || 'accredited').toLowerCase();
         const badgeConfig =
@@ -1393,12 +1391,12 @@ const CustomersList = ({
             : { label: 'Blacklisted', color: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30' };
 
         return (
-          <div className="space-y-1">
+          <div className="min-w-[160px] space-y-1">
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeConfig.color}`}>
               <ShieldCheck className="h-3 w-3 shrink-0" />
               <span>{badgeConfig.label}</span>
             </span>
-            <div className="text-[11px] text-content-secondary font-mono truncate">
+            <div className="text-[11px] text-content-secondary font-mono">
               {row.payment_terms || 'Net 30'} · {formatPeso(row.credit_limit || 5000000)}
             </div>
           </div>
@@ -1409,13 +1407,13 @@ const CustomersList = ({
       key: 'status',
       label: 'STATUS',
       sortable: true,
-      width: '8%',
+      width: '120px',
       render: (status, row) => {
         if (viewMode === 'trash' || row.deleted_at) {
           const daysLeft = row.days_remaining ?? 30;
           const isUrgent = daysLeft <= 5;
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 min-w-[100px]">
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
                   isUrgent
@@ -1440,17 +1438,17 @@ const CustomersList = ({
       key: 'id',
       label: 'ACTIONS',
       stickyRight: true,
-      width: '12%',
+      width: '185px',
       render: (_id, row) => {
         const isRowTrash = viewMode === 'trash' || Boolean(row.deleted_at);
 
         if (isRowTrash) {
           return (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="grid grid-cols-2 gap-1.5 w-[165px]" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => restoreDeletedCustomer(row)}
                 disabled={processingAction === row.id}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 title="Restore client back to Active Directory"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1461,11 +1459,11 @@ const CustomersList = ({
                 <button
                   onClick={() => forceDeleteCustomer(row)}
                   disabled={processingAction === row.id}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                   title="Permanently Delete Forever"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete Forever</span>
+                  <span>Delete</span>
                 </button>
               )}
             </div>
@@ -1473,49 +1471,52 @@ const CustomersList = ({
         }
 
         return (
-          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="grid grid-cols-2 gap-1.5 w-[165px]" onClick={(e) => e.stopPropagation()}>
+            {/* Action 1: Create Inquiry */}
             <button
               onClick={() => router.visit(`/inquiries?create=1&customer_id=${row.id}`)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
+              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs font-semibold text-amber-700 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
               title="Create CRM Inquiry for this client"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Inquiry</span>
             </button>
 
+            {/* Action 2: View Dossier */}
             <button
               onClick={() => viewCustomer(row)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-all cursor-pointer shadow-xs"
-              title="View Customer"
+              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-all cursor-pointer shadow-xs"
+              title="View Customer Dossier"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>View</span>
             </button>
 
+            {/* Action 3 & 4: Edit & Archive */}
             {(isSalesBusinessDevelopment || isSalesManager) && (
               <>
                 <button
                   onClick={() => openEdit(row)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-xs font-semibold text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 transition-all cursor-pointer shadow-xs"
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-card hover:bg-surface-app text-xs font-semibold text-content-primary border border-border-default hover:border-amber-500/40 transition-all cursor-pointer shadow-xs"
                   title="Edit Customer"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <Edit2 className="h-3.5 w-3.5 text-amber-500" />
                   <span>Edit</span>
                 </button>
 
                 {!row.deleted_at && !row.archived_at ? (
                   <button
                     onClick={() => archiveCustomer(row)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
+                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-card hover:bg-surface-app text-xs font-semibold text-content-secondary hover:text-content-primary border border-border-default transition-all cursor-pointer shadow-xs"
                     title="Archive Customer"
                   >
-                    <Archive className="h-3.5 w-3.5" />
+                    <Archive className="h-3.5 w-3.5 text-slate-400" />
                     <span>Archive</span>
                   </button>
                 ) : (
                   <button
                     onClick={() => restoreCustomer(row)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs"
+                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs"
                     title="Restore Customer"
                   >
                     <ArchiveRestore className="h-3.5 w-3.5" />
@@ -1523,14 +1524,15 @@ const CustomersList = ({
                   </button>
                 )}
 
+                {/* Action 5: Delete / Move to Trash (spans 2 columns across bottom) */}
                 {isSalesManager && (
                   <button
                     onClick={() => deleteCustomer(row)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs"
+                    className="col-span-2 inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs"
                     title="Move to Recently Deleted (Kept 30 days)"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
+                    <span>Move to Trash</span>
                   </button>
                 )}
               </>
@@ -2928,10 +2930,9 @@ const CustomersList = ({
 
       <AppLayout title="Client Management">
         <div className="space-y-4">
-          <CrmNavTabs />
-          <ClientNavTabs
+          <CrmNavTabs
             actionButton={
-              isSalesBusinessDevelopment ? (
+              (isSalesBusinessDevelopment || isSalesManager) ? (
                 <Button
                   variant="primary"
                   onClick={() => {
@@ -2940,7 +2941,7 @@ const CustomersList = ({
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  + Register Client
+                  <span>Register Client</span>
                 </Button>
               ) : undefined
             }
@@ -3127,20 +3128,6 @@ const CustomersList = ({
                       <Download className="h-4 w-4" />
                       Export
                     </button>
-
-                    {isSalesBusinessDevelopment && (
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setForm(emptyCustomer);
-                          setCreateOpen(true);
-                        }}
-                        className="whitespace-nowrap"
-                      >
-                        <Plus className="h-4 w-4" />
-                        + Add Customer
-                      </Button>
-                    )}
                   </div>
                 </div>
 
@@ -3251,6 +3238,7 @@ const CustomersList = ({
             <Table
               columns={columns}
               data={filteredCustomers}
+              minWidth="min-w-[1550px]"
               emptyMessage={
                 viewMode === 'trash'
                   ? 'No recently deleted customers. Deleted records are kept here for 30 days.'

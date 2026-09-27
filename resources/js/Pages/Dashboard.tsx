@@ -26,6 +26,7 @@ import {
   Lock,
   AlertTriangle,
   HardHat,
+  Briefcase,
 } from 'lucide-react';
 import clsx from 'clsx';
 import axios from 'axios';
@@ -76,6 +77,44 @@ interface SalesManagerSummary {
   active_cranes_count: number;
   total_cranes_count: number;
   active_opportunities_count: number;
+  total_customers?: number;
+  active_clients?: number;
+  customer_inquiries_count?: number;
+  inquiries_breakdown?: {
+    new: number;
+    contacted: number;
+    quoted: number;
+    website: number;
+  };
+  quotation_summary?: {
+    total: number;
+    pending_approvals: number;
+    approved: number;
+    sent: number;
+    accepted: number;
+    rejected: number;
+    pipeline_value: number;
+    win_rate: number;
+  };
+  job_order_summary?: {
+    total: number;
+    registered: number;
+    submitted_to_ops: number;
+    ongoing: number;
+    completed: number;
+  };
+  rental_summary?: {
+    total_requests: number;
+    active_rentals: number;
+    cranes_requested: number;
+    trucks_requested: number;
+  };
+  active_projects_count?: number;
+  ai_insights?: {
+    pipeline_health?: string;
+    inquiry_velocity?: string;
+    operational_handoffs?: string;
+  };
 }
 
 interface OperationsSummary {
@@ -1250,8 +1289,8 @@ const Dashboard = () => {
 
 
 return (
-  <AppLayout title="Executive Overview">
-
+  <AppLayout title="Sales Management Dashboard">
+    <Head title="Sales Management Dashboard" />
 
     <div className="space-y-8 pb-12">
 
@@ -1264,34 +1303,39 @@ return (
         <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 text-xs font-semibold text-amber-300 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5 animate-pulse" /> Live Fleet & Operations Intelligence
+              Sales Management
             </div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Commercial & Heavy Fleet Portal
+              Sales Management Dashboard
             </h1>
             <p className="mt-1 text-sm text-slate-400 max-w-xl">
-              Real-time visibility over tower crane specifications, active job orders, quotation pipeline, and heavy equipment allocation.
+              Review pending quotation approvals, track customer inquiries, and manage active client accounts.
             </p>
           </div>
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/quotations">
-              <Button variant="primary" size="md" className="shadow-lg shadow-amber-500/20">
+              <Button variant="primary" size="md" className="shadow-lg shadow-amber-500/20 relative">
                 <FileEdit className="h-4 w-4" />
-                <span>Create Quotation</span>
+                <span>Review Quotations</span>
+                {(data?.sales_manager_summary?.pending_approvals_count ?? 0) > 0 && (
+                  <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                    {data.sales_manager_summary.pending_approvals_count}
+                  </span>
+                )}
               </Button>
             </Link>
             <Link href="/inquiries">
               <Button variant="glass" size="md">
                 <MessageSquare className="h-4 w-4 text-amber-400" />
-                <span>New Inquiry</span>
+                <span>Customer Inquiries</span>
               </Button>
             </Link>
-            <Link href="/job-orders">
+            <Link href="/customers">
               <Button variant="glass" size="md">
-                <ClipboardList className="h-4 w-4 text-amber-400" />
-                <span>Job Orders</span>
+                <Users className="h-4 w-4 text-blue-400" />
+                <span>Client Accounts</span>
               </Button>
             </Link>
           </div>
@@ -1393,7 +1437,7 @@ return (
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-400">
-                    Commercial Quotes
+                    Win Rate: {data.sales_manager_summary.win_rate ?? 0}%
                   </span>
                 </div>
               </div>
@@ -1403,34 +1447,34 @@ return (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600" />
             </div>
 
-            {/* Card 3: Crane Fleet Demand & Deployment */}
+            {/* Card 3: Commercial Fleet Rental Readiness */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-indigo-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-indigo-500/50 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Fleet Utilization</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Fleet Rental Availability</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                   <Truck className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  {data.sales_manager_summary.active_cranes_count ?? 0} / {data.sales_manager_summary.total_cranes_count ?? 0} Cranes
+                  {data?.available_equipment ?? 18} / {data?.total_equipment ?? 24} Cranes
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                    {(data.sales_manager_summary.total_cranes_count ?? 0) > 0 ? Math.round(((data.sales_manager_summary.active_cranes_count ?? 0) / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Deployed
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3" /> Ready to Quote / Lease
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                Tower & Mobile Cranes active on project sites
+                Depot inventory available for proposal bidding
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-400 to-indigo-600" />
             </div>
 
-            {/* Card 4: Manager Approvals Queue */}
+            {/* Card 4: Quotation Approval Radar */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-amber-500/40 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-amber-500/50 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Manager Approval Radar</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Quotation Approval Radar</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                   <FileEdit className="h-5 w-5" />
                 </div>
@@ -1446,12 +1490,12 @@ return (
                       ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400'
                       : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
                   )}>
-                    {(data.sales_manager_summary.pending_approvals_count ?? 0) > 0 ? 'Awaiting Sign-off' : 'All Clear'}
+                    {(data.sales_manager_summary.pending_approvals_count ?? 0) > 0 ? 'Requires Sign-Off' : 'All Clear'}
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                Requires Sales Manager sign-off
+                Awaiting Sales Manager pricing & margin review
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
             </div>
@@ -1541,11 +1585,11 @@ return (
       {/* Primary Metric KPI Cards Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
-        {/* KPI 1: Active Customers */}
+        {/* KPI 1: Corporate Accounts */}
         <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/5">
           <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-500/10 blur-xl transition-all group-hover:scale-150" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Customers</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Corporate Accounts</span>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
               <Users className="h-5 w-5" />
             </div>
@@ -1555,86 +1599,98 @@ return (
               {loading ? '...' : (data?.total_customers ?? 0)}
             </span>
             <span className="text-xs font-semibold text-emerald-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-0.5" /> +12%
+              <TrendingUp className="h-3 w-3 mr-0.5" /> {data?.sales_manager_summary?.active_clients ?? data?.total_customers ?? 0} active
             </span>
           </div>
           <p className="mt-2 text-xs text-content-secondary">Active corporate & construction accounts</p>
+          <Link href="/customers" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-500 hover:underline">
+            View Client Portfolio <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </div>
 
-        {/* KPI 2: Active Job Orders */}
+        {/* KPI 2: Commercial Inquiries & Leads */}
         <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5">
           <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-500/10 blur-xl transition-all group-hover:scale-150" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Job Orders</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Commercial Inquiries</span>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
-              <ClipboardList className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-black tracking-tight text-content-primary">
-              {loading ? '...' : (data?.active_job_orders ?? 0)}
+              {loading ? '...' : (data?.sales_manager_summary?.customer_inquiries_count ?? data?.customer_inquiries ?? 0)}
             </span>
             <span className="text-xs font-semibold text-blue-500 flex items-center">
-              <Layers className="h-3 w-3 mr-0.5" /> In-Progress
+              <Layers className="h-3 w-3 mr-0.5" /> {data?.sales_manager_summary?.inquiries_breakdown?.new ?? 0} New Intake
             </span>
           </div>
-          <p className="mt-2 text-xs text-content-secondary">Field dispatches & installations</p>
+          <p className="mt-2 text-xs text-content-secondary">Active RFQs & quotation requests</p>
+          <Link href="/inquiries" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-500 hover:underline">
+            View Inquiry Funnel <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </div>
 
-        {/* KPI 3: Fleet Rentals */}
+        {/* KPI 3: Commercial Win Rate */}
         <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5">
           <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl transition-all group-hover:scale-150" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Active Rentals</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Quotation Win Rate</span>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-              <Truck className="h-5 w-5" />
+              <TrendingUp className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-black tracking-tight text-content-primary">
-              {loading ? '...' : (data?.active_rentals ?? 0)}
+              {loading ? '...' : (data?.sales_manager_summary?.win_rate ?? 0)}%
             </span>
             <span className="text-xs font-semibold text-emerald-500 flex items-center">
-              <CheckCircle2 className="h-3 w-3 mr-0.5" /> Deployed
+              <CheckCircle2 className="h-3 w-3 mr-0.5" /> High Conversion
             </span>
           </div>
-          <p className="mt-2 text-xs text-content-secondary">Heavy cranes on project sites</p>
+          <p className="mt-2 text-xs text-content-secondary">Proposals converted to signed agreements</p>
+          <Link href="/quotations" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-500 hover:underline">
+            View Quotation Analytics <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </div>
 
-        {/* KPI 4: Active Projects */}
+        {/* KPI 4: Commercial Handoffs to Operations */}
         <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/5">
           <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-violet-500/10 blur-xl transition-all group-hover:scale-150" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Projects</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">Commercial Handoffs</span>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 border border-violet-500/20">
-              <FolderKanban className="h-5 w-5" />
+              <Briefcase className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-black tracking-tight text-content-primary">
-              {loading ? '...' : (data?.active_projects ?? 0)}
+              {loading ? '...' : (data?.sales_manager_summary?.job_order_summary?.submitted_to_ops ?? data?.active_job_orders ?? 0)}
             </span>
             <span className="text-xs font-semibold text-violet-500 flex items-center">
-              <Compass className="h-3 w-3 mr-0.5" /> Ongoing
+              <Compass className="h-3 w-3 mr-0.5" /> Confirmed
             </span>
           </div>
-          <p className="mt-2 text-xs text-content-secondary">Construction site contracts</p>
+          <p className="mt-2 text-xs text-content-secondary">Signed agreements transitioned to Operations</p>
+          <Link href="/job-orders" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-500 hover:underline">
+            View Commercial Orders <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </div>
 
       </div>
 
-      {/* Middle Section: Fleet Availability Gauge & Operations Dispatch Dock */}
+      {/* Middle Section: Fleet Availability Gauge & Commercial Actions Dock */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
 
-        {/* Fleet Availability Card (7 cols) */}
+        {/* Commercial Fleet Availability Card (7 cols) */}
         <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md lg:col-span-7">
           <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
             <div>
-              <h3 className="text-base font-bold text-content-primary">Fleet Utilization & Inventory Status</h3>
-              <p className="text-xs text-content-secondary">Heavy equipment and tower crane allocation metrics</p>
+              <h3 className="text-base font-bold text-content-primary">Fleet Availability for Commercial Bidding</h3>
+              <p className="text-xs text-content-secondary">Heavy equipment and crane inventory available for pricing proposals & lease commitments</p>
             </div>
             <Link href="/rental-requirements" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
-              View Fleet <ArrowUpRight className="h-3.5 w-3.5" />
+              Specs Calculator <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -1654,16 +1710,16 @@ return (
               <p className="text-xs font-medium text-content-secondary">Available for Rental</p>
               <p className="mt-2 text-2xl font-extrabold text-emerald-500">{data?.available_equipment || 18}</p>
               <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" /> Ready to dispatch
+                <CheckCircle2 className="h-3 w-3" /> Ready to Quote / Lease
               </div>
             </div>
 
             {/* Stat 3 */}
             <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
-              <p className="text-xs font-medium text-content-secondary">Fleet Utilization</p>
+              <p className="text-xs font-medium text-content-secondary">Committed to Contracts</p>
               <p className="mt-2 text-2xl font-extrabold text-amber-500">{utilizationRate}%</p>
               <div className="mt-2 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
-                <Activity className="h-3 w-3" /> High demand
+                <Activity className="h-3 w-3" /> Active on Client Sites
               </div>
             </div>
           </div>
@@ -1671,8 +1727,8 @@ return (
           {/* Visual Utilization Progress Bar */}
           <div className="mt-6 space-y-2">
             <div className="flex justify-between text-xs font-semibold">
-              <span className="text-content-secondary">Fleet Deployment Capacity</span>
-              <span className="text-amber-500">{utilizationRate}% Allocated</span>
+              <span className="text-content-secondary">Fleet Commercial Allocation</span>
+              <span className="text-amber-500">{utilizationRate}% Under Contract ({rentedEquipment} Units)</span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-surface-input">
               <div
@@ -1681,33 +1737,71 @@ return (
               />
             </div>
           </div>
+
+          {/* Commercial note */}
+          <p className="mt-4 text-[11px] text-content-muted border-t border-border-subtle/60 pt-3">
+            Commercial Advisory: Cranes marked &apos;Ready to Quote / Lease&apos; can be committed to formal client proposals with immediate depot dispatch readiness.
+          </p>
         </div>
 
-        {/* Quick Operations Shortcuts (5 cols) */}
+        {/* Commercial Sales Actions & Governance Dock (5 cols) */}
         <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md lg:col-span-5 flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-content-primary">Quick Operations Dispatch</h3>
-            <p className="text-xs text-content-secondary mt-0.5">Direct actions for field & sales teams</p>
+            <div className="flex items-center justify-between border-b border-border-subtle/80 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-content-primary">Commercial Sales & Lead Actions</h3>
+                <p className="text-xs text-content-secondary mt-0.5">Executive shortcuts for proposals, inquiries, and client accounts</p>
+              </div>
+              <span className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold">
+                Sales Dept
+              </span>
+            </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <Link
-                href="/inquiries"
+                href="/quotations"
                 className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
-                  <UserPlus className="h-4 w-4" />
+                  <FileEdit className="h-4 w-4" />
                 </div>
                 <div className="mt-3">
-                  <p className="text-xs font-bold text-content-primary">New Client</p>
-                  <p className="text-[10px] text-content-secondary">Register account</p>
+                  <p className="text-xs font-bold text-content-primary">Review Quotes</p>
+                  <p className="text-[10px] text-content-secondary">Pricing & sign-off</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/inquiries"
+                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs font-bold text-content-primary">Inquiry Intake</p>
+                  <p className="text-[10px] text-content-secondary">Leads & RFQ pipeline</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/customers"
+                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
+                  <Users className="h-4 w-4" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs font-bold text-content-primary">Client Accounts</p>
+                  <p className="text-[10px] text-content-secondary">Corporate directory</p>
                 </div>
               </Link>
 
               <Link
                 href="/rental-requirements"
-                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 group-hover:scale-110 transition-transform">
                   <Compass className="h-4 w-4" />
                 </div>
                 <div className="mt-3">
@@ -1715,54 +1809,29 @@ return (
                   <p className="text-[10px] text-content-secondary">Specs calculator</p>
                 </div>
               </Link>
-
-              <Link
-                href="/quotations"
-                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
-                  <DollarSign className="h-4 w-4" />
-                </div>
-                <div className="mt-3">
-                  <p className="text-xs font-bold text-content-primary">Draft Quote</p>
-                  <p className="text-[10px] text-content-secondary">Pricing approval</p>
-                </div>
-              </Link>
-
-              <Link
-                href="/job-orders"
-                className="group flex flex-col justify-between rounded-2xl border border-border-default/70 bg-surface-input/50 p-4 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 group-hover:scale-110 transition-transform">
-                  <Wrench className="h-4 w-4" />
-                </div>
-                <div className="mt-3">
-                  <p className="text-xs font-bold text-content-primary">Job Orders</p>
-                  <p className="text-[10px] text-content-secondary">Dispatch crew</p>
-                </div>
-              </Link>
             </div>
           </div>
 
-          {/* Quick status notice */}
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-app/60 p-3.5 text-xs">
-            <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-            <span className="text-content-secondary">
-              Maintenance window scheduled for fleet cranes every Sunday 02:00 AM UTC.
+          {/* Commercial Governance & Policy Notice */}
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-xs">
+            <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-content-secondary text-[11px] leading-relaxed">
+              <strong className="text-content-primary font-semibold">Commercial Policy: </strong>
+              Client inquiries require initial response within 24h. Quotations exceeding ₱5,000,000 require formal Sales Manager sign-off.
             </span>
           </div>
         </div>
 
       </div>
 
-      {/* Bottom Split: Recent Quotations & Active Projects */}
+      {/* Bottom Split: Recent Quotations & Commercial Inquiry Stream */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 
         {/* Recent Quotations */}
         <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
             <div>
-              <h3 className="text-base font-bold text-content-primary">Recent Quotations</h3>
+              <h3 className="text-base font-bold text-content-primary">Recent Quotations & Proposals</h3>
               <p className="text-xs text-content-secondary">Commercial proposals and approval lifecycle</p>
             </div>
             <Link href="/quotations" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
@@ -1776,7 +1845,7 @@ return (
                 <div key={q.id} className="flex items-center justify-between py-3.5 hover:bg-surface-app/40 rounded-xl px-2 transition-colors">
                   <div>
                     <p className="text-xs font-bold text-content-primary">{q.quotation_number}</p>
-                    <p className="text-[11px] text-content-secondary">{q.customer?.name || 'Customer'}</p>
+                    <p className="text-[11px] text-content-secondary">{q.customer?.name || q.customer?.company_name || 'Customer'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-content-primary font-mono">
@@ -1794,38 +1863,54 @@ return (
           </div>
         </div>
 
-        {/* Active Construction Projects */}
+        {/* Commercial Inquiry Stream */}
         <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
             <div>
-              <h3 className="text-base font-bold text-content-primary">Active Site Projects</h3>
-              <p className="text-xs text-content-secondary">On-going construction & tower crane installations</p>
+              <h3 className="text-base font-bold text-content-primary">Commercial Inquiry Stream</h3>
+              <p className="text-xs text-content-secondary">Incoming client RFQs and lead qualification velocity</p>
             </div>
-            <Link href="/projects" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
+            <Link href="/inquiries" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
               View All <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
           <div className="mt-4 divide-y divide-border-subtle/60">
-            {(data?.recent_projects && data.recent_projects.length > 0) ? (
-              data.recent_projects.slice(0, 5).map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between py-3.5 hover:bg-surface-app/40 rounded-xl px-2 transition-colors">
-                  <div>
-                    <p className="text-xs font-bold text-content-primary">{p.project_name}</p>
-                    <p className="text-[11px] text-content-secondary">{p.customer?.name || 'Construction Client'}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-content-primary">{p.progress || 0}%</span>
-                      <p className="text-[10px] text-content-muted">Milestone</p>
+            {(data?.recent_inquiries && data.recent_inquiries.length > 0) ? (
+              data.recent_inquiries.slice(0, 5).map((inq: any) => (
+                <div key={inq.id} className="flex items-center justify-between py-3.5 hover:bg-surface-app/40 rounded-xl px-2 transition-colors">
+                  <div className="min-w-0 pr-3">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-content-primary font-mono">{inq.inquiry_number || `INQ-${inq.id}`}</p>
+                      <span className="text-[11px] text-content-secondary truncate max-w-[140px] sm:max-w-[200px]">
+                        {inq.company_name || inq.customer?.name || inq.contact_person || 'Client'}
+                      </span>
                     </div>
-                    <StatusBadge status={p.status || 'active'} />
+                    <p className="text-[11px] text-content-muted mt-0.5 truncate max-w-[220px] sm:max-w-[280px]">
+                      {inq.subject || inq.details || 'Commercial crane inquiry'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {inq.priority && inq.priority !== 'normal' && (
+                      <span className={clsx(
+                        "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
+                        inq.priority === 'urgent'
+                          ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      )}>
+                        {inq.priority}
+                      </span>
+                    )}
+                    <StatusBadge status={inq.status || 'new'} />
                   </div>
                 </div>
               ))
             ) : (
               <div className="py-8 text-center text-xs text-content-secondary">
-                No active projects recorded.
+                <p>No recent commercial inquiries recorded.</p>
+                <Link href="/inquiries" className="mt-2 inline-block text-xs font-semibold text-amber-500 hover:underline">
+                  + Log New Inquiry
+                </Link>
               </div>
             )}
           </div>

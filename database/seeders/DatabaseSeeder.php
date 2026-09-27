@@ -83,5 +83,12 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // Official Real Data Seeders (Alibaton Fleet & Philippine Real Enterprise Clients)
+        $this->call([
+            AlibatonRealEquipmentSeeder::class,
+            PhilippineRealCustomersSeeder::class,
+            AlibatonOperationalWorkflowSeeder::class,
+        ]);
     }
 }
