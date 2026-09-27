@@ -13,9 +13,14 @@ class JobOrder extends Model
 
     protected $fillable = [
         'job_order_number', 'customer_id', 'created_by', 'assigned_to',
+        'project_id', 'quotation_id', 'service_type',
         'description', 'status', 'priority', 'scheduled_date', 'start_date',
         'completion_date', 'due_date', 'estimated_cost', 'actual_cost',
-        'total_amount', 'notes', 'location', 'equipment_count'
+        'total_amount', 'notes', 'location', 'equipment_count',
+        'required_equipment', 'rental_requirements', 'job_requirements',
+        'special_instructions', 'remarks', 'operations_submitted_at',
+        'operational_status', 'dispatch_status', 'operational_equipment_status',
+        'operational_notes'
     ];
 
     protected $casts = [
@@ -23,6 +28,7 @@ class JobOrder extends Model
         'start_date' => 'datetime',
         'completion_date' => 'datetime',
         'due_date' => 'datetime',
+        'operations_submitted_at' => 'datetime',
         'estimated_cost' => 'decimal:2',
         'actual_cost' => 'decimal:2',
         'total_amount' => 'decimal:2',
@@ -51,6 +57,16 @@ class JobOrder extends Model
     public function rentals(): HasMany
     {
         return $this->hasMany(Rental::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class, 'quotation_id');
     }
 
     public function quotations(): HasMany

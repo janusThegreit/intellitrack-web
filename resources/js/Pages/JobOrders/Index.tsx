@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, FormEvent } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Card, CardBody } from '../../Components/Card';
 import Table, { TableColumn } from '../../Components/Table';
@@ -29,6 +29,9 @@ import {
   Copy,
   Briefcase,
   DollarSign,
+  Send,
+  ArrowUpRight,
+  Info,
 } from 'lucide-react';
 import { formatPeso } from '../../Utils/currency';
 
@@ -111,12 +114,18 @@ interface JobOrder {
 }
 
 interface JobOrderListProps {
-  view?: 'all' | 'requests' | 'assignment' | 'scheduling' | 'completion';
+  view?: 'all' | 'requests' | 'registered' | 'completion';
   jobOrders?: Array<JobOrder>;
 }
 
 const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'requests' | 'assignment' | 'scheduling' | 'completion'>(view || 'all');
+  const { auth } = usePage<any>().props;
+  const userRole = auth?.user?.role || '';
+  const isSalesManager = userRole === 'sales_manager';
+  const isSBD = userRole === 'sales_business_development';
+  const canManage = isSalesManager || isSBD;
+
+  const [activeTab, setActiveTab] = useState<'all' | 'requests' | 'registered' | 'completion'>(view || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -174,7 +183,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     }
   }, [view]);
 
-  const handleTabChange = (tab: 'all' | 'requests' | 'assignment' | 'scheduling' | 'completion') => {
+  const handleTabChange = (tab: 'all' | 'requests' | 'registered' | 'completion') => {
     setActiveTab(tab);
     const path = tab === 'all' ? '/job-orders' : `/job-orders/${tab}`;
     window.history.pushState({}, '', path);
@@ -253,8 +262,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     return {
       all: records.length,
       requests: records.filter((r) => r.status === 'pending' || r.status === 'draft').length,
-      assignment: records.filter((r) => !r.assigned_to && r.status !== 'completed' && r.status !== 'cancelled').length,
-      scheduling: records.filter((r) => (!r.scheduled_date || r.status === 'approved' || r.status === 'in-progress') && r.status !== 'completed' && r.status !== 'cancelled').length,
+      registered: records.filter((r) => r.status === 'registered' || r.status === 'approved').length,
       completion: records.filter((r) => r.status === 'completed').length,
     };
   }, [records]);
@@ -286,10 +294,8 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     // Tab-level filtering
     if (activeTab === 'requests') {
       result = result.filter((item) => item.status === 'pending' || item.status === 'draft');
-    } else if (activeTab === 'assignment') {
-      result = result.filter((item) => !item.assigned_to && item.status !== 'completed' && item.status !== 'cancelled');
-    } else if (activeTab === 'scheduling') {
-      result = result.filter((item) => item.status === 'approved' || item.status === 'in-progress');
+    } else if (activeTab === 'registered') {
+      result = result.filter((item) => item.status === 'registered' || item.status === 'approved');
     } else if (activeTab === 'completion') {
       result = result.filter((item) => item.status === 'completed');
     }
@@ -589,7 +595,37 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     setTimeout(() => setCopiedNumber(false), 2000);
   };
 
-  // Master Table Columns
+  // Core 1 → Core 2 Operations Handoff
+  const handleSubmitToOperations = async (job: JobOrder) => {
+    if (!window.confirm(`Submit "${job.job_number}" to Core 2 Operations for dispatch and scheduling? This is a one-way handoff — Core 2 will take ownership of dispatch, driver assignment, and scheduling.`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/job-orders/${job.id}/submit-to-operations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': csrf,
+        },
+        body: JSON.stringify({ notes: 'Submitted from Core 1 Sales workspace' }),
+      });
+      if (res.ok) {
+        await loadJobOrders();
+        setMessage(`${job.job_number} successfully submitted to Core 2 Operations. Dispatch and scheduling will be handled by the Operations team.`);
+        setTimeout(() => setMessage(''), 6000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setMessage(err.message || 'Failed to submit to Operations. Ensure the job order is in Registered status.');
+        setTimeout(() => setMessage(''), 5000);
+      }
+    } catch {
+      setMessage('Network error. Could not submit to Operations.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
   const columns: TableColumn<JobOrder>[] = [
     {
       key: 'job_number',
@@ -775,37 +811,38 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
             </Link>
           )}
 
-          {row.status === 'pending' && (
+          {/* Sales Manager: Approve pending Job Orders */}
+          {isSalesManager && row.status === 'pending' && (
             <button
               type="button"
-              onClick={() => handleStatusTransition(row.id, 'approved')}
+              onClick={() => handleStatusTransition(row.id, 'registered')}
               className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20"
-              title="Approve Job Order"
+              title="Approve & Register Job Order"
             >
               <CheckCircle className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {row.status === 'approved' && (
+          {/* SBD or SM: Submit Registered Job Order to Core 2 Operations */}
+          {canManage && (row.status === 'registered' || row.status === 'approved') && (
             <button
               type="button"
-              onClick={() => handleDeployNow(row)}
-              className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-all border border-amber-500/20"
-              title="Deploy & Mobilize Now"
+              onClick={() => void handleSubmitToOperations(row)}
+              className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold flex items-center gap-1 transition-all border border-blue-500/20"
+              title="Submit to Core 2 Operations (Handoff for dispatch & scheduling)"
             >
-              <Truck className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {row.status === 'in-progress' && (
-            <button
-              type="button"
-              onClick={() => handleStatusTransition(row.id, 'completed')}
-              className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-1 transition-all border border-emerald-500/20"
-              title="Mark as Completed"
+          {/* Operational status badge — read-only, integrated from Core 2 */}
+          {(row as any).operational_status && (
+            <span
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-700/50 text-slate-400 border border-slate-600/40"
+              title="Integrated from Core 2 Operations — read only"
             >
-              <CheckCircle className="w-3.5 h-3.5" />
-            </button>
+              ⬡ Core 2
+            </span>
           )}
 
           <button
@@ -822,16 +859,19 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => void deleteJob(row)}
-            className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-400 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isSalesManager && (
+            <button
+              onClick={() => void deleteJob(row)}
+              className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-400 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       ),
     },
+
   ];
 
   return (

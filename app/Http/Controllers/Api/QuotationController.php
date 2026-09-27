@@ -175,11 +175,11 @@ class QuotationController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || (! $user->isSalesManager() && ! $user->isAdministrator())) {
-            abort(403, 'Only the Sales Manager or Administrator can approve quotations.');
+        if (! $user || ! $user->isSalesManager()) {
+            abort(403, 'Only the Sales Manager can approve quotations.');
         }
 
-        if ($user->id === $quotation->created_by && ! $user->isAdministrator()) {
+        if ($user->id === $quotation->created_by) {
             abort(403, 'A quotation cannot be approved by its creating user.');
         }
 
@@ -201,8 +201,8 @@ class QuotationController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || (! $user->isSalesManager() && ! $user->isAdministrator())) {
-            abort(403, 'Only the Sales Manager or Administrator can request quotation revisions.');
+        if (! $user || ! $user->isSalesManager()) {
+            abort(403, 'Only the Sales Manager can request quotation revisions.');
         }
 
         $request->validate([
@@ -227,8 +227,8 @@ class QuotationController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || (! $user->isSalesManager() && ! $user->isAdministrator())) {
-            abort(403, 'Only the Sales Manager or Administrator can reject quotations.');
+        if (! $user || ! $user->isSalesManager()) {
+            abort(403, 'Only the Sales Manager can reject quotations.');
         }
 
         $request->validate([
@@ -290,13 +290,13 @@ class QuotationController extends Controller
     }
 
     /**
-     * Convert an accepted quotation into an active Job Order with line items.
+     * Convert an accepted quotation into a registered Job Order with line items.
      */
     public function convertToJobOrder(Request $request, Quotation $quotation)
     {
         $user = Auth::user();
-        if (! $user || (! $user->isSalesManager() && ! $user->isAdministrator())) {
-            abort(403, 'Only the Sales Manager or Administrator can generate job orders from quotations.');
+        if (! $user || (! $user->isSalesBusinessDevelopment() && ! $user->isSalesManager())) {
+            abort(403, 'Only Sales Business Development (SBD) or Sales Manager can generate job orders from quotations.');
         }
 
         abort_unless(in_array($quotation->status, ['accepted', 'approved']), 422, 'Only accepted or approved quotations can be converted into job orders.');
@@ -313,15 +313,20 @@ class QuotationController extends Controller
                 'job_order_number' => 'JO-' . date('Ymd') . '-' . strtoupper(Str::random(6)),
                 'customer_id' => $quotation->customer_id,
                 'created_by' => $user->id,
+                'quotation_id' => $quotation->id,
+                'service_type' => 'Equipment Rental & Technical Rigging',
+                'required_equipment' => $quotation->items->pluck('description')->join(', '),
+                'rental_requirements' => "Offer valid until: {$quotation->valid_until}. Terms: {$quotation->terms_conditions}",
                 'description' => $description,
-                'status' => 'pending',
+                'status' => 'registered',
+                'operational_status' => 'Pending Submission to Core 2 Operations',
                 'priority' => 'high',
                 'scheduled_date' => now()->addDays(2),
                 'due_date' => $quotation->valid_until ?: now()->addMonths(1),
                 'estimated_cost' => $quotation->subtotal,
                 'total_amount' => $quotation->total_amount,
                 'location' => $quotation->customer?->address ?: ($quotation->customer?->city ?: 'Client Project Site'),
-                'notes' => "Generated from Quotation {$quotation->quotation_number}. " . ($quotation->notes ?: ''),
+                'notes' => "Registered from Quotation {$quotation->quotation_number}. " . ($quotation->notes ?: ''),
                 'equipment_count' => $quotation->items->count(),
             ]);
 

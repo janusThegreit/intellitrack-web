@@ -40,6 +40,16 @@ class Customer extends Model
         'total_spending',
         'last_order_date',
         'archived_at',
+        'group185_synced_at',
+        'group185_reference_id',
+    ];
+
+    protected $casts = [
+        'group185_synced_at' => 'datetime',
+        'last_order_date' => 'datetime',
+        'archived_at' => 'datetime',
+        'total_spending' => 'decimal:2',
+        'estimated_budget' => 'decimal:2',
     ];
 
     protected static function boot()
@@ -51,21 +61,16 @@ class Customer extends Model
                 $maxId = (int) static::max('id');
                 $customer->customer_code = 'CUS-' . str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
             }
+
             if (empty($customer->name) && !empty($customer->company_name)) {
                 $customer->name = $customer->company_name;
             }
+
             if (empty($customer->company_name) && !empty($customer->name)) {
                 $customer->company_name = $customer->name;
             }
         });
     }
-
-    protected $casts = [
-        'last_order_date' => 'datetime',
-        'archived_at' => 'datetime',
-        'total_spending' => 'decimal:2',
-        'estimated_budget' => 'decimal:2',
-    ];
 
     public function jobOrders(): HasMany
     {
