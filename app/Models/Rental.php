@@ -12,6 +12,7 @@ class Rental extends Model
 
     protected $fillable = [
         'rental_number', 'job_order_id', 'customer_id', 'equipment_id',
+        'quotation_id', 'equipment_type', 'equipment_requirements', 'operational_status',
         'quantity', 'rental_start_date', 'rental_end_date', 'actual_return_date',
         'status', 'daily_rate', 'rental_days', 'rental_cost', 'deposit_amount',
         'deposit_returned', 'additional_charges', 'total_amount',
@@ -43,6 +44,11 @@ class Rental extends Model
     public function equipment(): BelongsTo
     {
         return $this->belongsTo(Equipment::class);
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class, 'quotation_id');
     }
 
     public function isOverdue(): bool

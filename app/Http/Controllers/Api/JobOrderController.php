@@ -55,24 +55,42 @@ class JobOrderController extends Controller
         Gate::authorize('manage-job-orders');
         $validated = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
+            'project_id' => ['nullable', 'exists:projects,id'],
+            'quotation_id' => ['nullable', 'exists:quotations,id'],
             'description' => ['required', 'string'],
-            'status' => ['in:draft,pending,approved,in-progress,completed,cancelled'],
-            'priority' => ['in:low,medium,high,urgent'],
+            'service_type' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress'],
+            'priority' => ['nullable', 'in:low,medium,high,urgent'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
             'scheduled_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'estimated_cost' => ['nullable', 'numeric', 'min:0'],
             'location' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
+            'required_equipment' => ['nullable', 'string'],
+            'rental_requirements' => ['nullable', 'string'],
+            'job_requirements' => ['nullable', 'string'],
+            'special_instructions' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
         ]);
 
         $validated['job_order_number'] = 'JO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
         $validated['created_by'] = auth()->id();
+        $validated['status'] = $validated['status'] ?? 'registered';
+        $validated['operational_status'] = $validated['operational_status'] ?? 'Pending Submission to Core 2 Operations';
+        $validated['dispatch_status'] = 'Unassigned';
+        $validated['operational_equipment_status'] = 'Awaiting Operations Allocation';
 
         $jobOrder = JobOrder::create($validated);
 
-        ActivityLogService::log(Auth::user(), 'created', JobOrder::class, $jobOrder->id, "Job Order {$jobOrder->job_order_number} created.", null, ['status' => $jobOrder->status, 'priority' => $jobOrder->priority]);
+        ActivityLogService::log(Auth::user(), 'created', JobOrder::class, $jobOrder->id, "Job Order {$jobOrder->job_order_number} registered in Core 1.", null, [
+            'status' => $jobOrder->status,
+            'client_id' => $jobOrder->customer_id,
+            'service_type' => $jobOrder->service_type,
+        ]);
 
-        return response()->json($jobOrder, Response::HTTP_CREATED);
+        return response()->json($jobOrder->load(['customer', 'project', 'quotation', 'createdBy']), Response::HTTP_CREATED);
     }
 
     /**
@@ -81,7 +99,7 @@ class JobOrderController extends Controller
     public function show(JobOrder $jobOrder)
     {
         Gate::authorize('view-core-dashboard');
-        $jobOrder->load(['customer', 'createdBy', 'assignedTo', 'jobOrderItems.equipment', 'rentals', 'feedback']);
+        $jobOrder->load(['customer', 'project', 'quotation', 'createdBy', 'assignedTo', 'jobOrderItems.equipment', 'rentals', 'feedback']);
         return response()->json($jobOrder);
     }
 
@@ -92,20 +110,30 @@ class JobOrderController extends Controller
     {
         Gate::authorize('manage-job-orders');
         $validated = $request->validate([
-            'description' => ['string'],
-            'status' => ['in:draft,pending,approved,in-progress,completed,cancelled'],
-            'priority' => ['in:low,medium,high,urgent'],
+            'project_id' => ['nullable', 'exists:projects,id'],
+            'quotation_id' => ['nullable', 'exists:quotations,id'],
+            'description' => ['sometimes', 'string'],
+            'service_type' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress'],
+            'priority' => ['nullable', 'in:low,medium,high,urgent'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
             'scheduled_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'estimated_cost' => ['nullable', 'numeric', 'min:0'],
             'actual_cost' => ['nullable', 'numeric', 'min:0'],
             'location' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
+            'required_equipment' => ['nullable', 'string'],
+            'rental_requirements' => ['nullable', 'string'],
+            'job_requirements' => ['nullable', 'string'],
+            'special_instructions' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
         ]);
 
         $jobOrder->update($validated);
 
-        return response()->json($jobOrder->load(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
+        return response()->json($jobOrder->load(['customer', 'project', 'quotation', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
     }
 
     /**

@@ -43,12 +43,10 @@ class DashboardController extends Controller
                     'administrator' => $rolesCount['administrator'] ?? 0,
                     'sales_manager' => $rolesCount['sales_manager'] ?? 0,
                     'sales_business_development' => $rolesCount['sales_business_development'] ?? 0,
-                    'staff' => $rolesCount['staff'] ?? 0,
-                    'customer' => $rolesCount['customer'] ?? 0,
                 ],
                 'total_audit_logs' => ActivityLog::count(),
                 'maintenance_mode' => Cache::get('system_maintenance_mode', false),
-                'db_status' => 'Connected',
+                'db_status' => 'Connected (Operational)',
                 'recent_audit_logs' => ActivityLog::with('user')
                     ->latest()
                     ->limit(8)
@@ -56,22 +54,9 @@ class DashboardController extends Controller
             ];
         }
 
-        $isSalesRole = $user && in_array($user->role, ['sales_manager', 'sales_business_development', 'administrator']);
+        // 2. Sales Manager Dashboard Summary (Core 1 Management, Review, Approval & Analytics)
         $salesManagerSummary = null;
-
-        if ($isSalesRole) {
-            $ytdRevenue = (float) (
-                JobOrder::where('status', 'completed')->whereYear('completion_date', now()->year)->sum('total_amount')
-                + Rental::where('status', 'completed')->whereYear('created_at', now()->year)->sum('total_amount')
-            );
-            $prevYearRevenue = (float) (
-                JobOrder::where('status', 'completed')->whereYear('completion_date', now()->subYear()->year)->sum('total_amount')
-                + Rental::where('status', 'completed')->whereYear('created_at', now()->subYear()->year)->sum('total_amount')
-            );
-            $yoyGrowthPct = $prevYearRevenue > 0
-                ? round((($ytdRevenue - $prevYearRevenue) / $prevYearRevenue) * 100, 1)
-                : 0;
-
+        if ($user && ($user->isSalesManager() || $user->role === 'sales_manager')) {
             $pipelineValue = (float) \App\Models\Quotation::whereIn('status', ['under_review', 'approved', 'sent', 'accepted'])->sum('total_amount');
             $quotationTotal = \App\Models\Quotation::count();
             $acceptedQuotations = \App\Models\Quotation::where('status', 'accepted')->count();
@@ -83,71 +68,69 @@ class DashboardController extends Controller
                 ->limit(6)
                 ->get();
 
-            $activeCranesCount = Equipment::where('category', 'like', '%crane%')
-                ->where('status', 'rented')
-                ->count();
-            $totalCranesCount = Equipment::where('category', 'like', '%crane%')->count();
-
             $salesManagerSummary = [
-                'ytd_revenue' => $ytdRevenue,
-                'prev_year_revenue' => $prevYearRevenue,
-                'yoy_growth_pct' => $yoyGrowthPct,
-                'pipeline_value' => $pipelineValue,
-                'win_rate' => $winRate,
-                'pending_approvals_count' => \App\Models\Quotation::where('status', 'under_review')->count(),
+                'total_customers' => Customer::count(),
+                'active_clients' => Customer::where('status', 'active')->count(),
+                'customer_inquiries_count' => \App\Models\CustomerInquiry::count(),
+                'inquiries_breakdown' => [
+                    'new' => \App\Models\CustomerInquiry::where('status', 'new')->count(),
+                    'contacted' => \App\Models\CustomerInquiry::where('status', 'contacted')->count(),
+                    'quoted' => \App\Models\CustomerInquiry::where('status', 'quoted')->count(),
+                    'website' => \App\Models\CustomerInquiry::where('source', 'like', '%alibaton%')->orWhere('source', 'like', '%website%')->count(),
+                ],
+                'quotation_summary' => [
+                    'total' => $quotationTotal,
+                    'pending_approvals' => \App\Models\Quotation::where('status', 'under_review')->count(),
+                    'approved' => \App\Models\Quotation::where('status', 'approved')->count(),
+                    'sent' => \App\Models\Quotation::where('status', 'sent')->count(),
+                    'accepted' => $acceptedQuotations,
+                    'rejected' => \App\Models\Quotation::where('status', 'rejected')->count(),
+                    'pipeline_value' => $pipelineValue,
+                    'win_rate' => $winRate,
+                ],
+                'job_order_summary' => [
+                    'total' => JobOrder::count(),
+                    'registered' => JobOrder::where('status', 'registered')->count(),
+                    'submitted_to_ops' => JobOrder::where('status', 'submitted')->count(),
+                    'ongoing' => JobOrder::whereIn('status', ['in-progress', 'ongoing', 'confirmed', 'scheduled'])->count(),
+                    'completed' => JobOrder::where('status', 'completed')->count(),
+                ],
+                'rental_summary' => [
+                    'total_requests' => Rental::count(),
+                    'active_rentals' => Rental::whereIn('status', ['active', 'confirmed', 'ongoing'])->count(),
+                    'cranes_requested' => Rental::where('equipment_type', 'Crane')->orWhereNull('equipment_type')->count(),
+                    'trucks_requested' => Rental::where('equipment_type', 'Truck')->count(),
+                ],
+                'active_projects_count' => Project::whereIn('status', ['active', 'ongoing', 'planned', 'confirmed'])->count(),
                 'pending_approvals' => $pendingApprovals,
-                'active_cranes_count' => $activeCranesCount,
-                'total_cranes_count' => $totalCranesCount,
-                'active_opportunities_count' => \App\Models\SalesOpportunity::whereNotIn('status', ['won', 'lost', 'closed'])->count(),
+                'ai_insights' => [
+                    'pipeline_health' => $winRate >= 50 ? 'Strong Conversion Rate' : 'Review Follow-up Velocity',
+                    'inquiry_velocity' => \App\Models\CustomerInquiry::where('created_at', '>=', now()->subDays(7))->count() . ' new inquiries this week',
+                    'operational_handoffs' => JobOrder::where('status', 'submitted')->count() . ' orders awaiting Core 2 dispatch confirmation',
+                ],
             ];
         }
 
-        $isOperationsRole = $user && in_array($user->role, ['operations_technical', 'administrator', 'staff']);
-        $operationsSummary = null;
-
-        if ($isOperationsRole) {
-            $towerCranesCount = Equipment::where('category', 'like', '%crane%')->count();
-            $cranesDeployed = Equipment::where('category', 'like', '%crane%')->where('status', 'rented')->count();
-            $cranesMaintenance = Equipment::where('category', 'like', '%crane%')->where('status', 'maintenance')->count();
-            $cranesAvailable = Equipment::where('category', 'like', '%crane%')->where('status', 'available')->count();
-
-            $upcomingMaintenance = \App\Models\EquipmentMaintenance::with(['equipment', 'assignedTo'])
-                ->whereIn('status', ['scheduled', 'in-progress'])
-                ->orderBy('scheduled_date', 'asc')
-                ->limit(6)
-                ->get();
-
-            $activeJobOrders = JobOrder::with(['customer', 'assignedTo'])
-                ->whereIn('status', ['approved', 'in-progress', 'pending'])
-                ->latest()
-                ->limit(6)
-                ->get();
-
-            $activeProjects = Project::with(['customer', 'projectManager'])
-                ->where('status', 'active')
-                ->latest()
-                ->limit(5)
-                ->get();
-
-            $operationsSummary = [
-                'total_fleet' => Equipment::count(),
-                'available_fleet' => Equipment::where('status', 'available')->count(),
-                'deployed_fleet' => Equipment::where('status', 'rented')->count(),
-                'maintenance_fleet' => Equipment::where('status', 'maintenance')->count(),
-                'tower_cranes_count' => $towerCranesCount,
-                'cranes_deployed' => $cranesDeployed,
-                'cranes_maintenance' => $cranesMaintenance,
-                'cranes_available' => $cranesAvailable,
-                'active_job_orders_count' => JobOrder::whereIn('status', ['approved', 'in-progress'])->count(),
-                'scheduled_maintenance_count' => \App\Models\EquipmentMaintenance::whereIn('status', ['scheduled', 'in-progress'])->count(),
-                'completed_maintenance_count' => \App\Models\EquipmentMaintenance::where('status', 'completed')->count(),
-                'upcoming_maintenance' => $upcomingMaintenance,
-                'active_job_orders' => $activeJobOrders,
-                'active_projects' => $activeProjects,
-                'heavy_fleet' => Equipment::select('id', 'code', 'name', 'crane_model', 'category', 'status', 'maximum_load', 'maximum_load_unit', 'location')
-                    ->where('category', 'like', '%crane%')
-                    ->limit(8)
-                    ->get(),
+        // 3. Sales Business Development (SBD) Dashboard Summary (Primary Operational User)
+        $sbdSummary = null;
+        if ($user && ($user->isSalesBusinessDevelopment() || $user->role === 'sales_business_development')) {
+            $sbdSummary = [
+                'my_inquiries' => \App\Models\CustomerInquiry::where('assigned_to', $userId)->orWhereNull('assigned_to')->count(),
+                'new_inquiries' => \App\Models\CustomerInquiry::where('status', 'new')->count(),
+                'website_inquiries' => \App\Models\CustomerInquiry::where('source', 'like', '%alibaton%')->orWhere('source', 'like', '%website%')->count(),
+                'my_quotations' => [
+                    'drafts' => \App\Models\Quotation::where('created_by', $userId)->where('status', 'draft')->count(),
+                    'under_review' => \App\Models\Quotation::where('created_by', $userId)->where('status', 'under_review')->count(),
+                    'approved_ready_to_send' => \App\Models\Quotation::where('created_by', $userId)->where('status', 'approved')->count(),
+                    'accepted_ready_for_jo' => \App\Models\Quotation::where('created_by', $userId)->where('status', 'accepted')->whereNull('job_order_id')->count(),
+                ],
+                'my_job_orders' => [
+                    'registered' => JobOrder::where('created_by', $userId)->where('status', 'registered')->count(),
+                    'submitted' => JobOrder::where('created_by', $userId)->where('status', 'submitted')->count(),
+                    'ongoing' => JobOrder::where('created_by', $userId)->whereIn('status', ['in-progress', 'ongoing', 'scheduled'])->count(),
+                ],
+                'my_rental_requests' => Rental::whereHas('customer', fn ($q) => $q->whereNull('archived_at'))->count(),
+                'active_projects' => Project::count(),
             ];
         }
 
@@ -160,14 +143,7 @@ class DashboardController extends Controller
         return response()->json([
             'admin_summary' => $adminSummary,
             'sales_manager_summary' => $salesManagerSummary,
-            'operations_summary' => $operationsSummary,
-            'fleet_breakdown' => [
-                'total_fleet' => $totalEquipmentCount,
-                'available' => $availableEquipmentCount,
-                'deployed' => $deployedEquipmentCount,
-                'maintenance' => $maintenanceEquipmentCount,
-                'deployment_rate' => $deploymentRate,
-            ],
+            'sbd_summary' => $sbdSummary,
             'total_customers' => Customer::count(),
             'active_job_orders' => JobOrder::whereIn('status', ['pending', 'approved', 'in-progress'])->count(),
             'active_rentals' => Rental::where('status', 'active')->count(),

@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
-  # ----------------------------------------------------
-  # Edge: API Gateway & BFF (Reverse Proxy / Port 8000)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # API GATEWAY
+  # ============================================================
   gateway:
     build:
       context: .
@@ -17,6 +16,8 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: http://localhost:8000
+
+      # Internal Microservice URLs
       AUTH_SERVICE_URL: http://auth-service:8001
       CUSTOMER_SERVICE_URL: http://customer-service:8002
       INVENTORY_SERVICE_URL: http://inventory-service:8003
@@ -25,11 +26,32 @@ services:
       PROJECT_SERVICE_URL: http://project-service:8006
       NOTIFICATION_SERVICE_URL: http://notification-service:8007
       ANALYTICS_SERVICE_URL: http://analytics-service:8008
+
+      # Internal Service Authentication
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
+      # Gateway Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
+
+      # Gateway Session / Cache
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+      CACHE_STORE: redis
+
+      # Gateway Authentication Database
+      # The current AuthController directly queries the User model,
+      # so the gateway needs access to the Auth Service database.
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_DATABASE: intellitrack_auth_db
+      DB_USERNAME: intellitrack_user
+      DB_PASSWORD: intellitrack_password
+
     depends_on:
       - redis
+      - postgres-auth
       - auth-service
       - customer-service
       - inventory-service
@@ -38,12 +60,14 @@ services:
       - project-service
       - notification-service
       - analytics-service
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 1: Auth & IAM Service (Port 8001)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # AUTH SERVICE
+  # ============================================================
   auth-service:
     build:
       context: .
@@ -54,24 +78,39 @@ services:
       - "8001:8001"
     environment:
       APP_NAME: "IntelliTrack Auth Service"
-      SERVICE_NAME: auth-service
-      PORT: 8001
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8001
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-auth
       DB_PORT: 5432
       DB_DATABASE: intellitrack_auth_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-auth
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 2: Customer & CRM Service (Port 8002)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # CUSTOMER SERVICE
+  # ============================================================
   customer-service:
     build:
       context: .
@@ -82,24 +121,39 @@ services:
       - "8002:8002"
     environment:
       APP_NAME: "IntelliTrack Customer Service"
-      SERVICE_NAME: customer-service
-      PORT: 8002
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8002
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-customer
       DB_PORT: 5432
       DB_DATABASE: intellitrack_customer_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-customer
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 3: Inventory & Equipment Service (Port 8003)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # INVENTORY SERVICE
+  # ============================================================
   inventory-service:
     build:
       context: .
@@ -110,24 +164,39 @@ services:
       - "8003:8003"
     environment:
       APP_NAME: "IntelliTrack Inventory Service"
-      SERVICE_NAME: inventory-service
-      PORT: 8003
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8003
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-inventory
       DB_PORT: 5432
       DB_DATABASE: intellitrack_inventory_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-inventory
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 4: Quotation & Commercial Service (Port 8004)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # QUOTATION SERVICE
+  # ============================================================
   quotation-service:
     build:
       context: .
@@ -138,24 +207,39 @@ services:
       - "8004:8004"
     environment:
       APP_NAME: "IntelliTrack Quotation Service"
-      SERVICE_NAME: quotation-service
-      PORT: 8004
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8004
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-quotation
       DB_PORT: 5432
       DB_DATABASE: intellitrack_quotation_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-quotation
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 5: Rental & Operations Service (Port 8005)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # RENTAL SERVICE
+  # ============================================================
   rental-service:
     build:
       context: .
@@ -166,24 +250,39 @@ services:
       - "8005:8005"
     environment:
       APP_NAME: "IntelliTrack Rental Service"
-      SERVICE_NAME: rental-service
-      PORT: 8005
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8005
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-rental
       DB_PORT: 5432
       DB_DATABASE: intellitrack_rental_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-rental
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 6: Project Management Service (Port 8006)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # PROJECT SERVICE
+  # ============================================================
   project-service:
     build:
       context: .
@@ -194,24 +293,39 @@ services:
       - "8006:8006"
     environment:
       APP_NAME: "IntelliTrack Project Service"
-      SERVICE_NAME: project-service
-      PORT: 8006
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8006
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-project
       DB_PORT: 5432
       DB_DATABASE: intellitrack_project_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-project
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 7: Notification & Audit Service (Port 8007)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # NOTIFICATION SERVICE
+  # ============================================================
   notification-service:
     build:
       context: .
@@ -222,24 +336,39 @@ services:
       - "8007:8007"
     environment:
       APP_NAME: "IntelliTrack Notification Service"
-      SERVICE_NAME: notification-service
-      PORT: 8007
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8007
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-notification
       DB_PORT: 5432
       DB_DATABASE: intellitrack_notification_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-notification
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Service 8: Analytics & Reporting Service (Port 8008)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # ANALYTICS SERVICE
+  # ============================================================
   analytics-service:
     build:
       context: .
@@ -250,142 +379,268 @@ services:
       - "8008:8008"
     environment:
       APP_NAME: "IntelliTrack Analytics Service"
-      SERVICE_NAME: analytics-service
-      PORT: 8008
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8008
+
+      DB_CONNECTION: pgsql
       DB_HOST: postgres-analytics
       DB_PORT: 5432
       DB_DATABASE: intellitrack_analytics_db
       DB_USERNAME: intellitrack_user
       DB_PASSWORD: intellitrack_password
+
+      # Redis
       REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Session / Cache
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+
       MICROSERVICE_INTERNAL_SECRET: intellitrack-secret-token-prod
+
     depends_on:
       - postgres-analytics
       - redis
+
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Message Broker & Distributed Cache (Redis)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # REDIS
+  # ============================================================
   redis:
     image: redis:7-alpine
     container_name: intellitrack-redis-broker
     restart: unless-stopped
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     networks:
       - intellitrack-net
 
-  # ----------------------------------------------------
-  # Database per Service (Isolated PostgreSQL Stores)
-  # ----------------------------------------------------
+
+  # ============================================================
+  # AUTH DATABASE
+  # ============================================================
   postgres-auth:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-auth-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_auth_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - auth_db_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_auth_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # CUSTOMER DATABASE
+  # ============================================================
   postgres-customer:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-customer-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_customer_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - customer_db_data:/var/lib/postgresql/data
+      - postgres_customer_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_customer_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # INVENTORY DATABASE
+  # ============================================================
   postgres-inventory:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-inventory-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_inventory_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - inventory_db_data:/var/lib/postgresql/data
+      - postgres_inventory_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_inventory_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # QUOTATION DATABASE
+  # ============================================================
   postgres-quotation:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-quotation-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_quotation_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - quotation_db_data:/var/lib/postgresql/data
+      - postgres_quotation_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_quotation_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # RENTAL DATABASE
+  # ============================================================
   postgres-rental:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-rental-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_rental_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - rental_db_data:/var/lib/postgresql/data
+      - postgres_rental_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_rental_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # PROJECT DATABASE
+  # ============================================================
   postgres-project:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-project-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_project_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - project_db_data:/var/lib/postgresql/data
+      - postgres_project_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_project_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # NOTIFICATION DATABASE
+  # ============================================================
   postgres-notification:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-notification-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_notification_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - notification_db_data:/var/lib/postgresql/data
+      - postgres_notification_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_notification_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+
+  # ============================================================
+  # ANALYTICS DATABASE
+  # ============================================================
   postgres-analytics:
     image: postgres:16-alpine
+    container_name: intellitrack-web-postgres-analytics-1
+    restart: unless-stopped
     environment:
       POSTGRES_DB: intellitrack_analytics_db
       POSTGRES_USER: intellitrack_user
       POSTGRES_PASSWORD: intellitrack_password
     volumes:
-      - analytics_db_data:/var/lib/postgresql/data
+      - postgres_analytics_data:/var/lib/postgresql/data
     networks:
       - intellitrack-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U intellitrack_user -d intellitrack_analytics_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  redis_data:
-  auth_db_data:
-  customer_db_data:
-  inventory_db_data:
-  quotation_db_data:
-  rental_db_data:
-  project_db_data:
-  notification_db_data:
-  analytics_db_data:
 
 networks:
   intellitrack-net:
     driver: bridge
+
+
+volumes:
+  postgres_auth_data:
+  postgres_customer_data:
+  postgres_inventory_data:
+  postgres_quotation_data:
+  postgres_rental_data:
+  postgres_project_data:
+  postgres_notification_data:
+  postgres_analytics_data:

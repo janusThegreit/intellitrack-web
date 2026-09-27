@@ -14,6 +14,8 @@ class Project extends Model
     protected $fillable = [
         'project_code', 'project_name', 'description', 'customer_id',
         'project_manager_id', 'start_date', 'end_date', 'deadline',
+        'expected_end_date', 'location', 'requirements', 'required_equipment',
+        'remarks', 'job_order_id', 'rental_id',
         'status', 'budget', 'spent_amount', 'progress_percentage',
         'objectives', 'deliverables'
     ];
@@ -22,6 +24,7 @@ class Project extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'deadline' => 'datetime',
+        'expected_end_date' => 'datetime',
         'budget' => 'decimal:2',
         'spent_amount' => 'decimal:2',
     ];
@@ -41,8 +44,8 @@ class Project extends Model
         return $this->hasMany(ProjectTask::class);
     }
 
-    public function communications(): HasMany
+    public function jobOrder(): BelongsTo
     {
-        return $this->hasMany(CustomerCommunication::class);
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 }

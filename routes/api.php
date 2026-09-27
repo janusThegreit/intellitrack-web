@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\DepartmentWebhookController;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/external/inquiries', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'ingestWebsiteInquiry'])->middleware('throttle:30,1');
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('session/ping', function (Illuminate\Http\Request $request) {
@@ -138,31 +139,31 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::apiResource('rental-requirements', RentalRequirementController::class);
     Route::post('rental-requirements/{rentalRequirement}/assess', [RentalRequirementController::class, 'assess']);
 
-    // Equipment Routes
-    Route::apiResource('equipment', EquipmentController::class);
+    // Equipment Routes (Core 1 receives/reads equipment availability from Operations/Resource subsystem)
+    Route::apiResource('equipment', EquipmentController::class)->only(['index', 'show']);
     Route::get('equipment/{equipment}/rentals', [EquipmentController::class, 'rentals']);
-    Route::get('equipment/{equipment}/maintenance', [EquipmentController::class, 'maintenance']);
-    Route::post('equipment/{equipment}/maintenance', [EquipmentController::class, 'scheduleMaintenance']);
-    Route::post('equipment/{equipment}/deploy', [EquipmentController::class, 'deploy']);
-    Route::post('equipment/{equipment}/demobilize', [EquipmentController::class, 'demobilize']);
-    Route::post('equipment/{equipment}/complete-maintenance', [EquipmentController::class, 'completeMaintenance']);
 
-    // Job Order Routes
+    // Job Order Routes (Core 1 Job Order Registration & Monitoring)
     Route::apiResource('job-orders', JobOrderController::class);
     Route::post('job-orders/{jobOrder}/items', [JobOrderController::class, 'addItem']);
     Route::put('job-orders/{jobOrder}/items/{item}', [JobOrderController::class, 'updateItem']);
     Route::delete('job-orders/{jobOrder}/items/{item}', [JobOrderController::class, 'deleteItem']);
     Route::patch('job-orders/{jobOrder}/status', [JobOrderController::class, 'updateStatus']);
-    Route::post('job-orders/{jobOrder}/assign', [JobOrderController::class, 'assign']);
-    Route::post('job-orders/{jobOrder}/schedule', [JobOrderController::class, 'schedule']);
-    Route::post('job-orders/{jobOrder}/sync-department/{department}', [DepartmentWebhookController::class, 'syncDepartment']);
+    Route::post('job-orders/{jobOrder}/submit-to-operations', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'submitJobOrderToOperations']);
+    Route::post('job-orders/{jobOrder}/operations-status', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'receiveOperationsStatus']);
 
-    // Rental Routes
+    // Core 1 Subsystem Integrations
+    Route::post('customers/{customer}/sync-group185', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
+    Route::post('integrations/group185/sync-customer-master/{customer}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'syncCustomerMasterToGroup185']);
+    Route::post('integrations/core2/submit-job-order/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'submitJobOrderToOperations']);
+    Route::post('integrations/core2/status-update/{jobOrder}', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'receiveOperationsStatus']);
+    Route::post('integrations/website-inquiry', [\App\Http\Controllers\Api\SubsystemIntegrationController::class, 'ingestWebsiteInquiry']);
+
+    // Rental Routes (Core 1 Customer Rental Requirements)
     Route::apiResource('rentals', RentalController::class);
-    Route::post('rentals/{rental}/return', [RentalController::class, 'returnEquipment']);
     Route::get('rentals/overdue', [RentalController::class, 'overdue']);
 
-    // Quotation Routes
+    // Quotation Routes (Core 1 Sales Process)
     Route::apiResource('quotations', QuotationController::class);
     Route::post('quotations/{quotation}/submit', [QuotationController::class, 'submitForApproval']);
     Route::post('quotations/{quotation}/approve', [QuotationController::class, 'approve']);
