@@ -19,6 +19,7 @@ use App\Mail\LoginOtpMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class AuthController extends Controller
 {
@@ -123,13 +124,58 @@ class AuthController extends Controller
         // Password is valid! Clear failed login throttle
         RateLimiter::clear($throttleKey);
 
+        $has2FaColumns = Schema::hasColumn('users', 'two_factor_code');
+        $is2FaEnabled = filter_var(env('AUTH_2FA_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+
+        // If 2FA is not explicitly enabled or migration is not yet applied, sign in directly!
+        if (! $is2FaEnabled || ! $has2FaColumns) {
+            Auth::login($user, $remember);
+            $request->session()->regenerate();
+
+            if (Schema::hasColumn('users', 'last_login_at')) {
+                $user->update(['last_login_at' => now()]);
+            }
+
+            ActivityLogService::logAuth($user, 'login', "User '{$user->name}' signed in successfully.", [
+                'role' => $user->role,
+                'email' => $user->email,
+                'ip' => $request->ip(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'redirect' => '/dashboard',
+                    'user' => $user,
+                ]);
+            }
+
+            return redirect()->intended('/dashboard');
+        }
+
         // Generate cryptographically secure 6-digit OTP code
         $otp = (string) random_int(100000, 999999);
-        $user->update([
-            'two_factor_code' => Hash::make($otp),
-            'two_factor_expires_at' => now()->addMinutes(10),
-            'two_factor_attempts' => 0,
-        ]);
+        try {
+            $user->update([
+                'two_factor_code' => Hash::make($otp),
+                'two_factor_expires_at' => now()->addMinutes(10),
+                'two_factor_attempts' => 0,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to save 2FA OTP for {$user->email}: {$e->getMessage()}. Falling back to direct login.");
+            Auth::login($user, $remember);
+            $request->session()->regenerate();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'redirect' => '/dashboard',
+                    'user' => $user,
+                ]);
+            }
+
+            return redirect()->intended('/dashboard');
+        }
 
         // Save remember choice and user id in session
         $request->session()->put('login_2fa_user_id', $user->id);
