@@ -14,7 +14,6 @@ import {
   Eye, 
   Trash2, 
   Search, 
-  UserCheck, 
   Calendar, 
   CheckCircle, 
   Clock, 
@@ -31,7 +30,6 @@ import {
   Briefcase,
   DollarSign,
   Send,
-  ArrowUpRight,
   Info,
   Activity,
 } from 'lucide-react';
@@ -92,6 +90,9 @@ interface JobOrder {
     city?: string;
   };
   description: string;
+  service_type?: string;
+  required_equipment?: string;
+  special_instructions?: string;
   status: string;
   total_amount: number;
   estimated_cost?: number;
@@ -135,7 +136,6 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
   const [sortBy, setSortBy] = useState<keyof JobOrder>('job_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [customers, setCustomers] = useState<Array<{ id: number; name: string; company_name?: string; address?: string; city?: string }>>([]);
-  const [staffList, setStaffList] = useState<StaffUser[]>([]);
   const [equipmentCatalog, setEquipmentCatalog] = useState<EquipmentItem[]>([]);
   
   // Modals state
@@ -178,8 +178,9 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      if (tabParam) {
-        setActiveTab(tabParam);
+      const validTabs = ['all', 'requests', 'registered', 'completion', 'assignment', 'scheduling', 'tracking'] as const;
+      if (tabParam && (validTabs as readonly string[]).includes(tabParam)) {
+        setActiveTab(tabParam as typeof validTabs[number]);
         return;
       }
     }
@@ -258,10 +259,6 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       .then((data) => setCustomers(data.data ?? []))
       .catch(() => setCustomers([]));
 
-    fetch('/api/assignable-staff', { headers: { Accept: 'application/json' } })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => setStaffList(data ?? []))
-      .catch(() => setStaffList([]));
 
     fetch('/api/equipment?per_page=100', { headers: { Accept: 'application/json' } })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
@@ -721,16 +718,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
           ) : (
             <button
               type="button"
-              onClick={() => {
-                setSchedulingJob(row);
-                setScheduleData({
-                  scheduled_date: row.scheduled_date || '',
-                  start_date: row.start_date || '',
-                  due_date: row.due_date || '',
-                  location: row.location || '',
-                  notes: row.notes || '',
-                });
-              }}
+              onClick={() => setEditingJob(row)}
               className="text-[10px] text-amber-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Calendar className="h-3 w-3" /> Set Schedule
@@ -2140,6 +2128,15 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
                     <option value="high">High</option>
                     <option value="urgent">Urgent</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">Scheduled Date</label>
+                  <input
+                    type="date"
+                    value={editingJob.scheduled_date ? editingJob.scheduled_date.slice(0, 10) : ''}
+                    onChange={(e) => setEditingJob({ ...editingJob, scheduled_date: e.target.value })}
+                    className="w-full rounded-xl border border-border-default bg-surface-input px-3.5 py-2 text-xs text-content-primary focus:border-amber-500 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-content-muted mb-1">Target Due Date</label>

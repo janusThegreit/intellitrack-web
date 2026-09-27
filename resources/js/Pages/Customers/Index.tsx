@@ -35,11 +35,9 @@ import {
   RefreshCw,
   Calendar,
   Wrench,
-  Activity,
   TrendingUp,
   UserCheck,
   Users,
-  BadgeCheck,
   ClipboardCheck,
   CreditCard,
   FileCheck2,
@@ -1354,30 +1352,6 @@ const CustomersList = ({
    */
 
   const totalCustomers = records.length;
-
-  const activeClients = records.filter(
-    customer =>
-      customer.status?.toLowerCase() === 'active'
-  ).length;
-
-  const prospectClients = records.filter(
-    customer =>
-      customer.status?.toLowerCase() === 'prospect'
-  ).length;
-
-  const totalInquiries = records.reduce(
-    (total, customer) =>
-      total +
-      Number(customer.inquiries_count ?? 0),
-    0
-  );
-
-  const totalQuotations = records.reduce(
-    (total, customer) =>
-      total +
-      Number(customer.quotations_count ?? 0),
-    0
-  );
 
   /*
    * ------------------------------------------------------------
