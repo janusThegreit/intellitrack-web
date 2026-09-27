@@ -56,7 +56,7 @@ const InvoicesList = ({ invoices = [] }: { invoices?: Array<Invoice> }) => {
   };
 
   const columns: TableColumn<Invoice>[] = [
-    { key: 'invoice_number', label: 'Invoice #', width: '12%', render: (value) => <span className="font-semibold text-primary-600">{value}</span> },
+    { key: 'invoice_number', label: 'Invoice #', width: '12%', stickyLeft: true, render: (value) => <span className="font-semibold text-primary-600">{value}</span> },
     { key: 'customer_name', label: 'Customer', width: '18%' },
     { key: 'amount', label: 'Amount', render: (amt) => `$${typeof amt === 'number' ? amt.toFixed(2) : parseFloat(String(amt)).toFixed(2)}` },
     { key: 'amount_paid', label: 'Paid', render: (paid) => `$${typeof paid === 'number' ? paid.toFixed(2) : parseFloat(String(paid)).toFixed(2)}` },
@@ -65,6 +65,7 @@ const InvoicesList = ({ invoices = [] }: { invoices?: Array<Invoice> }) => {
     {
       key: 'id',
       label: 'Actions',
+      stickyRight: true,
       render: (id) => (
         <div className="flex items-center gap-2">
           <button onClick={() => window.location.href = `/invoices/${id}`} className="p-1.5 hover:bg-primary-50 rounded-lg text-primary-600 transition-colors"><Eye className="w-4 h-4" /></button>

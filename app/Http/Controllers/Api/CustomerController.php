@@ -16,12 +16,19 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('view-core-dashboard');
-        $query = Customer::query();
 
-        if ($request->boolean('archived')) {
-            $query->whereNotNull('archived_at');
+        // Automatically purge any records in Recently Deleted that have exceeded the 30-day retention window
+        Customer::onlyTrashed()->where('deleted_at', '<=', now()->subDays(30))->forceDelete();
+
+        $isTrashView = $request->boolean('trash') || $request->input('view') === 'trash';
+        $isArchivedView = $request->boolean('archived') || $request->input('view') === 'archived';
+
+        if ($isTrashView) {
+            $query = Customer::onlyTrashed();
+        } elseif ($isArchivedView) {
+            $query = Customer::query()->whereNotNull('archived_at');
         } else {
-            $query->whereNull('archived_at');
+            $query = Customer::query()->whereNull('archived_at');
         }
 
         // Search functionality
@@ -124,9 +131,24 @@ class CustomerController extends Controller
             'quotations',
         ]);
 
-        $customers = $query->orderBy('id', 'desc')->paginate($request->input('per_page', 15));
+        $customers = $query->orderBy($isTrashView ? 'deleted_at' : 'id', 'desc')->paginate($request->input('per_page', 15));
 
-        return response()->json($customers);
+        $customers->getCollection()->transform(function ($customer) {
+            if ($customer->deleted_at) {
+                $del = \Carbon\Carbon::parse($customer->deleted_at);
+                $daysAgo = (int) $del->diffInDays(now());
+                $customer->days_remaining = max(0, 30 - $daysAgo);
+                $customer->days_deleted = $daysAgo;
+            }
+            return $customer;
+        });
+
+        $customData = $customers->toArray();
+        $customData['trash_count'] = Customer::onlyTrashed()->count();
+        $customData['archived_count'] = Customer::whereNotNull('archived_at')->count();
+        $customData['active_count'] = Customer::whereNull('archived_at')->count();
+
+        return response()->json($customData);
     }
 
     /**
@@ -485,13 +507,76 @@ class CustomerController extends Controller
     }
 
     /**
-     * Delete the specified customer.
+     * Delete the specified customer (Moves to Recently Deleted with 30-day retention).
      */
     public function destroy(Customer $customer)
     {
         Gate::authorize('manage-customers');
-        $customer->delete();
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+        $name = $customer->company_name ?? $customer->name;
+        $customer->update(['status' => 'inactive']);
+        $customer->delete(); // sets deleted_at = now()
+
+        return response()->json([
+            'message' => "{$name} moved to Recently Deleted. It will be kept for 30 days before permanent deletion.",
+            'days_remaining' => 30,
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Get count of recently deleted customers.
+     */
+    public function trashCount()
+    {
+        Gate::authorize('view-core-dashboard');
+        Customer::onlyTrashed()->where('deleted_at', '<=', now()->subDays(30))->forceDelete();
+        $count = Customer::onlyTrashed()->count();
+
+        return response()->json(['trash_count' => $count]);
+    }
+
+    /**
+     * Restore a soft-deleted customer from Recently Deleted (30-day trash).
+     */
+    public function restoreDeleted($id)
+    {
+        Gate::authorize('manage-customers');
+        $customer = Customer::onlyTrashed()->findOrFail($id);
+        $customer->restore();
+        $customer->update(['status' => 'active']);
+
+        return response()->json([
+            'message' => "{$customer->name} has been restored successfully.",
+            'customer' => $customer->fresh(),
+        ]);
+    }
+
+    /**
+     * Permanently remove a customer from the database immediately.
+     */
+    public function forceDelete($id)
+    {
+        Gate::authorize('manage-customers');
+        $customer = Customer::withTrashed()->findOrFail($id);
+        $name = $customer->company_name ?? $customer->name;
+        $customer->forceDelete();
+
+        return response()->json([
+            'message' => "{$name} has been permanently deleted.",
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Empty all items in Recently Deleted.
+     */
+    public function emptyTrash()
+    {
+        Gate::authorize('manage-customers');
+        $count = Customer::onlyTrashed()->count();
+        Customer::onlyTrashed()->forceDelete();
+
+        return response()->json([
+            'message' => "Emptied {$count} customer(s) from Recently Deleted.",
+        ]);
     }
 
     public function archive(Customer $customer)

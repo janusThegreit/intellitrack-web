@@ -554,6 +554,7 @@ const JobOrdersList = ({ view = 'all', jobOrders = [] }: JobOrderListProps) => {
       key: 'job_number',
       label: 'Job #',
       sortable: true,
+      stickyLeft: true,
       width: '12%',
       render: (value, row) => (
         <div>

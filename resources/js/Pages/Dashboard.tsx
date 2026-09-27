@@ -31,6 +31,7 @@ import clsx from 'clsx';
 import axios from 'axios';
 import { StatusBadge } from '../Components/Badge';
 import Button from '../Components/Button';
+import { formatPeso } from '../Utils/currency';
 
 interface AdminSummary {
   total_users: number;
@@ -607,7 +608,7 @@ const Dashboard = () => {
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs text-content-secondary">
                 <span className="text-emerald-500 font-semibold">{admin.active_users} Active</span>
-                <span>â€¢</span>
+                <span>•</span>
                 <span className="text-content-muted">{admin.inactive_users} Inactive</span>
               </div>
             </div>
@@ -1082,7 +1083,7 @@ const Dashboard = () => {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-content-primary">Quotation Pipeline</h3>
-                    <p className="text-xs text-content-secondary">Draft â†’ Review â†’ Approved â†’ Sent â†’ Accepted</p>
+                    <p className="text-xs text-content-secondary">Draft → Review → Approved → Sent → Accepted</p>
                   </div>
                 </div>
                 <Link href="/quotations" className="text-xs font-semibold text-blue-400 hover:underline flex items-center gap-1">
@@ -1101,7 +1102,7 @@ const Dashboard = () => {
                         <p className="text-[10px] text-content-secondary truncate mt-0.5">{q.description || 'Crane rental proposal'}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-bold text-emerald-400 font-mono">â‚±{Number(q.total_amount || 0).toLocaleString()}</span>
+                        <span className="text-[10px] font-bold text-emerald-400 font-mono">{formatPeso(q.total_amount)}</span>
                         <span className={clsx(
                           "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md border",
                           q.status === 'approved' ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" :
@@ -1215,7 +1216,7 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] font-bold text-emerald-400 font-mono">
-                        {rental.rental_start_date ? new Date(rental.rental_start_date).toLocaleDateString() : 'â€“'}
+                        {rental.rental_start_date ? new Date(rental.rental_start_date).toLocaleDateString() : '—'}
                       </span>
                       <span className={clsx(
                         "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md border",
@@ -1363,17 +1364,17 @@ return (
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  â‚±{Number(data.sales_manager_summary.ytd_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatPeso(data.sales_manager_summary.ytd_revenue ?? 0)}
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                     <TrendingUp className="h-3 w-3" />
-                    +{data.sales_manager_summary.yoy_growth_pct}% vs 2025
+                    +{data.sales_manager_summary.yoy_growth_pct ?? 0}% vs 2025
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                2025 Baseline: â‚±{Number(data.sales_manager_summary.prev_year_revenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                2025 Baseline: {formatPeso(data.sales_manager_summary.prev_year_revenue ?? 0)}
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
             </div>
@@ -1388,7 +1389,7 @@ return (
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  â‚±{Number(data.sales_manager_summary.pipeline_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatPeso(data.sales_manager_summary.pipeline_value ?? 0)}
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-400">
@@ -1412,11 +1413,11 @@ return (
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  {data.sales_manager_summary.active_cranes_count} / {data.sales_manager_summary.total_cranes_count} Cranes
+                  {data.sales_manager_summary.active_cranes_count ?? 0} / {data.sales_manager_summary.total_cranes_count ?? 0} Cranes
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                    {data.sales_manager_summary.total_cranes_count > 0 ? Math.round((data.sales_manager_summary.active_cranes_count / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Deployed
+                    {(data.sales_manager_summary.total_cranes_count ?? 0) > 0 ? Math.round(((data.sales_manager_summary.active_cranes_count ?? 0) / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Deployed
                   </span>
                 </div>
               </div>
@@ -1436,16 +1437,16 @@ return (
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  {data.sales_manager_summary.pending_approvals_count} Proposals
+                  {data.sales_manager_summary.pending_approvals_count ?? 0} Proposals
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className={clsx(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border',
-                    data.sales_manager_summary.pending_approvals_count > 0
+                    (data.sales_manager_summary.pending_approvals_count ?? 0) > 0
                       ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400'
                       : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
                   )}>
-                    {data.sales_manager_summary.pending_approvals_count > 0 ? 'Awaiting Sign-off' : 'All Clear'}
+                    {(data.sales_manager_summary.pending_approvals_count ?? 0) > 0 ? 'Awaiting Sign-off' : 'All Clear'}
                   </span>
                 </div>
               </div>
@@ -1493,7 +1494,7 @@ return (
 
                     <div className="flex items-center gap-4 shrink-0">
                       <span className="text-sm font-bold text-content-primary font-mono">
-                        â‚±{Number(q.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatPeso(q.total_amount)}
                       </span>
                       <Link
                         href="/quotations"
@@ -1778,8 +1779,8 @@ return (
                     <p className="text-[11px] text-content-secondary">{q.customer?.name || 'Customer'}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-content-primary">
-                      â‚±{Number(q.total_amount || 0).toLocaleString()}
+                    <span className="text-xs font-bold text-content-primary font-mono">
+                      {formatPeso(q.total_amount)}
                     </span>
                     <StatusBadge status={q.status || 'draft'} />
                   </div>

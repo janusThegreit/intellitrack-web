@@ -41,6 +41,9 @@ import {
   ClipboardCheck,
   CreditCard,
   FileCheck2,
+  Clock,
+  RotateCcw,
+  CheckCircle2,
 } from 'lucide-react';
 
 import { formatPeso } from '../../Utils/currency';
@@ -284,6 +287,8 @@ interface Customer {
 
   deleted_at?: string | null;
   archived_at?: string | null;
+  days_remaining?: number;
+  days_deleted?: number;
 }
 
 interface CustomersListProps {
@@ -478,7 +483,13 @@ const CustomersList = ({
   const [typeFilter, setTypeFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
-  const [showArchived, setShowArchived] = useState(false);
+  const [viewMode, setViewMode] = useState<'active' | 'archived' | 'trash'>('active');
+  const showArchived = viewMode === 'archived';
+  const [trashCount, setTrashCount] = useState<number>(0);
+  const [archivedCount, setArchivedCount] = useState<number>(0);
+  const [activeCount, setActiveCount] = useState<number>(0);
+  const [processingAction, setProcessingAction] = useState<number | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [records, setRecords] =
     useState<Customer[]>(customers);
@@ -548,7 +559,8 @@ const CustomersList = ({
     try {
       const params = new URLSearchParams({
         per_page: '100',
-        ...(showArchived ? { archived: '1' } : {}),
+        ...(viewMode === 'archived' ? { archived: '1' } : {}),
+        ...(viewMode === 'trash' ? { trash: '1' } : {}),
         ...(locationFilter !== 'all' ? { location: locationFilter } : {}),
       });
 
@@ -568,6 +580,9 @@ const CustomersList = ({
       const data = await response.json();
 
       setRecords(data.data ?? []);
+      if (typeof data.trash_count === 'number') setTrashCount(data.trash_count);
+      if (typeof data.archived_count === 'number') setArchivedCount(data.archived_count);
+      if (typeof data.active_count === 'number') setActiveCount(data.active_count);
       setLoadError('');
     } catch {
       setLoadError(
@@ -578,7 +593,7 @@ const CustomersList = ({
 
   useEffect(() => {
     loadCustomers();
-  }, [showArchived, locationFilter]);
+  }, [viewMode, locationFilter]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -960,7 +975,8 @@ const CustomersList = ({
       customer.name;
 
     if (
-      !window.confirm( `Permanently remove ${name} from Customer and Client Management?`
+      !window.confirm(
+        `Move "${name}" to Recently Deleted?\n\nIt will be safely stored for 30 days before permanent deletion, and can be restored at any time.`
       )
     ) {
       return;
@@ -980,11 +996,132 @@ const CustomersList = ({
         throw new Error();
       }
 
+      const resData = await response.json().catch(() => null);
+      setToastMessage(resData?.message || `"${name}" moved to Recently Deleted (30-day retention).`);
+      setTimeout(() => setToastMessage(null), 5000);
+
       setSelectedCustomer(null);
       await loadCustomers();
     } catch {
-      setLoadError( 'Customer/client could not be removed.'
+      setLoadError( 'Customer/client could not be moved to Recently Deleted.'
       );
+    }
+  };
+
+  /*
+   * ------------------------------------------------------------
+   * RESTORE FROM RECENTLY DELETED (30-DAY TRASH)
+   * ------------------------------------------------------------
+   */
+
+  const restoreDeletedCustomer = async (customer: Customer) => {
+    const name = customer.company_name || customer.name;
+    try {
+      setProcessingAction(customer.id);
+      const response = await fetch(`/api/customers/${customer.id}/restore-deleted`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error();
+      }
+
+      const resData = await response.json().catch(() => null);
+      setToastMessage(resData?.message || `"${name}" restored back to Active Directory.`);
+      setTimeout(() => setToastMessage(null), 5000);
+
+      setSelectedCustomer(null);
+      await loadCustomers();
+    } catch {
+      setLoadError('Failed to restore customer from Recently Deleted.');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  /*
+   * ------------------------------------------------------------
+   * FORCE PERMANENT DELETE (FROM RECENTLY DELETED)
+   * ------------------------------------------------------------
+   */
+
+  const forceDeleteCustomer = async (customer: Customer) => {
+    const name = customer.company_name || customer.name;
+
+    if (
+      !window.confirm(
+        `PERMANENT REMOVAL WARNING:\n\nPermanently remove "${name}" forever?\nThis action CANNOT be undone and will delete all records immediately.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setProcessingAction(customer.id);
+      const response = await fetch(`/api/customers/${customer.id}/force-delete`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error();
+      }
+
+      const resData = await response.json().catch(() => null);
+      setToastMessage(resData?.message || `"${name}" permanently removed.`);
+      setTimeout(() => setToastMessage(null), 5000);
+
+      setSelectedCustomer(null);
+      await loadCustomers();
+    } catch {
+      setLoadError('Customer could not be permanently removed.');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  /*
+   * ------------------------------------------------------------
+   * EMPTY RECENTLY DELETED
+   * ------------------------------------------------------------
+   */
+
+  const emptyRecentlyDeleted = async () => {
+    if (
+      !window.confirm(
+        `EMPTY RECENTLY DELETED?\n\nThis will permanently delete ALL (${trashCount}) clients currently in Recently Deleted.\nThis cannot be undone. Are you sure?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/customers/empty-trash', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error();
+      }
+
+      const resData = await response.json().catch(() => null);
+      setToastMessage(resData?.message || 'Recently Deleted has been emptied.');
+      setTimeout(() => setToastMessage(null), 5000);
+
+      await loadCustomers();
+    } catch {
+      setLoadError('Failed to empty Recently Deleted.');
     }
   };
 
@@ -1074,7 +1211,8 @@ const CustomersList = ({
       ...(typeFilter !== 'all' ? { type: typeFilter } : {}),
       ...(sourceFilter !== 'all' ? { source: sourceFilter } : {}),
       ...(locationFilter !== 'all' ? { location: locationFilter } : {}),
-      ...(showArchived ? { archived: '1' } : {}),
+      ...(viewMode === 'archived' ? { archived: '1' } : {}),
+      ...(viewMode === 'trash' ? { trash: '1' } : {}),
     });
     window.location.href = `/api/customers/export?${query.toString()}`;
   };
@@ -1090,6 +1228,7 @@ const CustomersList = ({
       key: 'customer_code',
       label: 'CUSTOMER ID',
       sortable: true,
+      stickyLeft: true,
       width: '10%',
       render: (value, row) => (
         <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
@@ -1270,78 +1409,135 @@ const CustomersList = ({
       key: 'status',
       label: 'STATUS',
       sortable: true,
-      width: '7%',
-      render: (status) => <StatusBadge status={status || 'active'} />,
+      width: '8%',
+      render: (status, row) => {
+        if (viewMode === 'trash' || row.deleted_at) {
+          const daysLeft = row.days_remaining ?? 30;
+          const isUrgent = daysLeft <= 5;
+          return (
+            <div className="flex flex-col gap-1">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                  isUrgent
+                    ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30 animate-pulse'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                }`}
+                title={`Deleted ${row.days_deleted ?? 0} days ago. Auto-purged after 30 days.`}
+              >
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>{daysLeft}d left</span>
+              </span>
+              <span className="text-[10px] text-content-secondary font-mono">
+                Recently Deleted
+              </span>
+            </div>
+          );
+        }
+        return <StatusBadge status={status || 'active'} />;
+      },
     },
     {
       key: 'id',
       label: 'ACTIONS',
-      width: '11%',
-      render: (_id, row) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => router.visit(`/inquiries?create=1&customer_id=${row.id}`)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
-            title="Create CRM Inquiry for this client"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Inquiry</span>
-          </button>
+      stickyRight: true,
+      width: '12%',
+      render: (_id, row) => {
+        const isRowTrash = viewMode === 'trash' || Boolean(row.deleted_at);
 
-          <button
-            onClick={() => viewCustomer(row)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-all cursor-pointer shadow-xs"
-            title="View Customer"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>View</span>
-          </button>
-
-          {(isSalesBusinessDevelopment || isSalesManager) && (
-            <>
+        if (isRowTrash) {
+          return (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={() => openEdit(row)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-xs font-semibold text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 transition-all cursor-pointer shadow-xs"
-                title="Edit Customer"
+                onClick={() => restoreDeletedCustomer(row)}
+                disabled={processingAction === row.id}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                title="Restore client back to Active Directory"
               >
-                <Edit2 className="h-3.5 w-3.5" />
-                <span>Edit</span>
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restore</span>
               </button>
-
-              {!row.deleted_at && !row.archived_at ? (
-                <button
-                  onClick={() => archiveCustomer(row)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
-                  title="Archive Customer"
-                >
-                  <Archive className="h-3.5 w-3.5" />
-                  <span>Archive</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => restoreCustomer(row)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs"
-                  title="Restore Customer"
-                >
-                  <ArchiveRestore className="h-3.5 w-3.5" />
-                  <span>Restore</span>
-                </button>
-              )}
 
               {isSalesManager && (
                 <button
-                  onClick={() => deleteCustomer(row)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs"
-                  title="Delete Customer Permanently"
+                  onClick={() => forceDeleteCustomer(row)}
+                  disabled={processingAction === row.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Permanently Delete Forever"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete</span>
+                  <span>Delete Forever</span>
                 </button>
               )}
-            </>
-          )}
-        </div>
-      ),
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => router.visit(`/inquiries?create=1&customer_id=${row.id}`)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
+              title="Create CRM Inquiry for this client"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Inquiry</span>
+            </button>
+
+            <button
+              onClick={() => viewCustomer(row)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-all cursor-pointer shadow-xs"
+              title="View Customer"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>View</span>
+            </button>
+
+            {(isSalesBusinessDevelopment || isSalesManager) && (
+              <>
+                <button
+                  onClick={() => openEdit(row)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-xs font-semibold text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 transition-all cursor-pointer shadow-xs"
+                  title="Edit Customer"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  <span>Edit</span>
+                </button>
+
+                {!row.deleted_at && !row.archived_at ? (
+                  <button
+                    onClick={() => archiveCustomer(row)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
+                    title="Archive Customer"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    <span>Archive</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => restoreCustomer(row)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition-all cursor-pointer shadow-xs"
+                    title="Restore Customer"
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    <span>Restore</span>
+                  </button>
+                )}
+
+                {isSalesManager && (
+                  <button
+                    onClick={() => deleteCustomer(row)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition-all cursor-pointer shadow-xs"
+                    title="Move to Recently Deleted (Kept 30 days)"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -2749,6 +2945,14 @@ const CustomersList = ({
               ) : undefined
             }
           />
+          {/* TOAST NOTIFICATION */}
+          {toastMessage && (
+            <div className="flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300 rounded-xl shadow-xs transition-all animate-fadeIn">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+              <span className="font-medium">{toastMessage}</span>
+            </div>
+          )}
+
           {/* ERROR */}
 
           {loadError && (
@@ -2940,24 +3144,106 @@ const CustomersList = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-border-subtle pt-2.5">
-                  <label className="flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showArchived}
-                      onChange={event => setShowArchived(event.target.checked)}
-                      className="h-4 w-4 rounded border-border-default bg-surface-input text-brand focus:ring-brand"
-                    />
-                    <span>Show archived</span>
-                  </label>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
+                  <div className="inline-flex items-center p-1 rounded-xl bg-surface-app border border-border-subtle shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('active')}
+                      className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === 'active'
+                          ? 'bg-surface-card text-brand shadow-xs border border-border-default/60'
+                          : 'text-content-secondary hover:text-content-primary'
+                      }`}
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      <span>Active Directory</span>
+                      {activeCount > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-brand/10 text-brand font-mono font-bold">
+                          {activeCount}
+                        </span>
+                      )}
+                    </button>
 
-                  <span className="text-xs text-content-secondary font-mono">
-                    Showing {filteredCustomers.length} record{filteredCustomers.length !== 1 ? 's' : ''}
-                  </span>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('archived')}
+                      className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === 'archived'
+                          ? 'bg-surface-card text-amber-500 shadow-xs border border-border-default/60'
+                          : 'text-content-secondary hover:text-content-primary'
+                      }`}
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                      <span>Archived</span>
+                      {archivedCount > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold">
+                          {archivedCount}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('trash')}
+                      className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === 'trash'
+                          ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 shadow-xs border border-rose-500/30'
+                          : 'text-content-secondary hover:text-rose-600 dark:hover:text-rose-400'
+                      }`}
+                    >
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Recently Deleted</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/15 text-rose-600 dark:text-rose-400 font-mono font-bold border border-rose-500/20">
+                        30d{trashCount > 0 ? ` (${trashCount})` : ''}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {viewMode === 'trash' && isSalesManager && trashCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={emptyRecentlyDeleted}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-semibold transition-all cursor-pointer"
+                        title="Permanently remove all items in Recently Deleted"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Empty Trash</span>
+                      </button>
+                    )}
+                    <span className="text-xs text-content-secondary font-mono">
+                      Showing {filteredCustomers.length} record{filteredCustomers.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardBody>
           </Card>
+
+          {/* RECENTLY DELETED 30-DAY RETENTION BANNER */}
+          {viewMode === 'trash' && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800 dark:text-amber-200">
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-0.5">
+                  <p className="font-bold text-sm">Recently Deleted (30-Day Retention Lifecycle)</p>
+                  <p className="text-amber-700 dark:text-amber-300">
+                    Deleted client records are safely kept here for <strong>30 days</strong> before permanent deletion. You can restore them to Active Directory anytime or delete them forever.
+                  </p>
+                </div>
+              </div>
+              {isSalesManager && trashCount > 0 && (
+                <button
+                  type="button"
+                  onClick={emptyRecentlyDeleted}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-xs transition-colors shrink-0 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Empty Trash Forever</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* TABLE */}
 
@@ -2966,7 +3252,9 @@ const CustomersList = ({
               columns={columns}
               data={filteredCustomers}
               emptyMessage={
-                showArchived
+                viewMode === 'trash'
+                  ? 'No recently deleted customers. Deleted records are kept here for 30 days.'
+                  : viewMode === 'archived'
                   ? 'No archived customer records.'
                   : 'No customer records found matching your filters.'
               }

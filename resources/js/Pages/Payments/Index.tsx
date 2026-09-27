@@ -56,7 +56,7 @@ const PaymentsList = ({ payments = [] }: { payments?: Array<Payment> }) => {
   };
 
   const columns: TableColumn<Payment>[] = [
-    { key: 'payment_number', label: 'Payment #', width: '12%' },
+    { key: 'payment_number', label: 'Payment #', width: '12%', stickyLeft: true },
     { key: 'invoice_number', label: 'Invoice #', width: '12%' },
     { key: 'customer_name', label: 'Customer', width: '20%' },
     { key: 'amount', label: 'Amount', render: (amt) => <span className="font-semibold text-success-600">${typeof amt === 'number' ? amt.toFixed(2) : parseFloat(String(amt)).toFixed(2)}</span> },
@@ -66,6 +66,7 @@ const PaymentsList = ({ payments = [] }: { payments?: Array<Payment> }) => {
     {
       key: 'id',
       label: 'Actions',
+      stickyRight: true,
       render: (id) => (
         <button onClick={() => window.location.href = `/payments/${id}`} className="p-1.5 hover:bg-primary-50 rounded-lg text-primary-600 transition-colors"><Eye className="w-4 h-4" /></button>
       ),

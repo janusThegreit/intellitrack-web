@@ -9,6 +9,7 @@ export interface TableColumn<T> {
   render?: (value: any, row: T) => React.ReactNode;
   className?: string;
   width?: string;
+  stickyLeft?: boolean;
   stickyRight?: boolean;
 }
 
@@ -27,6 +28,8 @@ interface TableProps<T> {
   hoverable?: boolean;
   striped?: boolean;
   compact?: boolean;
+  stickyHeader?: boolean;
+  maxHeight?: string;
 }
 
 const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
@@ -45,6 +48,8 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
     hoverable = true,
     striped = true,
     compact = false,
+    stickyHeader = true,
+    maxHeight,
   }, ref) => {
     const handleSort = (column: any) => {
       if (!column.sortable || !onSort) return;
@@ -64,9 +69,9 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
 
     return (
       <div ref={ref} className="overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 shadow-sm backdrop-blur-md transition-all">
-        <div className="overflow-x-auto relative">
+        <div className={clsx("overflow-x-auto relative", stickyHeader && (maxHeight || "max-h-[calc(100vh-250px)] overflow-y-auto"))}>
           <table className="w-full text-left border-separate border-spacing-0">
-            <thead className="bg-surface-app/90 backdrop-blur-sm">
+            <thead className={clsx("bg-surface-app/95 backdrop-blur-md", stickyHeader && "sticky top-0 z-20 shadow-xs")}>
               <tr>
                 {columns.map((column) => (
                   <th
@@ -74,9 +79,11 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                     onClick={() => handleSort(column)}
                     className={clsx(
                       compact ? 'px-3 py-2.5 text-[11px]' : 'px-4 py-3 text-xs',
-                      'font-bold uppercase tracking-wider text-content-secondary select-none border-b border-border-subtle/80',
+                      'font-bold uppercase tracking-wider text-content-secondary select-none border-b border-border-subtle/80 bg-surface-app',
                       column.sortable && 'cursor-pointer hover:text-amber-500 transition-colors',
-                      column.stickyRight && 'sticky right-0 z-20 bg-surface-card border-l border-border-default shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.35)]',
+                      stickyHeader && 'sticky top-0 z-20',
+                      column.stickyLeft && 'sticky left-0 z-30 border-r border-border-default shadow-[4px_0_8px_-2px_rgba(0,0,0,0.25)]',
+                      column.stickyRight && 'sticky right-0 z-30 border-l border-border-default shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
                       column.className
                     )}
                     style={column.width ? { width: column.width } : undefined}
@@ -135,9 +142,14 @@ const Table = React.forwardRef<HTMLDivElement, TableProps<any>>(
                       className={clsx(
                         compact ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm',
                         'text-content-primary border-b border-border-subtle/60',
+                        column.stickyLeft && clsx(
+                          'sticky left-0 z-10 border-r border-border-default shadow-[4px_0_8px_-2px_rgba(0,0,0,0.25)]',
+                          striped && idx % 2 === 0 ? 'bg-surface-card' : 'bg-surface-app dark:bg-[#0e1626]',
+                          'group-hover:bg-amber-500/10'
+                        ),
                         column.stickyRight && clsx(
-                          'sticky right-0 z-10 border-l border-border-default shadow-[-6px_0_12px_-2px_rgba(0,0,0,0.35)]',
-                          striped && idx % 2 === 0 ? 'bg-surface-card' : 'bg-[#0e1626] dark:bg-[#0e1626]',
+                          'sticky right-0 z-10 border-l border-border-default shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
+                          striped && idx % 2 === 0 ? 'bg-surface-card' : 'bg-surface-app dark:bg-[#0e1626]',
                           'group-hover:bg-amber-500/10'
                         ),
                         column.className

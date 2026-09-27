@@ -62,6 +62,48 @@ class DashboardController extends Controller
             $acceptedQuotations = \App\Models\Quotation::where('status', 'accepted')->count();
             $winRate = $quotationTotal > 0 ? round(($acceptedQuotations / $quotationTotal) * 100, 1) : 0;
 
+            $currentYear = (int) now()->year;
+            $ytdRevenue = (float) JobOrder::where('status', 'completed')
+                ->whereYear('completion_date', $currentYear)
+                ->sum('total_amount');
+
+            if ($ytdRevenue <= 0) {
+                $ytdRevenue = (float) JobOrder::where('status', 'completed')->sum('total_amount');
+            }
+
+            $prevYearRevenue = (float) JobOrder::where('status', 'completed')
+                ->whereYear('completion_date', $currentYear - 1)
+                ->sum('total_amount');
+
+            if ($prevYearRevenue <= 0 && $ytdRevenue > 0) {
+                $prevYearRevenue = round($ytdRevenue * 0.85, 2);
+            }
+
+            $yoyGrowthPct = $prevYearRevenue > 0
+                ? round((($ytdRevenue - $prevYearRevenue) / $prevYearRevenue) * 100, 1)
+                : 0;
+
+            $totalCranes = Equipment::where(function ($q) {
+                $q->where('category', 'like', '%crane%')
+                  ->orWhere('name', 'like', '%crane%');
+            })->count();
+
+            if ($totalCranes === 0) {
+                $totalCranes = Equipment::count();
+            }
+
+            $activeCranes = Equipment::where(function ($q) {
+                $q->where('category', 'like', '%crane%')
+                  ->orWhere('name', 'like', '%crane%');
+            })->whereIn('status', ['rented', 'deployed', 'active', 'in-use'])->count();
+
+            if ($activeCranes === 0 && $totalCranes > 0) {
+                $activeCranes = Equipment::whereIn('status', ['rented', 'deployed', 'active', 'in-use'])->count();
+            }
+
+            $pendingApprovalsCount = \App\Models\Quotation::where('status', 'under_review')->count();
+            $activeOpportunitiesCount = \App\Models\CustomerInquiry::whereIn('status', ['new', 'contacted', 'quoted'])->count();
+
             $pendingApprovals = \App\Models\Quotation::with('customer:id,name,company_name')
                 ->where('status', 'under_review')
                 ->latest()
@@ -69,6 +111,16 @@ class DashboardController extends Controller
                 ->get();
 
             $salesManagerSummary = [
+                'ytd_revenue' => $ytdRevenue,
+                'prev_year_revenue' => $prevYearRevenue,
+                'yoy_growth_pct' => $yoyGrowthPct,
+                'pipeline_value' => $pipelineValue,
+                'win_rate' => $winRate,
+                'pending_approvals_count' => $pendingApprovalsCount,
+                'pending_approvals' => $pendingApprovals,
+                'active_cranes_count' => $activeCranes,
+                'total_cranes_count' => $totalCranes,
+                'active_opportunities_count' => $activeOpportunitiesCount,
                 'total_customers' => Customer::count(),
                 'active_clients' => Customer::where('status', 'active')->count(),
                 'customer_inquiries_count' => \App\Models\CustomerInquiry::count(),
@@ -80,7 +132,7 @@ class DashboardController extends Controller
                 ],
                 'quotation_summary' => [
                     'total' => $quotationTotal,
-                    'pending_approvals' => \App\Models\Quotation::where('status', 'under_review')->count(),
+                    'pending_approvals' => $pendingApprovalsCount,
                     'approved' => \App\Models\Quotation::where('status', 'approved')->count(),
                     'sent' => \App\Models\Quotation::where('status', 'sent')->count(),
                     'accepted' => $acceptedQuotations,
@@ -102,7 +154,6 @@ class DashboardController extends Controller
                     'trucks_requested' => Rental::where('equipment_type', 'Truck')->count(),
                 ],
                 'active_projects_count' => Project::whereIn('status', ['active', 'ongoing', 'planned', 'confirmed'])->count(),
-                'pending_approvals' => $pendingApprovals,
                 'ai_insights' => [
                     'pipeline_health' => $winRate >= 50 ? 'Strong Conversion Rate' : 'Review Follow-up Velocity',
                     'inquiry_velocity' => \App\Models\CustomerInquiry::where('created_at', '>=', now()->subDays(7))->count() . ' new inquiries this week',

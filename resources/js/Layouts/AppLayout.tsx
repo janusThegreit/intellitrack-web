@@ -675,7 +675,7 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
             </div>
             <div className="max-h-[50vh] overflow-y-auto divide-y divide-border-subtle p-2">
               {searchTerm.length < 2 ? (
-                <p className="p-8 text-center text-xs text-content-secondary">Type at least 2 characters to search across all microservices...</p>
+                <p className="p-8 text-center text-xs text-content-secondary">Type at least 2 characters to search across all modules...</p>
               ) : searchResults.length ? (
                 searchResults.map((r, i) => (
                   <a

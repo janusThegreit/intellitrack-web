@@ -16,6 +16,8 @@ import {
   Sparkles,
   ShieldAlert,
   Clock,
+  ArrowLeft,
+  RefreshCw,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -131,14 +133,37 @@ const Login = () => {
     }
   });
 
-  const { data, setData, post, processing, errors } = useForm({
+  const { data, setData } = useForm({
     email: savedEmail,
     password: '',
     remember: true,
   });
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  // 2FA Email OTP State
+  const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState<number>(0);
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [credentialsError, setCredentialsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setCredentialsError(null);
+    setCredentialsLoading(true);
+
     try {
       if (data.remember && data.email) {
         localStorage.setItem('alibaton_remember_email', data.email);
@@ -146,7 +171,109 @@ const Login = () => {
         localStorage.removeItem('alibaton_remember_email');
       }
     } catch {}
-    post('/login');
+
+    try {
+      const response = await axios.post(
+        '/login',
+        {
+          email: data.email,
+          password: data.password,
+          remember: data.remember,
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      );
+
+      if (response.data?.otp_required) {
+        setStep('otp');
+        setOtpEmail(response.data.email || data.email);
+        setMaskedEmail(response.data.masked_email || data.email);
+        setOtpCode('');
+        setOtpError(null);
+        setOtpSuccess(response.data.message || 'A 6-digit code has been dispatched to your email.');
+        setResendTimer(60);
+      } else if (response.data?.redirect) {
+        window.location.href = response.data.redirect;
+      }
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ||
+        (err.response?.data?.errors?.email ? err.response.data.errors.email[0] : null) ||
+        (err.response?.data?.errors?.password ? err.response.data.errors.password[0] : null) ||
+        'The provided credentials do not match our records.';
+      setCredentialsError(msg);
+    } finally {
+      setCredentialsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (otpCode.trim().length !== 6) {
+      setOtpError('Please enter all 6 digits of your verification code.');
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError(null);
+
+    try {
+      const response = await axios.post(
+        '/login/verify-otp',
+        {
+          email: otpEmail,
+          code: otpCode.trim(),
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      );
+
+      if (response.data?.success || response.data?.redirect) {
+        window.location.href = response.data?.redirect || '/dashboard';
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Invalid or expired verification code.';
+      setOtpError(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || otpLoading) return;
+
+    setOtpLoading(true);
+    setOtpError(null);
+
+    try {
+      const response = await axios.post(
+        '/login/resend-otp',
+        {
+          email: otpEmail,
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      );
+
+      setOtpSuccess(response.data?.message || 'A fresh verification code has been dispatched.');
+      setResendTimer(60);
+    } catch (err: any) {
+      setOtpError(err.response?.data?.message || 'Unable to resend verification code.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const openForgotModal = (e: React.MouseEvent) => {
@@ -324,30 +451,60 @@ const Login = () => {
 
                 {/* Form Header */}
                 <div className="mb-6">
-                  <div className="flex items-center justify-between gap-3 mb-2.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f2b600] via-amber-400 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30">
-                        <HardHat className="h-5 w-5 stroke-[2.3]" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold tracking-tight text-white">
-                          Enterprise Sign In
-                        </h2>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-amber-400/90">
-                          Alibaton Portal
-                        </p>
-                      </div>
-                    </div>
+                  {step === 'credentials' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f2b600] via-amber-400 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30">
+                            <HardHat className="h-5 w-5 stroke-[2.3]" />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-bold tracking-tight text-white">
+                              Enterprise Sign In
+                            </h2>
+                            <p className="text-[11px] font-medium uppercase tracking-wider text-amber-400/90">
+                              Alibaton Portal
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="flex items-center gap-1 rounded-full border border-slate-700/80 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                      <Sparkles className="h-3 w-3 text-[#f2b600]" />
-                      <span>v2.4 LTS</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    Enter your authorized Alibaton Construction credentials to access the system
-                    dashboard.
-                  </p>
+                        <div className="flex items-center gap-1 rounded-full border border-slate-700/80 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
+                          <Sparkles className="h-3 w-3 text-[#f2b600]" />
+                          <span>v2.4 LTS</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Enter your authorized Alibaton Construction credentials to access the system
+                        dashboard.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f2b600] via-amber-400 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30">
+                            <ShieldCheck className="h-5 w-5 stroke-[2.3]" />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-bold tracking-tight text-white">
+                              Two-Factor Verification
+                            </h2>
+                            <p className="text-[11px] font-medium uppercase tracking-wider text-amber-400/90">
+                              Email OTP Authentication
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+                          <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                          <span>2FA Enforced</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Please enter the 6-digit security code sent to your registered work email.
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {/* Status Flash Messages (e.g. Password Reset Completed) */}
@@ -375,137 +532,277 @@ const Login = () => {
                   </div>
                 )}
 
-                {/* Login Form */}
-                <form onSubmit={submit} className="space-y-4 sm:space-y-5">
-                  {/* Email Input */}
-                  <div>
-                    <label
-                      className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2"
-                      htmlFor="email"
-                    >
-                      Work Email Address
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 group-focus-within:text-[#f2b600] transition-colors">
-                        <Mail className="h-4 w-4" />
+                {/* STEP 1: CREDENTIALS FORM */}
+                {step === 'credentials' && (
+                  <form onSubmit={submit} className="space-y-4 sm:space-y-5">
+                    {credentialsError && (
+                      <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 animate-in fade-in duration-300">
+                        <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{credentialsError}</span>
                       </div>
-                      <input
-                        id="email"
-                        type="email"
-                        value={data.email}
-                        onChange={e => setData('email', e.target.value)}
-                        autoComplete="email"
-                        placeholder="name@alibaton.com.ph"
-                        className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 py-3.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
-                        required
-                      />
-                    </div>
-                    {errors.email && (
-                      <span className="mt-1.5 block text-xs font-medium text-rose-400">
-                        {errors.email}
-                      </span>
                     )}
-                  </div>
 
-                  {/* Password Input */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
+                    {/* Email Input */}
+                    <div>
                       <label
-                        className="block text-xs font-bold uppercase tracking-wider text-slate-300"
-                        htmlFor="password"
+                        className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2"
+                        htmlFor="email"
                       >
-                        Password
+                        Work Email Address
                       </label>
-                      <button
-                        type="button"
-                        onClick={openForgotModal}
-                        className="group flex items-center gap-1 text-xs font-semibold text-[#f2b600] hover:text-amber-300 transition-colors cursor-pointer"
-                      >
-                        <KeyRound className="h-3 w-3 text-[#f2b600] group-hover:rotate-12 transition-transform" />
-                        <span>Forgot password?</span>
-                      </button>
-                    </div>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 group-focus-within:text-[#f2b600] transition-colors">
-                        <Lock className="h-4 w-4" />
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 group-focus-within:text-[#f2b600] transition-colors">
+                          <Mail className="h-4 w-4" />
+                        </div>
+                        <input
+                          id="email"
+                          type="email"
+                          value={data.email}
+                          onChange={e => setData('email', e.target.value)}
+                          autoComplete="email"
+                          placeholder="name@alibaton.com.ph"
+                          className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 py-3.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
+                          required
+                        />
                       </div>
-                      <input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={data.password}
-                        onChange={e => setData('password', e.target.value)}
-                        autoComplete="current-password"
-                        placeholder="••••••••••••"
-                        className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 py-3.5 pl-10 pr-11 text-sm text-white placeholder:text-slate-500 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                        aria-label="Toggle password visibility"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
-                    {errors.password && (
-                      <span className="mt-1.5 block text-xs font-medium text-rose-400">
-                        {errors.password}
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Remember Me */}
-                  <div className="flex items-center justify-between pt-0.5">
-                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={data.remember}
-                        onChange={e => setData('remember', e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-[#f2b600] focus:ring-[#f2b600]/30 cursor-pointer"
-                      />
-                      <span className="text-xs font-medium text-slate-300">Remember credentials</span>
-                    </label>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={processing}
-                    className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#f2b600] via-amber-400 to-[#f2b600] hover:from-amber-400 hover:to-[#f2b600] py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-amber-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/35 hover:brightness-105 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                  >
-                    {processing ? (
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className="h-4 w-4 animate-spin text-slate-950"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
+                    {/* Password Input */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label
+                          className="block text-xs font-bold uppercase tracking-wider text-slate-300"
+                          htmlFor="password"
                         >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        <span>Authenticating Credentials...</span>
+                          Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={openForgotModal}
+                          className="group flex items-center gap-1 text-xs font-semibold text-[#f2b600] hover:text-amber-300 transition-colors cursor-pointer"
+                        >
+                          <KeyRound className="h-3 w-3 text-[#f2b600] group-hover:rotate-12 transition-transform" />
+                          <span>Forgot password?</span>
+                        </button>
                       </div>
-                    ) : (
-                      <>
-                        <span>Sign In to Dashboard</span>
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 group-focus-within:text-[#f2b600] transition-colors">
+                          <Lock className="h-4 w-4" />
+                        </div>
+                        <input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={data.password}
+                          onChange={e => setData('password', e.target.value)}
+                          autoComplete="current-password"
+                          placeholder="••••••••••••"
+                          className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 py-3.5 pl-10 pr-11 text-sm text-white placeholder:text-slate-500 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                          aria-label="Toggle password visibility"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Remember Me */}
+                    <div className="flex items-center justify-between pt-0.5">
+                      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={data.remember}
+                          onChange={e => setData('remember', e.target.checked)}
+                          className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-[#f2b600] focus:ring-[#f2b600]/30 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-slate-300">Remember credentials</span>
+                      </label>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={credentialsLoading}
+                      className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#f2b600] via-amber-400 to-[#f2b600] hover:from-amber-400 hover:to-[#f2b600] py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-amber-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/35 hover:brightness-105 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                    >
+                      {credentialsLoading ? (
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="h-4 w-4 animate-spin text-slate-950"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <span>Validating Credentials...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <span>Continue with Email OTP</span>
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {/* STEP 2: 2FA EMAIL OTP CODE FORM */}
+                {step === 'otp' && (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4 sm:space-y-5 animate-in fade-in duration-300">
+                    <div className="rounded-xl border border-slate-700/80 bg-slate-950/90 p-4 text-center space-y-1.5 shadow-inner">
+                      <p className="text-xs text-slate-400">
+                        A 6-digit security code was dispatched to:
+                      </p>
+                      <p className="text-sm font-mono font-bold text-amber-400 bg-amber-500/10 py-1 px-3 rounded-lg inline-block border border-amber-500/20">
+                        {maskedEmail || otpEmail}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Please check your inbox (or spam folder) for the verification code.
+                      </p>
+                    </div>
+
+
+                    {/* Success notification */}
+                    {otpSuccess && (
+                      <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300 animate-in fade-in duration-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{otpSuccess}</span>
+                      </div>
                     )}
-                  </button>
-                </form>
+
+                    {/* Error notification */}
+                    {otpError && (
+                      <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 animate-in fade-in duration-300">
+                        <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{otpError}</span>
+                      </div>
+                    )}
+
+                    {/* 6-Digit Code Input */}
+                    <div>
+                      <label
+                        className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 text-center"
+                        htmlFor="otp-code"
+                      >
+                        Enter 6-Digit OTP Code
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="otp-code"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          autoFocus
+                          value={otpCode}
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                            setOtpCode(val);
+                            setOtpError(null);
+                          }}
+                          placeholder="••••••"
+                          className="w-full text-center font-mono text-3xl font-black tracking-[0.45em] text-[#f2b600] rounded-xl border border-slate-700/80 bg-slate-950/90 py-3.5 px-4 placeholder:text-slate-600 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
+                          required
+                        />
+                      </div>
+
+                      {/* Digit pill indicators */}
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        {[0, 1, 2, 3, 4, 5].map(idx => (
+                          <div
+                            key={idx}
+                            className={`h-2 w-7 rounded-full transition-all duration-200 ${
+                              otpCode.length > idx
+                                ? 'bg-[#f2b600] shadow-sm shadow-amber-500/50'
+                                : 'bg-slate-800'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Resend & Back Actions */}
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep('credentials');
+                          setOtpError(null);
+                          setOtpSuccess(null);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <span>Use different email</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={resendTimer > 0 || otpLoading}
+                        className="inline-flex items-center gap-1.5 font-semibold text-[#f2b600] hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${otpLoading ? 'animate-spin' : ''}`} />
+                        <span>{resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend Code'}</span>
+                      </button>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={otpLoading || otpCode.length !== 6}
+                      className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#f2b600] via-amber-400 to-[#f2b600] hover:from-amber-400 hover:to-[#f2b600] py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-amber-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/35 hover:brightness-105 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                    >
+                      {otpLoading ? (
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="h-4 w-4 animate-spin text-slate-950"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <span>Authenticating Security Code...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <span>Verify & Sign In</span>
+                          <ShieldCheck className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
 
                 {/* Footer Security Badge */}
                 <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-800/80 pt-4 text-[11px] text-slate-400">

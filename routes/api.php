@@ -110,6 +110,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Customer Routes
     Route::get('customers/export', [CustomerController::class, 'export']);
+    Route::get('customers/trash-count', [CustomerController::class, 'trashCount']);
+    Route::post('customers/empty-trash', [CustomerController::class, 'emptyTrash']);
+    Route::post('customers/{id}/restore-deleted', [CustomerController::class, 'restoreDeleted']);
+    Route::delete('customers/{id}/force-delete', [CustomerController::class, 'forceDelete']);
     Route::apiResource('customers', CustomerController::class);
     Route::post('customers/{customer}/archive', [CustomerController::class, 'archive']);
     Route::post('customers/{customer}/restore', [CustomerController::class, 'restore']);

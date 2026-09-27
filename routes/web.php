@@ -15,6 +15,8 @@ Route::get('/maintenance', fn () => Inertia::render('Maintenance'))->name('maint
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.store');
+    Route::post('/login/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:15,1')->name('login.verify-otp');
+    Route::post('/login/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:5,1')->name('login.resend-otp');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.store');
     
     // Administrator-Assisted Password Reset Routes
