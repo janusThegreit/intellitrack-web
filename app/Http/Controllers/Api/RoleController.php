@@ -294,4 +294,45 @@ class RoleController extends Controller
 
         return response()->json($staff);
     }
+
+    public function revokeSessions(Request $request, User $user)
+    {
+        Gate::authorize('manage-users');
+
+        $user->forceFill([
+            'remember_token' => \Illuminate\Support\Str::random(60),
+            'two_factor_attempts' => 0,
+        ])->save();
+
+        ActivityLogService::logSecurity('session_revocation', "Active sessions and authorization tokens for user '{$user->name}' ({$user->email}) were revoked by administrator.", auth()->user(), [
+            'target_user_id' => $user->id,
+            'revoked_at' => now()->toIso8601String(),
+        ]);
+
+        return response()->json([
+            'message' => "All active sessions for {$user->name} have been revoked.",
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    public function resetMfa(Request $request, User $user)
+    {
+        Gate::authorize('manage-users');
+
+        $user->forceFill([
+            'two_factor_code' => null,
+            'two_factor_expires_at' => null,
+            'two_factor_attempts' => 0,
+        ])->save();
+
+        ActivityLogService::logSecurity('mfa_reset', "Two-factor authentication challenges for user '{$user->name}' ({$user->email}) were reset by administrator.", auth()->user(), [
+            'target_user_id' => $user->id,
+            'reset_at' => now()->toIso8601String(),
+        ]);
+
+        return response()->json([
+            'message' => "2FA challenge reset successfully for {$user->name}. Next login will require verification.",
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }

@@ -209,6 +209,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::delete('users/{user}', [RoleController::class, 'destroy']);
     Route::put('users/{user}/role', [RoleController::class, 'updateUserRole']);
     Route::patch('users/{user}/status', [RoleController::class, 'updateUserStatus']);
+    Route::post('users/{user}/revoke-sessions', [RoleController::class, 'revokeSessions']);
+    Route::post('users/{user}/reset-mfa', [RoleController::class, 'resetMfa']);
 
     // Admin Password Reset Request Management
     Route::get('password-reset-requests', [PasswordResetRequestController::class, 'index']);
