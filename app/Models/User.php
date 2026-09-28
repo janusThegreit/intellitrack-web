@@ -116,6 +116,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the clients assigned to this Sales BD officer
+     */
+    public function assignedClients(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'assigned_sales_bd_id');
+    }
+
+    /**
+     * Get the clients managed by this Sales Manager
+     */
+    public function managedClients(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'sales_manager_id');
+    }
+
+    /**
      * Check if user has administrator role
      */
     public function isAdministrator(): bool

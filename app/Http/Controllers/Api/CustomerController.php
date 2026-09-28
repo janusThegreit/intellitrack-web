@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Customer;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Http\Controllers\Controller;
@@ -53,6 +54,21 @@ class CustomerController extends Controller
         // Filter by status
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));
+        }
+
+        // Filter by pipeline flow stage
+        if ($request->filled('pipeline_stage') && $request->input('pipeline_stage') !== 'all') {
+            $query->where('pipeline_stage', $request->input('pipeline_stage'));
+        }
+
+        // Filter by assigned Sales BD
+        if ($request->filled('assigned_sales_bd_id') && $request->input('assigned_sales_bd_id') !== 'all') {
+            $query->where('assigned_sales_bd_id', $request->input('assigned_sales_bd_id'));
+        }
+
+        // Filter by Sales Manager
+        if ($request->filled('sales_manager_id') && $request->input('sales_manager_id') !== 'all') {
+            $query->where('sales_manager_id', $request->input('sales_manager_id'));
         }
 
         // Filter by type
@@ -123,6 +139,8 @@ class CustomerController extends Controller
         }
 
         $query->with([
+            'assignedSalesBd:id,name,email,role',
+            'salesManager:id,name,email,role',
             'rentals.equipment',
             'jobOrders.jobOrderItems.equipment',
             'projects',
@@ -387,6 +405,8 @@ class CustomerController extends Controller
     {
         Gate::authorize('view-customer', $customer);
         $customer->load([
+            'assignedSalesBd:id,name,email,role',
+            'salesManager:id,name,email,role',
             'jobOrders.jobOrderItems.equipment',
             'rentals.equipment',
             'quotations',
@@ -623,5 +643,122 @@ class CustomerController extends Controller
         Gate::authorize('view-customer', $customer);
         $quotations = $customer->quotations()->paginate(15);
         return response()->json($quotations);
+    }
+
+    /**
+     * Advance or transition the client flow process stage.
+     */
+    public function advanceFlowStage(Request $request, Customer $customer)
+    {
+        Gate::authorize('manage-customers');
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'stage' => ['required', 'string', 'in:lead_acquisition,technical_scoping,accreditation_review,bidding_proposal,awarded_contract'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'payment_terms' => ['nullable', 'string', 'max:50'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'accreditation_status' => ['nullable', 'string', 'in:accredited,under_review,pending,rejected'],
+        ]);
+
+        $targetStage = $validated['stage'];
+        $oldStage = $customer->pipeline_stage ?? 'lead_acquisition';
+
+        // Workflow permission rules between Sales BD and Sales Manager
+        if ($targetStage === 'accreditation_review') {
+            $customer->accreditation_status = 'under_review';
+        } elseif (in_array($targetStage, ['bidding_proposal', 'awarded_contract'])) {
+            // Only Sales Manager or Administrator can approve accreditation & advance to bidding / awarded
+            if (! $user->isSalesManager() && ! $user->isAdministrator()) {
+                return response()->json([
+                    'message' => 'Only the Sales Manager or Administrator has authority to approve client accreditation and promote to Bidding or Awarded Contract stage.',
+                ], 403);
+            }
+
+            if ($targetStage === 'awarded_contract') {
+                $customer->accreditation_status = 'accredited';
+                $customer->status = 'active';
+                $customer->bidding_status = 'awarded';
+            } elseif ($targetStage === 'bidding_proposal') {
+                $customer->accreditation_status = 'accredited';
+                $customer->bidding_status = 'bidding';
+            }
+        }
+
+        if (isset($validated['payment_terms'])) {
+            $customer->payment_terms = $validated['payment_terms'];
+        }
+        if (isset($validated['credit_limit'])) {
+            $customer->credit_limit = $validated['credit_limit'];
+        }
+        if (isset($validated['accreditation_status'])) {
+            $customer->accreditation_status = $validated['accreditation_status'];
+        }
+
+        $customer->pipeline_stage = $targetStage;
+
+        if (!empty($validated['notes'])) {
+            $customer->notes = ($customer->notes ? $customer->notes . "\n\n" : '') .
+                "[" . now()->format('Y-m-d H:i') . " {$user->name}]: " . $validated['notes'];
+        }
+
+        $customer->save();
+
+        ActivityLogService::log(
+            $user,
+            'updated',
+            Customer::class,
+            $customer->id,
+            "Client '{$customer->name}' flow process transitioned from '{$oldStage}' to '{$targetStage}' by {$user->name} ({$user->role}).",
+            ['pipeline_stage' => $oldStage],
+            ['pipeline_stage' => $targetStage]
+        );
+
+        return response()->json([
+            'message' => "Client flow process stage successfully updated to {$targetStage}.",
+            'customer' => $customer->fresh([
+                'assignedSalesBd:id,name,email,role',
+                'salesManager:id,name,email,role',
+                'jobOrders.jobOrderItems.equipment',
+                'rentals.equipment',
+                'quotations',
+                'projects',
+                'inquiries',
+            ]),
+        ]);
+    }
+
+    /**
+     * Assign Sales BD and Sales Manager roles to customer.
+     */
+    public function assignSalesRoles(Request $request, Customer $customer)
+    {
+        Gate::authorize('manage-customers');
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'assigned_sales_bd_id' => ['nullable', 'exists:users,id'],
+            'sales_manager_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        $customer->update($validated);
+
+        ActivityLogService::log(
+            $user,
+            'updated',
+            Customer::class,
+            $customer->id,
+            "Sales team assignments updated for client '{$customer->name}'.",
+            null,
+            $validated
+        );
+
+        return response()->json([
+            'message' => 'Sales team assigned successfully.',
+            'customer' => $customer->fresh([
+                'assignedSalesBd:id,name,email,role',
+                'salesManager:id,name,email,role',
+            ]),
+        ]);
     }
 }

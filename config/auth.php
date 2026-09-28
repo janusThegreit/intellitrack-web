@@ -114,4 +114,15 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Two-Factor Email OTP Authentication
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, users must verify a 6-digit OTP sent to their email
+    | upon signing into the system. Default is true for production security.
+    |
+    */
+    '2fa_enabled' => env('AUTH_2FA_ENABLED', true),
+
 ];

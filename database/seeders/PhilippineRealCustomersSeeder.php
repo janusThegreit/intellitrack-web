@@ -1736,7 +1736,32 @@ class PhilippineRealCustomersSeeder extends Seeder
             ],
         ];
 
+        $salesBd = \App\Models\User::where('role', 'sales_business_development')
+            ->orWhere('email', 'salesbd@intellitrack.com')
+            ->first();
+
+        $salesManager = \App\Models\User::where('role', 'sales_manager')
+            ->orWhere('email', 'salesmanager@intellitrack.com')
+            ->first();
+
         foreach ($customers as $data) {
+            $stage = 'awarded_contract';
+            if (($data['status'] ?? '') === 'prospect') {
+                $stage = 'lead_acquisition';
+            } elseif (($data['accreditation_status'] ?? '') === 'under_review') {
+                $stage = 'accreditation_review';
+            } elseif (($data['bidding_status'] ?? '') === 'bidding') {
+                $stage = 'bidding_proposal';
+            }
+
+            if ($salesBd) {
+                $data['assigned_sales_bd_id'] = $salesBd->id;
+            }
+            if ($salesManager) {
+                $data['sales_manager_id'] = $salesManager->id;
+            }
+            $data['pipeline_stage'] = $stage;
+
             Customer::updateOrCreate(
                 ['customer_code' => $data['customer_code']],
                 $data

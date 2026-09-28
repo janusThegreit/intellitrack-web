@@ -120,6 +120,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('customers/{customer}/job-orders', [CustomerController::class, 'jobOrders']);
     Route::get('customers/{customer}/rentals', [CustomerController::class, 'rentals']);
     Route::get('customers/{customer}/quotations', [CustomerController::class, 'quotations']);
+    Route::post('customers/{customer}/flow-stage', [CustomerController::class, 'advanceFlowStage']);
+    Route::post('customers/{customer}/assign-roles', [CustomerController::class, 'assignSalesRoles']);
 
     // CRM Engagement Routes (Follow-ups, Communications, Feedback, Metrics)
     Route::get('crm/metrics', [\App\Http\Controllers\Api\CrmEngagementController::class, 'metrics']);

@@ -125,7 +125,7 @@ class AuthController extends Controller
         RateLimiter::clear($throttleKey);
 
         $has2FaColumns = Schema::hasColumn('users', 'two_factor_code');
-        $is2FaEnabled = filter_var(env('AUTH_2FA_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+        $is2FaEnabled = filter_var(config('auth.2fa_enabled', true), FILTER_VALIDATE_BOOLEAN);
 
         // If 2FA is not explicitly enabled or migration is not yet applied, sign in directly!
         if (! $is2FaEnabled || ! $has2FaColumns) {

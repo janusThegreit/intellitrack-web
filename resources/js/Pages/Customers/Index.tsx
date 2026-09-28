@@ -210,10 +210,15 @@ interface Customer {
   customer_reference?: string;
 
   /*
-   * Client status & Accreditation
+   * Client status & Accreditation & Sales Roles
    */
   status: string;
   bidding_status?: string;
+  pipeline_stage?: string;
+  assigned_sales_bd_id?: number | null;
+  sales_manager_id?: number | null;
+  assigned_sales_bd?: { id: number; name: string; email?: string; role?: string };
+  sales_manager?: { id: number; name: string; email?: string; role?: string };
   payment_terms?: string;
   credit_limit?: number;
   accreditation_status?: string;
@@ -363,6 +368,9 @@ interface CustomerForm {
   site_condition: string;
   estimated_budget: string;
   bidding_status: string;
+  pipeline_stage: string;
+  assigned_sales_bd_id: number | null;
+  sales_manager_id: number | null;
 }
 
 const emptyCustomer: CustomerForm = {
@@ -402,6 +410,9 @@ const emptyCustomer: CustomerForm = {
   site_condition: '',
   estimated_budget: '',
   bidding_status: 'bidding',
+  pipeline_stage: 'awarded_contract',
+  assigned_sales_bd_id: null,
+  sales_manager_id: null,
 };
 
 /*
@@ -478,6 +489,7 @@ const CustomersList = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [flowStageFilter, setFlowStageFilter] = useState('all');
   const [accreditationFilter, setAccreditationFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -488,9 +500,46 @@ const CustomersList = ({
   const [activeCount, setActiveCount] = useState<number>(0);
   const [processingAction, setProcessingAction] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [advancingStage, setAdvancingStage] = useState(false);
 
   const [records, setRecords] =
     useState<Customer[]>(customers);
+
+  const handleAdvanceStage = async (customerId: number, nextStage: string, notes?: string) => {
+    setAdvancingStage(true);
+    try {
+      const res = await fetch(`/api/customers/${customerId}/flow-stage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+        },
+        body: JSON.stringify({
+          stage: nextStage,
+          notes: notes || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update client flow stage.');
+      }
+
+      setToastMessage(data.message || `Client pipeline stage updated to ${nextStage.replace(/_/g, ' ')}`);
+      if (data.customer) {
+        setRecords(prev => prev.map(c => c.id === customerId ? { ...c, ...data.customer } : c));
+        if (selectedCustomer?.id === customerId) {
+          setSelectedCustomer(prev => prev ? { ...prev, ...data.customer } : null);
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error updating client flow stage');
+    } finally {
+      setAdvancingStage(false);
+    }
+  };
 
   const [loadError, setLoadError] = useState('');
 
@@ -665,6 +714,17 @@ const CustomersList = ({
     }
 
     /*
+     * Pipeline flow stage filter
+     */
+    if (flowStageFilter !== 'all') {
+      result = result.filter(
+        customer =>
+          (customer.pipeline_stage || 'awarded_contract').toLowerCase() ===
+          flowStageFilter.toLowerCase()
+      );
+    }
+
+    /*
      * Customer Type filter
      */
     if (typeFilter !== 'all') {
@@ -764,6 +824,7 @@ const CustomersList = ({
     records,
     searchQuery,
     statusFilter,
+    flowStageFilter,
     accreditationFilter,
     typeFilter,
     sourceFilter,
@@ -956,6 +1017,9 @@ const CustomersList = ({
           ? String(customer.estimated_budget)
           : '',
       bidding_status: customer.bidding_status ?? 'bidding',
+      pipeline_stage: customer.pipeline_stage ?? 'awarded_contract',
+      assigned_sales_bd_id: customer.assigned_sales_bd_id ?? null,
+      sales_manager_id: customer.sales_manager_id ?? null,
     });
   };
 
@@ -1402,6 +1466,61 @@ const CustomersList = ({
           </div>
         );
       },
+    },
+    {
+      key: 'pipeline_stage',
+      label: 'FLOW PROCESS STAGE',
+      sortable: true,
+      width: '210px',
+      render: (_value, row) => {
+        const stage = row.pipeline_stage || (row.status === 'active' || row.bidding_status === 'awarded' ? 'awarded_contract' : 'lead_acquisition');
+        const stageMap: Record<string, { label: string; step: string; color: string; desc: string }> = {
+          lead_acquisition: { label: 'Lead Discovery', step: 'Step 1', color: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30', desc: 'SBD Acquisition' },
+          technical_scoping: { label: 'Technical Scoping', step: 'Step 2', color: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30', desc: 'SBD Site & Crane Specs' },
+          accreditation_review: { label: 'Accreditation Review', step: 'Step 3', color: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30', desc: 'Sales Mgr Credit Review' },
+          bidding_proposal: { label: 'Bidding & Quotation', step: 'Step 4', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30', desc: 'SBD / Mgr Proposal' },
+          awarded_contract: { label: 'Awarded Contract', step: 'Step 5', color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30', desc: 'Active Fleet Operations' },
+        };
+        const current = stageMap[stage] || stageMap.awarded_contract;
+
+        return (
+          <div className="min-w-[190px] space-y-1">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold border ${current.color}`}>
+              <span className="font-mono text-[10px] px-1 py-0.2 rounded bg-black/10 dark:bg-white/10">{current.step}</span>
+              <span>{current.label}</span>
+            </span>
+            <div className="text-[10px] text-content-secondary font-medium truncate">
+              {current.desc}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'assigned_sales_bd_id',
+      label: 'SALES TEAM ROLES',
+      sortable: false,
+      width: '190px',
+      render: (_value, row) => (
+        <div className="min-w-[170px] space-y-1 text-xs">
+          <div className="flex items-center gap-1.5 text-content-primary">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-mono">
+              SBD
+            </span>
+            <span className="font-medium text-[11px] truncate" title={row.assigned_sales_bd?.name || 'Sales BD User'}>
+              {row.assigned_sales_bd?.name || 'Sales BD User'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-content-secondary">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/30 font-mono">
+              MGR
+            </span>
+            <span className="font-medium text-[11px] truncate" title={row.sales_manager?.name || 'Sales Manager'}>
+              {row.sales_manager?.name || 'Sales Manager'}
+            </span>
+          </div>
+        </div>
+      ),
     },
     {
       key: 'status',
@@ -3076,6 +3195,21 @@ const CustomersList = ({
                       <option value="inactive">Inactive</option>
                     </select>
 
+                    {/* Flow Process Stage Filter */}
+                    <select
+                      value={flowStageFilter}
+                      onChange={e => setFlowStageFilter(e.target.value)}
+                      className="rounded-lg border border-border-default bg-surface-card px-3 py-2 text-sm font-semibold text-content-primary outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 shadow-xs"
+                      title="Filter by Client Pipeline Flow Stage"
+                    >
+                      <option value="all">All Flow Stages</option>
+                      <option value="lead_acquisition">Stage 1: Lead Discovery (SBD)</option>
+                      <option value="technical_scoping">Stage 2: Technical Scoping (SBD)</option>
+                      <option value="accreditation_review">Stage 3: Accreditation Review (Sales Mgr)</option>
+                      <option value="bidding_proposal">Stage 4: Bidding & Quotation (SBD/Mgr)</option>
+                      <option value="awarded_contract">Stage 5: Awarded Contract (Active)</option>
+                    </select>
+
                     {/* Customer Source Filter */}
                     <select
                       value={sourceFilter}
@@ -3107,6 +3241,7 @@ const CustomersList = ({
                     <button
                       onClick={() => {
                         setStatusFilter('all');
+                        setFlowStageFilter('all');
                         setAccreditationFilter('all');
                         setTypeFilter('all');
                         setSourceFilter('all');
@@ -3468,6 +3603,176 @@ const CustomersList = ({
                     </div>
                   </div>
                 </div>
+
+                {/* 1.5 CLIENT PIPELINE FLOW PROCESS & SALES ROLES STEPPER */}
+                {(() => {
+                  const currentStage = selectedCustomer.pipeline_stage ||
+                    (selectedCustomer.status === 'active' || selectedCustomer.bidding_status === 'awarded' ? 'awarded_contract' : 'lead_acquisition');
+
+                  const stages = [
+                    { id: 'lead_acquisition', step: 1, label: 'Lead Discovery', role: 'Sales BD', icon: Users, desc: 'Contact & Account Profiling' },
+                    { id: 'technical_scoping', step: 2, label: 'Technical Scoping', role: 'Sales BD', icon: Wrench, desc: 'Crane Capacity & Site Specs' },
+                    { id: 'accreditation_review', step: 3, label: 'Accreditation Review', role: 'Sales Manager', icon: ShieldCheck, desc: 'Credit Limit & Legal Review' },
+                    { id: 'bidding_proposal', step: 4, label: 'Bidding & Quotation', role: 'SBD & Mgr', icon: FileText, desc: 'Commercial Proposal Submission' },
+                    { id: 'awarded_contract', step: 5, label: 'Awarded Contract', role: 'Active Client', icon: CheckCircle2, desc: 'Fleet Mobilization & Job Orders' },
+                  ];
+
+                  const currentIndex = stages.findIndex(s => s.id === currentStage);
+
+                  return (
+                    <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-surface-app/80 to-surface-card p-4 sm:p-5 shadow-sm space-y-4">
+                      {/* Top Header of Flow Bar */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                            <BriefcaseBusiness className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-black uppercase tracking-wider text-content-primary">
+                                Enterprise Client Flow Process
+                              </h4>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-mono">
+                                Stage {currentIndex >= 0 ? currentIndex + 1 : 1} of 5
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-content-secondary mt-0.5">
+                              Connected Sales Business Development and Sales Manager qualification workflow
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Connected Roles Badges */}
+                        <div className="flex items-center gap-2 text-xs">
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-card border border-border-default shadow-2xs">
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono">
+                              SBD OFFICER
+                            </span>
+                            <span className="font-semibold text-content-primary text-xs">
+                              {selectedCustomer.assigned_sales_bd?.name || 'Sales BD User'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-card border border-border-default shadow-2xs">
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-300 font-mono">
+                              SALES MANAGER
+                            </span>
+                            <span className="font-semibold text-content-primary text-xs">
+                              {selectedCustomer.sales_manager?.name || 'Sales Manager'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 5-Step Progress Stepper */}
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 sm:gap-1.5 relative">
+                        {stages.map((st, idx) => {
+                          const IconComp = st.icon;
+                          const isDone = idx < currentIndex;
+                          const isCurrent = idx === currentIndex;
+
+                          return (
+                            <div
+                              key={st.id}
+                              className={`relative rounded-xl p-3 border transition-all ${
+                                isCurrent
+                                  ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500 text-content-primary shadow-xs ring-1 ring-amber-500/30'
+                                  : isDone
+                                  ? 'bg-emerald-500/5 border-emerald-500/30 text-content-primary'
+                                  : 'bg-surface-app/40 border-border-subtle/60 text-content-secondary/60'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                  isCurrent ? 'bg-amber-500 text-neutral-950' : isDone ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-surface-card text-content-secondary'
+                                }`}>
+                                  Step {st.step}
+                                </span>
+                                <IconComp className={`h-4 w-4 ${isCurrent ? 'text-amber-500' : isDone ? 'text-emerald-500' : 'text-content-secondary/50'}`} />
+                              </div>
+                              <p className="text-xs font-bold truncate leading-tight">
+                                {st.label}
+                              </p>
+                              <p className="text-[10px] text-content-secondary mt-0.5 truncate">
+                                Role: <span className="font-semibold">{st.role}</span>
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Action Bar for Current Stage */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle/60 text-xs">
+                        <div className="text-content-secondary text-xs">
+                          {currentStage === 'lead_acquisition' && 'Lead received. Sales BD to evaluate client profile and initial crane requirements.'}
+                          {currentStage === 'technical_scoping' && 'Technical scoping ongoing. Sales BD to define crane tonnage, working radius, and site conditions.'}
+                          {currentStage === 'accreditation_review' && 'Awaiting Sales Manager accreditation and financial credit terms approval.'}
+                          {currentStage === 'bidding_proposal' && 'Quotation & bidding phase. Collaborative SBD quotation drafting and Manager endorsement.'}
+                          {currentStage === 'awarded_contract' && 'Client is fully accredited and awarded! Job Orders and equipment rental can be dispatched.'}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {currentStage === 'lead_acquisition' && (isSalesBusinessDevelopment || isSalesManager) && (
+                            <button
+                              onClick={() => handleAdvanceStage(selectedCustomer.id, 'technical_scoping')}
+                              disabled={advancingStage}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <span>Advance to Technical Scoping →</span>
+                            </button>
+                          )}
+
+                          {currentStage === 'technical_scoping' && (isSalesBusinessDevelopment || isSalesManager) && (
+                            <button
+                              onClick={() => handleAdvanceStage(selectedCustomer.id, 'accreditation_review')}
+                              disabled={advancingStage}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <span>Submit for Accreditation Review →</span>
+                            </button>
+                          )}
+
+                          {currentStage === 'accreditation_review' && isSalesManager && (
+                            <button
+                              onClick={() => handleAdvanceStage(selectedCustomer.id, 'bidding_proposal')}
+                              disabled={advancingStage}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                              <span>Approve Accreditation & Open Bidding →</span>
+                            </button>
+                          )}
+
+                          {currentStage === 'bidding_proposal' && isSalesManager && (
+                            <button
+                              onClick={() => handleAdvanceStage(selectedCustomer.id, 'awarded_contract')}
+                              disabled={advancingStage}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Award Contract & Activate Client ✓</span>
+                            </button>
+                          )}
+
+                          {/* Quick stage selector for flexibility */}
+                          <select
+                            value={currentStage}
+                            onChange={(e) => handleAdvanceStage(selectedCustomer.id, e.target.value)}
+                            disabled={advancingStage}
+                            className="text-xs font-semibold rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 text-content-secondary outline-none cursor-pointer"
+                            title="Manually switch pipeline flow stage"
+                          >
+                            <option value="lead_acquisition">Stage 1: Lead Discovery (SBD)</option>
+                            <option value="technical_scoping">Stage 2: Technical Scoping (SBD)</option>
+                            <option value="accreditation_review">Stage 3: Accreditation Review (Sales Mgr)</option>
+                            <option value="bidding_proposal">Stage 4: Bidding & Quotation (SBD/Mgr)</option>
+                            <option value="awarded_contract">Stage 5: Awarded Contract (Active)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* 2. TOP TELEMETRY STRIP (5 High-End KPI Cards) */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">

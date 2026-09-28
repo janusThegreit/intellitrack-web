@@ -36,6 +36,9 @@ class Customer extends Model
         'accreditation_status',
         'accreditation_valid_until',
         'bidding_status',
+        'pipeline_stage',
+        'assigned_sales_bd_id',
+        'sales_manager_id',
         'notes',
         'project_location',
         'technical_requirements',
@@ -120,5 +123,15 @@ class Customer extends Model
     public function feedbacks(): HasMany
     {
         return $this->hasMany(CustomerFeedback::class);
+    }
+
+    public function assignedSalesBd(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_sales_bd_id');
+    }
+
+    public function salesManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sales_manager_id');
     }
 }
