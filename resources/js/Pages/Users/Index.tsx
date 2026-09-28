@@ -801,10 +801,10 @@ export default function UsersIndex() {
 
       {/* Main Content Area - User Directory */}
       {activeTab === 'directory' && (
-        <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl">
+        <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden flex flex-col">
         
         {/* Filters Bar */}
-        <div className="flex flex-col items-center justify-between gap-4 border-b border-border-subtle p-4 sm:flex-row">
+        <div className="sticky top-0 z-30 flex flex-col items-center justify-between gap-4 border-b border-border-subtle bg-surface-card/95 backdrop-blur-md p-4 sm:flex-row shadow-sm">
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             {/* Search */}
             <div className="relative w-full sm:w-72">
@@ -864,16 +864,16 @@ export default function UsersIndex() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-content-secondary">
-            <thead className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
-              <tr>
-                <th className="px-6 py-3.5">User Identity</th>
-                <th className="px-6 py-3.5">Assigned Role & IAM Clearance</th>
-                <th className="px-6 py-3.5">Account Status</th>
-                <th className="px-6 py-3.5">Last Active</th>
-                <th className="px-6 py-3.5">Created Date</th>
-                <th className="px-6 py-3.5 text-right">Actions</th>
+        <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[420px]">
+          <table className="w-full text-left text-xs text-content-secondary border-collapse">
+            <thead className="sticky top-0 z-20 bg-surface-card shadow-sm">
+              <tr className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">User Identity</th>
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Assigned Role & IAM Clearance</th>
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Account Status</th>
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Last Active</th>
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Created Date</th>
+                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 text-right border-b border-border-subtle shadow-sm">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/40">
@@ -1094,8 +1094,8 @@ export default function UsersIndex() {
           </div>
 
           {/* Reset Requests Table Card */}
-          <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden">
-            <div className="border-b border-border-subtle p-5">
+          <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden flex flex-col">
+            <div className="sticky top-0 z-30 border-b border-border-subtle p-5 bg-surface-card/95 backdrop-blur-md shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -1109,15 +1109,15 @@ export default function UsersIndex() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-content-secondary">
-                <thead className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
-                  <tr>
-                    <th className="px-6 py-3.5">Requester Identity</th>
-                    <th className="px-6 py-3.5">Request Reason / Remarks</th>
-                    <th className="px-6 py-3.5">Date & Time</th>
-                    <th className="px-6 py-3.5">Status & Single-Use State</th>
-                    <th className="px-6 py-3.5 text-right">Admin Action</th>
+            <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[400px]">
+              <table className="w-full text-left text-xs text-content-secondary border-collapse">
+                <thead className="sticky top-0 z-20 bg-surface-card shadow-sm">
+                  <tr className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
+                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Requester Identity</th>
+                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Request Reason / Remarks</th>
+                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Date & Time</th>
+                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Status & Single-Use State</th>
+                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 text-right border-b border-border-subtle shadow-sm">Admin Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/40">

@@ -374,7 +374,7 @@ export default function LogsIndex() {
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="p-4 rounded-2xl border border-border-default/80 bg-surface-card shadow-sm space-y-3">
+        <div className="sticky top-0 z-30 p-4 rounded-2xl border border-border-default/80 bg-surface-card/95 backdrop-blur-md shadow-md space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             {/* Search */}
             <div className="relative md:col-span-2">
@@ -459,18 +459,18 @@ export default function LogsIndex() {
         </div>
 
         {/* Audit Logs Table */}
-        <div className="rounded-2xl border border-border-default/80 bg-surface-card shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="rounded-2xl border border-border-default/80 bg-surface-card shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[420px]">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border-subtle bg-surface-app/60 text-content-secondary font-semibold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Actor</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Target Entity</th>
-                  <th className="py-3 px-4">Event Description</th>
-                  <th className="py-3 px-4">Network / IP</th>
-                  <th className="py-3 px-4 text-right">Details</th>
+              <thead className="sticky top-0 z-20 bg-surface-card shadow-sm">
+                <tr className="border-b border-border-subtle bg-surface-card text-content-secondary font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Timestamp</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Actor</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Action</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Target Entity</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Event Description</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 border-b border-border-subtle shadow-sm">Network / IP</th>
+                  <th className="sticky top-0 z-20 bg-surface-card py-3.5 px-4 text-right border-b border-border-subtle shadow-sm">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/70 text-content-primary">
