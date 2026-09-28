@@ -125,18 +125,10 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const [savedEmail] = useState(() => {
-    try {
-      return localStorage.getItem('alibaton_remember_email') || '';
-    } catch {
-      return '';
-    }
-  });
-
   const { data, setData } = useForm({
-    email: savedEmail,
+    email: '',
     password: '',
-    remember: true,
+    remember: false,
   });
 
   // 2FA Email OTP State
@@ -165,20 +157,12 @@ const Login = () => {
     setCredentialsLoading(true);
 
     try {
-      if (data.remember && data.email) {
-        localStorage.setItem('alibaton_remember_email', data.email);
-      } else {
-        localStorage.removeItem('alibaton_remember_email');
-      }
-    } catch {}
-
-    try {
       const response = await axios.post(
         '/login',
         {
           email: data.email,
           password: data.password,
-          remember: data.remember,
+          remember: false,
         },
         {
           headers: {
@@ -441,13 +425,10 @@ const Login = () => {
 
             {/* Right Column: Ultra-Sleek Enterprise Sign-In Card */}
             <div className="w-full lg:col-span-5">
-              <div className="relative overflow-hidden rounded-3xl border border-slate-700/80 bg-slate-900/90 p-7 sm:p-9 shadow-2xl backdrop-blur-2xl transition-all">
-                {/* Decorative Top Gold Edge */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#f2b600] via-amber-300 to-[#f2b600]" />
-
-                {/* Ambient Card Glow */}
-                <div className="pointer-events-none absolute -top-20 -right-20 h-44 w-44 rounded-full bg-[#f2b600]/15 blur-3xl" />
-                <div className="pointer-events-none absolute -bottom-20 -left-20 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-slate-900/95 p-7 sm:p-9 shadow-2xl backdrop-blur-2xl transition-all">
+                {/* Ambient Subtle Card Glow */}
+                <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-slate-800/30 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-slate-800/20 blur-3xl" />
 
                 {/* Form Header */}
                 <div className="mb-6">
@@ -608,19 +589,6 @@ const Login = () => {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                    </div>
-
-                    {/* Remember Me */}
-                    <div className="flex items-center justify-between pt-0.5">
-                      <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={data.remember}
-                          onChange={e => setData('remember', e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-[#f2b600] focus:ring-[#f2b600]/30 cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-slate-300">Remember credentials</span>
-                      </label>
                     </div>
 
                     {/* Submit Button */}
