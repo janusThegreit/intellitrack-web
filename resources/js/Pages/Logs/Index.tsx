@@ -85,7 +85,13 @@ export default function LogsIndex() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Filters State
-  const [search, setSearch] = useState<string>('');
+  const [search, setSearch] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('search') || '';
+    }
+    return '';
+  });
   const [selectedAction, setSelectedAction] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [selectedDateRange, setSelectedDateRange] = useState<string>('all');

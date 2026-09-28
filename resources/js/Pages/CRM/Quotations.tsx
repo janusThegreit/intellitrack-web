@@ -17,14 +17,11 @@ import {
   Clock,
   Sparkles,
   Layers,
-  ChevronDown,
   ChevronUp,
   FileText,
   Link as LinkIcon,
-  HelpCircle,
   FileCheck2,
   ShieldCheck,
-  Building2
 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import { formatPeso } from '../../Utils/currency';

@@ -6,7 +6,6 @@ import {
   MessageSquare,
   ClipboardList,
   Truck,
-  FolderKanban,
   TrendingUp,
   UserPlus,
   FileEdit,
@@ -1321,7 +1320,7 @@ return (
                 <span>Review Quotations</span>
                 {(data?.sales_manager_summary?.pending_approvals_count ?? 0) > 0 && (
                   <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
-                    {data.sales_manager_summary.pending_approvals_count}
+                    {data?.sales_manager_summary?.pending_approvals_count}
                   </span>
                 )}
               </Button>

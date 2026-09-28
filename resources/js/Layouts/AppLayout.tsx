@@ -462,6 +462,8 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
     window.location.href = '/login';
   };
 
+  const currentRole = profile?.role || userRole;
+  const isAdmin = currentRole === 'administrator';
   const accountName = profile?.nickname || profile?.first_name || profile?.name || 'Authorized User';
   const initials = accountName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   const unreadCount = notifications.filter(n => !n.read_at).length;
@@ -522,7 +524,9 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
           className="hidden md:flex items-center gap-2.5 rounded-2xl border border-border-default/80 bg-surface-app/70 px-4 py-2 text-xs font-medium text-content-secondary hover:border-amber-500/50 hover:bg-surface-card hover:text-content-primary shadow-inner transition-all w-64 lg:w-80 cursor-pointer"
         >
           <Search className="h-3.5 w-3.5 text-amber-500" />
-          <span className="flex-1 text-left">Search records, cranes, quotes...</span>
+          <span className="flex-1 text-left">
+            {isAdmin ? 'Search users, audit logs, profiles...' : 'Search records, cranes, quotes...'}
+          </span>
           <kbd className="rounded-lg border border-border-default bg-surface-card px-1.5 py-0.5 text-[10px] font-mono text-content-muted shadow-sm">
             Ctrl K
           </kbd>
@@ -660,7 +664,7 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
                     setSearchOpen(false);
                   }
                 }}
-                placeholder="Search customers, quotations, equipment, rentals..."
+                placeholder={isAdmin ? "Search users, accounts, audit logs, security events..." : "Search customers, quotations, equipment, rentals..."}
                 className="w-full border-0 bg-transparent text-sm font-medium outline-none placeholder:text-content-muted"
               />
               <button
@@ -675,22 +679,82 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
             </div>
             <div className="max-h-[50vh] overflow-y-auto divide-y divide-border-subtle p-2">
               {searchTerm.length < 2 ? (
-                <p className="p-8 text-center text-xs text-content-secondary">Type at least 2 characters to search across all modules...</p>
-              ) : searchResults.length ? (
-                searchResults.map((r, i) => (
-                  <a
-                    key={`${r.href}-${i}`}
-                    href={r.href}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-content-primary">{r.title}</p>
-                      <p className="text-[11px] text-content-secondary capitalize">{r.type} · {r.subtitle}</p>
+                <div className="p-8 text-center text-xs text-content-secondary space-y-3">
+                  <p>
+                    {isAdmin
+                      ? 'Type at least 2 characters to search across users, audit logs, and account profiles...'
+                      : 'Type at least 2 characters to search across all modules...'}
+                  </p>
+                  {isAdmin && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      <a
+                        href="/users"
+                        onClick={() => setSearchOpen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-app px-2.5 py-1 text-[11px] font-medium text-content-primary hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                      >
+                        <UserCircle className="h-3.5 w-3.5 text-purple-400" />
+                        <span>Users & Profiles</span>
+                      </a>
+                      <a
+                        href="/logs"
+                        onClick={() => setSearchOpen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-app px-2.5 py-1 text-[11px] font-medium text-content-primary hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                      >
+                        <History className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>Audit Logs</span>
+                      </a>
+                      <a
+                        href="/roles"
+                        onClick={() => setSearchOpen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-app px-2.5 py-1 text-[11px] font-medium text-content-primary hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                      >
+                        <Shield className="h-3.5 w-3.5 text-blue-400" />
+                        <span>Roles & RBAC</span>
+                      </a>
+                      <a
+                        href="/settings"
+                        onClick={() => setSearchOpen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-app px-2.5 py-1 text-[11px] font-medium text-content-primary hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+                      >
+                        <Settings className="h-3.5 w-3.5 text-amber-400" />
+                        <span>Profile & Settings</span>
+                      </a>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-content-muted" />
-                  </a>
-                ))
+                  )}
+                </div>
+              ) : searchResults.length ? (
+                searchResults.map((r, i) => {
+                  const isUserResult = r.type === 'User Account' || r.type === 'User Profile';
+                  const isAuditResult = r.type === 'Audit Log';
+                  const isProfileResult = r.type === 'Profile Settings';
+                  return (
+                    <a
+                      key={`${r.href}-${i}`}
+                      href={r.href}
+                      onClick={() => setSearchOpen(false)}
+                      className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-amber-500/10 hover:text-amber-500 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-app text-content-secondary group-hover:text-amber-500 group-hover:bg-amber-500/20 transition-colors">
+                          {isUserResult ? (
+                            <UserCircle className="h-4 w-4 text-purple-400" />
+                          ) : isAuditResult ? (
+                            <History className="h-4 w-4 text-emerald-400" />
+                          ) : isProfileResult ? (
+                            <Settings className="h-4 w-4 text-amber-400" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-content-primary truncate group-hover:text-amber-500 transition-colors">{r.title}</p>
+                          <p className="text-[11px] text-content-secondary capitalize truncate">{r.type} · {r.subtitle}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-content-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  );
+                })
               ) : (
                 <p className="p-8 text-center text-xs text-content-secondary">No records found matching "{searchTerm}".</p>
               )}

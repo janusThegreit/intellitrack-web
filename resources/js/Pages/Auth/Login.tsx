@@ -595,7 +595,7 @@ const Login = () => {
                           value={data.password}
                           onChange={e => setData('password', e.target.value)}
                           autoComplete="current-password"
-                          placeholder="••••••••••••"
+                          placeholder="Enter your password"
                           className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 py-3.5 pl-10 pr-11 text-sm text-white placeholder:text-slate-500 hover:border-slate-600 focus:border-[#f2b600] focus:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-[#f2b600]/15 shadow-inner transition-all"
                           required
                         />

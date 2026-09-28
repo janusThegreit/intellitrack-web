@@ -6,7 +6,7 @@ import {
   Truck, UserCheck, Mail, Phone, Key, Lock, Clock,
   Calendar, Activity, Sparkles, Check, AlertTriangle, RefreshCw,
   User as UserIcon, KeyRound, Copy, ShieldAlert, ShieldCheck,
-  Fingerprint, Globe, Smartphone, Terminal, Cpu
+  Fingerprint, Globe, Terminal
 } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../../Components/Modal';
@@ -280,7 +280,13 @@ export default function UsersIndex() {
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, active: 0, inactive: 0, recent: 0 });
   
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('search') || '';
+    }
+    return '';
+  });
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   

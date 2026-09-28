@@ -111,7 +111,11 @@ class RoleController extends Controller
             $search = '%' . strtolower($request->input('search')) . '%';
             $query->where(function($q) use ($search) {
                 $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), 'like', $search)
-                  ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), 'like', $search);
+                  ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), 'like', $search)
+                  ->orWhere(\Illuminate\Support\Facades\DB::raw("LOWER(COALESCE(nickname, ''))"), 'like', $search)
+                  ->orWhere(\Illuminate\Support\Facades\DB::raw("LOWER(COALESCE(first_name, ''))"), 'like', $search)
+                  ->orWhere(\Illuminate\Support\Facades\DB::raw("LOWER(COALESCE(last_name, ''))"), 'like', $search)
+                  ->orWhere(\Illuminate\Support\Facades\DB::raw("LOWER(COALESCE(phone, ''))"), 'like', $search);
             });
         }
         if ($request->filled('role') && $request->input('role') !== 'all') {
