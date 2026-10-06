@@ -9,7 +9,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -44,7 +44,7 @@ class AuthController extends Controller
      * - Account deactivation check: blocks login for suspended accounts
      * - Session regeneration: prevents session fixation attacks
      */
-    public function login(Request $request): RedirectResponse
+    
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -97,109 +97,157 @@ class AuthController extends Controller
                 'ip' => $request->ip(),
             ]);
 
+            // Role-based destination: Client users go to Client Portal, Internal users go to Enterprise Dashboard
+            if ($authenticatedUser->isClient()) {
+                return redirect()->intended('/portal');
+            }
+
             return redirect()->intended('/dashboard');
         }
 
         // Increment rate limiter on failed attempt
         RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
 
-        ActivityLogService::logSecurity('failed_login', "Failed sign-in attempt for email '{$credentials['email']}' (invalid password/credentials).", $user, [
-            'attempted_email' => $credentials['email'],
-            'ip' => $request->ip(),
-        ]);
+        ActivityLogSerpublic function login(Request $request): RedirectResponse
+{
+    $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
+
+    $remember = $request->boolean('remember');
+
+    // Rate limiting at the Gateway level
+    $throttleKey = $this->throttleKey($request);
+
+    if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
+        $seconds = RateLimiter::availableIn($throttleKey);
+
+        return back()->withErrors([
+            'email' => __('Too many login attempts. Please try again in :seconds seconds.', [
+                'seconds' => $seconds,
+            ]),
+        ])->onlyInput('email');
+    }
+
+    try {
+        /*
+         * Authentication is handled by the Auth Service.
+         * The Gateway must never access the Auth Service database directly.
+         */
+        $response = Http::timeout(5)
+            ->acceptJson()
+            ->withHeaders([
+                'X-Internal-Secret' => config('gateway.internal_secret'),
+            ])
+            ->post(
+                rtrim(config('gateway.services.auth.base_url'), '/') . '/api/auth/login',
+                [
+                    'email' => $credentials['email'],
+                    'password' => $credentials['password'],
+                ]
+            );
+    } catch (\Throwable $e) {
+        report($e);
+
+        return back()->withErrors([
+            'email' => 'Authentication service is currently unavailable. Please try again later.',
+        ])->onlyInput('email');
+    }
+
+    /*
+     * Auth Service rejected the credentials.
+     */
+    if ($response->status() === 401) {
+        RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ])->onlyInput('email');
     }
 
-    /**
-     * Show registration form
+    /*
+     * Auth Service rejected a deactivated account.
      */
-    public function showRegisterForm(): Response
-    {
-        return Inertia::render('Auth/Login');
+    if ($response->status() === 403) {
+        RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
+
+        return back()->withErrors([
+            'email' => 'Your account has been deactivated. Please contact your administrator.',
+        ])->onlyInput('email');
     }
 
-    /**
-     * Handle registration request.
+    /*
+     * Handle validation or rate-limit errors from Auth Service.
+     */
+    if ($response->status() === 422 || $response->status() === 429) {
+        $message = $response->json('message')
+            ?? 'Unable to authenticate your account at this time.';
+
+        return back()->withErrors([
+            'email' => $message,
+        ])->onlyInput('email');
+    }
+
+    /*
+     * Handle unexpected Auth Service errors.
+     */
+    if (! $response->successful()) {
+        report(new \RuntimeException(
+            'Auth Service returned HTTP ' . $response->status()
+        ));
+
+        return back()->withErrors([
+            'email' => 'Authentication service is currently unavailable. Please try again later.',
+        ])->onlyInput('email');
+    }
+
+    $authData = $response->json('data');
+
+    if (! is_array($authData) || empty($authData['user'])) {
+        report(new \RuntimeException('Auth Service returned an invalid authentication response.'));
+
+        return back()->withErrors([
+            'email' => 'Unable to complete authentication. Please try again.',
+        ])->onlyInput('email');
+    }
+
+    $authUser = $authData['user'];
+
+    /*
+     * Create the Gateway's local authenticated session.
      *
-     * Security measures:
-     * - Strong password validation using Laravel's Password rule object
-     * - New accounts default to inactive (is_active = false) requiring admin approval
-     * - Default role is the lowest-privilege 'customer' role
+     * The Gateway does not need the Auth Service database.
+     * It only needs a local user representation for Laravel's
+     * session-based authorization and role checks.
      */
-    public function register(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => [
-                'required',
-                'string',
-                'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-                    ->uncompromised(),
-            ],
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
-        ]);
+    $user = new User();
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'first_name' => $validated['first_name'] ?? null,
-            'last_name' => $validated['last_name'] ?? null,
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
-            'role' => 'customer',       // Lowest-privilege role for self-registration
-            'is_active' => false,       // Require admin approval before account activation
-        ]);
+    $user->forceFill([
+        'id' => $authUser['id'],
+        'name' => $authUser['name'] ?? '',
+        'email' => $authUser['email'],
+        'first_name' => $authUser['first_name'] ?? null,
+        'last_name' => $authUser['last_name'] ?? null,
+        'nickname' => $authUser['nickname'] ?? null,
+        'phone' => $authUser['phone'] ?? null,
+        'avatar_url' => $authUser['avatar_url'] ?? null,
+        'role' => $authUser['role'] ?? $authData['role'] ?? null,
+        'client_id' => $authUser['client_id'] ?? null,
+        'is_active' => $authUser['is_active'] ?? true,
+    ]);
 
-        event(new Registered($user));
-
-        ActivityLogService::logAuth($user, 'registered', "New user registration submitted for '{$user->name}' ({$user->email}), pending admin review.", [
-            'role' => $user->role,
-            'ip' => $request->ip(),
-        ]);
-
-        // Do NOT auto-login: account requires admin approval
-        return redirect('/login')->with('status', 'Registration successful! Your account is pending administrator approval.');
-    }
-
-    /**
-     * Handle logout with full session invalidation.
+    /*
+     * Store the authenticated user in the Gateway session.
      */
-    public function logout(Request $request): RedirectResponse
-    {
-        $user = Auth::user();
-        if ($user) {
-            ActivityLogService::logAuth($user, 'logout', "User '{$user->name}' ({$user->email}) logged out successfully.");
-        }
+    Auth::login($user, $remember);
 
-        Auth::logout();
+    RateLimiter::clear($throttleKey);
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+    $request->session()->regenerate();
 
-        return redirect('/');
-    }
-
-    /**
-     * Generate a unique throttle key combining email and IP address.
-     *
-     * Using both email and IP prevents:
-     * - Attackers from locking out legitimate users by flooding their email
-     * - Bypassing rate limits by switching email addresses from same IP
-     */
-    private function throttleKey(Request $request): string
-    {
-        return Str::transliterate(
-            Str::lower($request->input('email')) . '|' . $request->ip()
-        );
-    }
+    return redirect()->intended(
+        $user->isClient() ? '/portal' : '/dashboard'
+    );
 }
+    }

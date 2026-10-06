@@ -50,12 +50,15 @@ const IntelitrackIcon = () => (
 );
 
 const formatRole = (role: string = '') => ({
-  administrator: 'Administrator',
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  administrator: 'Admin',
   sales_manager: 'Sales Manager',
   sales_business_development: 'Sales BD',
   operations_technical: 'Operations & Technical Staff',
   staff: 'Operations Staff',
-  customer: 'Client Portal',
+  client: 'Client',
+  customer: 'Client',
 }[role] ?? (role ? role.replace(/_/g, ' ') : 'User'));
 
 interface NavItem {
@@ -72,7 +75,7 @@ const navItems: NavItem[] = [
     label: 'Dashboard',
     icon: <LayoutDashboard className="w-4 h-4" />,
     href: '/dashboard',
-    roles: ['sales_manager', 'sales_business_development', 'administrator', 'operations_technical', 'staff'],
+    roles: ['sales_manager', 'sales_business_development', 'admin', 'administrator', 'operations_technical', 'staff'],
   },
   {
     label: 'CRM',
@@ -136,25 +139,25 @@ const navItems: NavItem[] = [
     label: 'User Management',
     icon: <Users className="w-4 h-4" />,
     href: '/users',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'Roles & Access',
     icon: <Shield className="w-4 h-4" />,
     href: '/roles',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'Audit Logs',
     icon: <History className="w-4 h-4" />,
     href: '/logs',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'System Settings',
     icon: <Settings className="w-4 h-4" />,
     href: '/settings',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
 ];
 
@@ -212,7 +215,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
     return current === target || current.startsWith(target + '/');
   };
 
-  const normalizedRole = userRole === 'admin' ? 'administrator' : (userRole === 'sales_bd' ? 'sales_business_development' : userRole);
+  const normalizedRole = userRole === 'admin' || userRole === 'administrator' ? 'admin' : (userRole === 'sales_bd' ? 'sales_business_development' : userRole);
 
   const availableNavItems = useMemo(() => {
     return navItems

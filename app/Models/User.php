@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'client_id', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -106,11 +106,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has super admin role
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    /**
      * Check if user has administrator role
      */
     public function isAdministrator(): bool
     {
-        return $this->role === 'administrator' || $this->role === 'admin';
+        return in_array($this->role, ['super_admin', 'admin', 'administrator']);
     }
 
     /**
@@ -146,6 +154,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has client role
+     */
+    public function isClient(): bool
+    {
+        return in_array($this->role, ['client', 'customer']);
+    }
+
+    /**
+     * Check if user has customer role (alias for client)
+     */
+    public function isCustomer(): bool
+    {
+        return $this->isClient();
+    }
+
+    /**
+     * Check if user is an internal enterprise employee
+     */
+    public function isInternalUser(): bool
+    {
+        return !$this->isClient();
+    }
+
+    /**
      * Check if user has operations & technical staff role
      */
     public function isOperationsTechnical(): bool
@@ -167,11 +199,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user has customer role
+     * Associated customer/client record for client users
      */
-    public function isCustomer(): bool
+    public function client(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->role === 'customer';
+        return $this->belongsTo(Customer::class, 'client_id');
     }
 
     /**

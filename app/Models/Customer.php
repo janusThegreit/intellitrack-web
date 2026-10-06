@@ -106,4 +106,9 @@ class Customer extends Model
     {
         return $this->hasMany(CustomerFeedback::class);
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'client_id');
+    }
 }

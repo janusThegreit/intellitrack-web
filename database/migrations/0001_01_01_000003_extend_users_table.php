@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('last_name')->nullable();
             $table->string('phone')->nullable();
             $table->string('avatar_url')->nullable();
-            $table->enum('role', ['administrator', 'sales_manager', 'sales_business_development', 'staff', 'customer'])->default('staff');
+            $table->string('role')->default('sales_business_development');
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_login_at')->nullable();
             $table->softDeletes();

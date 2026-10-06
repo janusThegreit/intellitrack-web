@@ -25,20 +25,38 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::before(function (User $user, string $ability) {
-            if ($user->isAdministrator()) {
+            if ($user->isSuperAdmin()) {
                 return true;
             }
         });
+
+        Gate::define('access-client-portal', function (User $user) {
+            return $user->isClient() || $user->isAdministrator();
+        });
+
+        Gate::define('super-admin', function (User $user) {
+            return $user->isSuperAdmin();
+        });
+
         Gate::define('view-core-dashboard', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
+            if ($user->isClient()) {
+                return false;
+            }
+            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment() || $user->isOperationsTechnical();
         });
 
         Gate::define('view-crm', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            if ($user->isClient()) {
+                return false;
+            }
+            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-crm', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            if ($user->isClient()) {
+                return false;
+            }
+            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-clients', function (User $user) {

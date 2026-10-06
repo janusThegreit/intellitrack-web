@@ -17,6 +17,9 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: http://localhost:8000
+      SESSION_DRIVER: file
+      SESSION_LIFETIME: 120
+      CACHE_STORE: file
       AUTH_SERVICE_URL: http://auth-service:8001
       CUSTOMER_SERVICE_URL: http://customer-service:8002
       INVENTORY_SERVICE_URL: http://inventory-service:8003
