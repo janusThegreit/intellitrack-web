@@ -30,9 +30,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // System Settings & Maintenance Mode
     Route::get('system/maintenance', function (Illuminate\Http\Request $request) {
-        if ($request->user()->role !== 'administrator') {
-            abort(403, 'Unauthorized action.');
-        }
+        \Illuminate\Support\Facades\Gate::authorize('manage-system-settings');
 
         $dbStatus = 'Operational';
         try {
@@ -52,16 +50,14 @@ Route::middleware(['web', 'auth'])->group(function () {
                 'db_status' => $dbStatus,
                 'cache_driver' => config('cache.default'),
                 'server_time' => now()->toIso8601String(),
-                'admin_count' => \App\Models\User::where('role', 'administrator')->count(),
+                'admin_count' => \App\Models\User::whereIn('role', ['super_admin', 'admin', 'administrator'])->count(),
                 'total_users' => \App\Models\User::count(),
             ],
         ]);
     });
 
     Route::post('system/maintenance', function (Illuminate\Http\Request $request) {
-        if ($request->user()->role !== 'administrator') {
-            abort(403, 'Unauthorized action.');
-        }
+        \Illuminate\Support\Facades\Gate::authorize('manage-system-settings');
 
         $isEnabled = $request->boolean('enabled');
         $broadcastMessage = $request->input('broadcast_message');
@@ -194,6 +190,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // AI analytics decision-support data
     Route::get('analytics/summary', [SalesAnalyticsController::class, 'summary']);
+    Route::post('analytics/train', [SalesAnalyticsController::class, 'trainModel'])->middleware('throttle:3,1');
     Route::post('analytics/copilot', [SalesAnalyticsController::class, 'copilot']);
 
     // Reports

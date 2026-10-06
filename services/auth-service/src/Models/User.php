@@ -31,7 +31,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['administrator', 'admin']);
+        return in_array($this->role, ['super_admin', 'administrator', 'admin']);
     }
 
     public function isSalesManager(): bool
@@ -46,12 +46,12 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return $this->role === 'staff';
+        return in_array($this->role, ['staff', 'operations_technical']);
     }
 
     public function isCustomer(): bool
     {
-        return $this->role === 'customer';
+        return in_array($this->role, ['client', 'customer']);
     }
 
     public function getFullNameAttribute(): string

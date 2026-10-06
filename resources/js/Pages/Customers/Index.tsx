@@ -429,14 +429,15 @@ const CustomersList = ({
     .filter(Boolean);
 
   const isSalesManager = userRoles.some(role =>
-    [ 'sales manager', 'salesmanager', 'manager sales', 'sales management',
+    [ 'sales manager', 'salesmanager', 'manager', 'manager sales', 'sales management',
     ].includes(role)
   );
 
   const isSalesBusinessDevelopment = userRoles.some(role =>
-    [ 'sales business development', 'sales & business development', 'sales and business development', 'sales business development officer', 'sales business development staff', 'sales business development specialist', 'business development', 'business development officer', 'business development specialist', 'sales bdo', 'sbd',
+    [ 'sales business development', 'sales & business development', 'sales and business development', 'sales business development officer', 'sales business development staff', 'sales business development specialist', 'business development', 'business development officer', 'business development specialist', 'sales bdo', 'sales bd', 'sbd',
     ].includes(role)
   );
+  const isAdministrator = userRoles.some(role => ['admin', 'administrator', 'super admin'].includes(role));
 
   /*
    * ------------------------------------------------------------
@@ -1095,7 +1096,7 @@ const CustomersList = ({
             <span>View</span>
           </button>
 
-          {(isSalesBusinessDevelopment || isSalesManager) && (
+          {(isAdministrator || isSalesBusinessDevelopment || isSalesManager) && (
             <>
               <button
                 onClick={() => openEdit(row)}
@@ -2236,7 +2237,7 @@ const CustomersList = ({
         <div className="space-y-4">
           <CrmNavTabs
             actionButton={
-              isSalesBusinessDevelopment ? (
+              (isAdministrator || isSalesBusinessDevelopment || isSalesManager) ? (
                 <Button
                   variant="primary"
                   onClick={() => {

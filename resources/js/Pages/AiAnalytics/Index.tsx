@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
   AlertTriangle,
@@ -8,13 +8,10 @@ import {
   Bot,
   BrainCircuit,
   CheckCircle2,
-  ChevronRight,
   FileSpreadsheet,
   Info,
-  Key,
   Layers,
   Lightbulb,
-  Phone,
   RefreshCw,
   RotateCcw,
   Send,
@@ -24,8 +21,6 @@ import {
   TrendingUp,
   Truck,
   User,
-  X,
-  ExternalLink,
 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import { formatPeso } from '../../Utils/currency';
@@ -33,19 +28,16 @@ import { formatPeso } from '../../Utils/currency';
 interface OverdueRentalItem {
   id: number;
   rental_number: string;
-  customer_name: string;
-  customer_phone: string;
-  equipment_name: string;
+  equipment_name: string | null;
   days_overdue: number;
-  rental_end_date: string;
-  estimated_penalty: number;
+  rental_end_date: string | null;
 }
 
 interface CategoryUtilization {
   category: string;
   total: number;
   rented: number;
-  rate: number;
+  rate: number | null;
 }
 
 interface Recommendation {
@@ -70,9 +62,7 @@ interface AnalyticsData {
     accepted: number;
     rejected: number;
     under_review: number;
-    conversion_rate: number;
-    pipeline_value: number;
-    avg_quote_value: number;
+    conversion_rate: number | null;
   };
   rental_trends: {
     active: number;
@@ -85,7 +75,7 @@ interface AnalyticsData {
     available: number;
     rented: number;
     maintenance: number;
-    utilization_rate: number;
+    utilization_rate: number | null;
     categories: CategoryUtilization[];
   };
   job_orders: {
@@ -98,19 +88,31 @@ interface AnalyticsData {
     month: string;
     label: string;
     amount: number;
-    job_orders: number;
-    rentals: number;
   }>;
   forecast: {
     available: boolean;
     reason?: string;
     month?: string;
     predicted_revenue?: number;
-    growth_rate?: number;
-    confidence?: string;
     method?: string;
+    trained_at?: string;
+    months_with_data?: number;
+    months_in_dataset?: number;
+    period_start?: string;
+    period_end?: string;
+    source?: string;
   };
+  ai_assistant_available: boolean;
   recommendations: Recommendation[];
+}
+
+interface TrainingResult {
+  trained: boolean;
+  reason?: string;
+  algorithm?: string;
+  period_start?: string;
+  period_end?: string;
+  months_with_data?: number;
 }
 
 /**
@@ -186,23 +188,24 @@ interface ChatMessage {
 }
 
 const AiAnalytics = () => {
+  const { auth } = usePage<{ auth: { user?: { role?: string } } }>().props;
+  const role = auth?.user?.role ?? '';
+  const canTrainModel = ['super_admin', 'admin', 'administrator'].includes(role);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [training, setTraining] = useState(false);
+  const [trainingError, setTrainingError] = useState('');
+  const [trainingResult, setTrainingResult] = useState<TrainingResult | null>(null);
 
   // AI Copilot Chatbot State
   const [prompt, setPrompt] = useState('');
   const [copilotLoading, setCopilotLoading] = useState(false);
-  const [geminiKey, setGeminiKey] = useState<string>(() => {
-    return typeof window !== 'undefined' ? localStorage.getItem('intellitrack_gemini_api_key') || '' : '';
-  });
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [tempKey, setTempKey] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
       sender: 'assistant',
-      text: 'Kumusta! 👋 Ako ang iyong **IntelliTrack AI Copilot**.\n\nPwede kang bumati ng *"Hi"*, magtanong sa Tagalog o English, o mag-usisa tungkol sa ating live heavy fleet, revenue forecast, quotation win-rate, at overdue risks. Paano kita matutulungan ngayon?',
+      text: 'Ask a question about the current inquiry, quotation, job order, equipment, rental, or trained revenue-trend data. Responses are available only when the server-side AI provider is configured.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       source: 'IntelliTrack AI Copilot',
     },
@@ -217,27 +220,16 @@ const AiAnalytics = () => {
     scrollToBottom();
   }, [messages, copilotLoading]);
 
-  const handleSaveGeminiKey = (key: string) => {
-    const trimmed = key.trim();
-    setGeminiKey(trimmed);
-    if (typeof window !== 'undefined') {
-      if (trimmed) {
-        localStorage.setItem('intellitrack_gemini_api_key', trimmed);
-      } else {
-        localStorage.removeItem('intellitrack_gemini_api_key');
-      }
-    }
-    setShowKeyModal(false);
-  };
-
   const fetchAnalytics = async () => {
     setLoading(true);
     setError('');
     try {
       const response = await axios.get<AnalyticsData>('/api/analytics/summary');
       setData(response.data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to load executive AI analytics telemetry.');
+    } catch (err: unknown) {
+      setError(axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message || 'Failed to load analytics from current business records.'
+        : 'Failed to load analytics from current business records.');
     } finally {
       setLoading(false);
     }
@@ -246,6 +238,26 @@ const AiAnalytics = () => {
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  const handleTrainModel = async () => {
+    if (training) return;
+    setTraining(true);
+    setTrainingError('');
+    setTrainingResult(null);
+
+    try {
+      const response = await axios.post<TrainingResult>('/api/analytics/train');
+      setTrainingResult(response.data);
+      await fetchAnalytics();
+    } catch (err: unknown) {
+      const message = axios.isAxiosError<{ reason?: string; message?: string }>(err)
+        ? err.response?.data?.reason || err.response?.data?.message
+        : undefined;
+      setTrainingError(message || 'The revenue trend model could not be trained.');
+    } finally {
+      setTraining(false);
+    }
+  };
 
   const handleCopilotSubmit = async (customPrompt?: string) => {
     const query = (customPrompt || prompt).trim();
@@ -263,9 +275,8 @@ const AiAnalytics = () => {
     setCopilotLoading(true);
 
     try {
-      const response = await axios.post('/api/analytics/copilot', {
+      const response = await axios.post<{ response: string; source: string }>('/api/analytics/copilot', {
         prompt: query,
-        gemini_api_key: geminiKey || undefined,
       });
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -275,11 +286,13 @@ const AiAnalytics = () => {
         source: response.data.source,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage: ChatMessage = {
         id: `err-${Date.now()}`,
         sender: 'assistant',
-        text: '### ⚠️ Pasensya na\n\nHindi maabot ang copilot engine sa ngayon. Pakisubukan muli makalipas ang ilang sandali.',
+        text: axios.isAxiosError<{ message?: string }>(err)
+          ? err.response?.data?.message || 'The AI provider could not complete the request. Please try again later.'
+          : 'The AI provider could not complete the request. Please try again later.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: 'System Diagnostic',
       };
@@ -294,7 +307,7 @@ const AiAnalytics = () => {
       {
         id: `welcome-${Date.now()}`,
         sender: 'assistant',
-        text: 'Handa na muli ang IntelliTrack AI Copilot! Ano ang gusto mong pag-usapan o suriin?',
+        text: 'Chat history cleared. Ask a question about available business data.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: 'IntelliTrack AI Copilot',
       },
@@ -302,22 +315,50 @@ const AiAnalytics = () => {
   };
 
   const quickPrompts = [
-    'Predict next quarter revenue trajectory & growth',
-    'Heavy equipment fleet utilization & dispatch bottlenecks',
-    'Quotation conversion rate & proposal optimization',
-    'Overdue rental risk mitigation & demurrage exposure',
+    'What does the saved one-month revenue trend estimate show?',
+    'Summarize equipment status counts',
+    'Summarize quotation counts and acceptance rate',
+    'How many rentals are currently overdue?',
   ];
 
   // Revenue chart calculations
   const history = data?.revenue_history ?? [];
-  const forecastAmount = data?.forecast?.predicted_revenue ?? 0;
-  const allAmounts = [...history.map((h) => h.amount), forecastAmount];
+  const allAmounts = history.map((h) => h.amount);
   const maxRevenue = Math.max(...allAmounts, 1);
+
+  if (loading) {
+    return (
+      <AppLayout title="Data Analysis & AI">
+        <Head title="Data Analysis & AI" />
+        <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 text-sm text-neutral-300" role="status">
+          Loading analytics from current business records…
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <AppLayout title="Data Analysis & AI">
+        <Head title="Data Analysis & AI" />
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-300" role="alert">
+          <p>{error || 'Analytics data is not available.'}</p>
+          <button
+            type="button"
+            onClick={fetchAnalytics}
+            className="mt-4 rounded-lg border border-red-500/40 px-3 py-2 font-semibold hover:bg-red-500/10"
+          >
+            Retry
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <>
-      <Head title="AI Executive Analytics & Decision Support" />
-      <AppLayout title="Executive AI Analytics & Decision Support">
+      <Head title="Data Analysis & Revenue Trend" />
+      <AppLayout title="Data Analysis & Revenue Trend">
         <div className="space-y-6 pb-12">
           {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-r from-[#141416] via-[#1a1a1f] to-[#121214] p-6 shadow-xl lg:p-8">
@@ -332,17 +373,17 @@ const AiAnalytics = () => {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                    Operational Telemetry Live
+                    Current business records
                   </span>
                   <span className="text-xs text-neutral-400">
                     Decision Support System (DSS)
                   </span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                  Executive AI Analytics & Strategic Intelligence
+                  Data Analysis & Revenue Trend
                 </h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-neutral-400">
-                  Real-time algorithmic synthesis across client inquiries, quotations, heavy machinery telemetry, active job orders, and overdue rental risks.
+                  Analysis is calculated from existing inquiries, quotations, equipment, rentals, projects, and job orders.
                 </p>
               </div>
 
@@ -353,7 +394,7 @@ const AiAnalytics = () => {
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/80 px-4 py-2.5 text-xs font-semibold text-neutral-200 shadow-sm transition hover:bg-neutral-700 hover:text-white disabled:opacity-50"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-                  Refresh Telemetry
+                  Refresh Data
                 </button>
                 <Link
                   href="/reports"
@@ -366,41 +407,24 @@ const AiAnalytics = () => {
             </div>
           </div>
 
-          {error && (
-            <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Top 4 Core Strategic KPI Cards */}
+          {/* Summary metrics from current records */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Card 1: Revenue Forecast */}
             <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-[#17171a] p-5 shadow-sm transition-all hover:border-amber-500/40">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">
-                    Predictive Revenue ({data?.forecast?.month || 'Next Month'})
+                    Completed Job Order trend ({data.forecast.month || 'forecast'})
                   </p>
                   <p className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    {data?.forecast?.available
+                    {data.forecast.available
                       ? formatPeso(data.forecast.predicted_revenue)
-                      : formatPeso(data?.quotation_performance?.pipeline_value)}
+                      : 'Not trained'}
                   </p>
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    {data?.forecast?.available ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-400">
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        {data.forecast.growth_rate && data.forecast.growth_rate >= 0 ? '+' : ''}
-                        {data.forecast.growth_rate}% MoM
-                      </span>
-                    ) : (
-                      <span className="text-amber-400 font-medium">Pipeline Calibration</span>
-                    )}
-                    <span className="text-neutral-500">•</span>
-                    <span className="text-neutral-400">
-                      {data?.forecast?.confidence || 'Moderate'} Confidence
-                    </span>
+                  <div className="mt-2 text-xs text-neutral-400">
+                    {data.forecast.available
+                      ? `Ordinary least-squares fit • trained ${data.forecast.trained_at ? new Date(data.forecast.trained_at).toLocaleDateString() : 'date unavailable'}`
+                      : data.forecast.reason}
                   </div>
                 </div>
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
@@ -417,7 +441,7 @@ const AiAnalytics = () => {
                     Proposal Win-Rate
                   </p>
                   <p className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    {data?.quotation_performance?.conversion_rate ?? 0}%
+                    {data.quotation_performance.conversion_rate === null ? '—' : `${data.quotation_performance.conversion_rate}%`}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-xs text-neutral-400">
                     <span className="font-semibold text-emerald-400">
@@ -442,7 +466,7 @@ const AiAnalytics = () => {
                     Heavy Fleet Utilization
                   </p>
                   <p className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    {data?.equipment_utilization?.utilization_rate ?? 0}%
+                    {data.equipment_utilization.utilization_rate === null ? '—' : `${data.equipment_utilization.utilization_rate}%`}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-xs text-neutral-400">
                     <span className="font-semibold text-cyan-400">
@@ -495,18 +519,18 @@ const AiAnalytics = () => {
             </div>
           </div>
 
-          {/* Section 1: Revenue Trajectory & Predictive Forecast Model */}
+          {/* Section 1: Completed revenue history and trained trend estimate */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {/* 6-Month Trajectory & AI Next-Month Projection Bar Chart */}
+            {/* Six-month completed Job Order history and optional OLS estimate */}
             <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 lg:col-span-2 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-neutral-800/80 pb-4">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-amber-400" />
-                    Revenue Trajectory & Algorithmic Projection
+                    Completed Job Order Values
                   </h3>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Completed Job Orders & Equipment Rentals (6 Months Historical + Next Month AI Forecast)
+                    Monthly completed Job Order totals by completion date (last six months)
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
@@ -514,19 +538,23 @@ const AiAnalytics = () => {
                     <span className="h-3 w-3 rounded-sm bg-neutral-600" />
                     Completed
                   </span>
-                  <span className="flex items-center gap-1.5 text-amber-400 font-medium">
-                    <span className="h-3 w-3 rounded-sm bg-amber-500" />
-                    AI Projected
-                  </span>
+                  {data.forecast.available && (
+                    <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                      <span className="h-3 w-3 rounded-sm bg-amber-500" />
+                      OLS trend estimate
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="mt-6">
-                {history.length > 0 ? (
+                {history.some((item) => item.amount > 0) ? (
                   <div className="flex h-64 items-end gap-3 sm:gap-4 border-b border-neutral-800 pb-4">
                     {/* Historical months */}
                     {history.map((item, index) => {
-                      const heightPercent = Math.max((item.amount / maxRevenue) * 100, 4);
+                      const heightPercent = item.amount > 0
+                        ? Math.max((item.amount / maxRevenue) * 100, 4)
+                        : 0;
                       return (
                         <div
                           key={item.month}
@@ -536,9 +564,7 @@ const AiAnalytics = () => {
                           <div className="absolute -top-12 z-20 hidden rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1 text-[11px] text-white shadow-xl group-hover:block whitespace-nowrap">
                             <p className="font-semibold">{item.label}</p>
                             <p className="text-amber-400">{formatPeso(item.amount)}</p>
-                            <p className="text-[10px] text-neutral-400">
-                              JO: {formatPeso(item.job_orders)} | RNT: {formatPeso(item.rentals)}
-                            </p>
+                            <p className="text-[10px] text-neutral-400">Completed Job Orders</p>
                           </div>
 
                           <span className="mb-2 text-[10px] font-medium text-neutral-400 text-center truncate max-w-full">
@@ -562,13 +588,13 @@ const AiAnalytics = () => {
                       );
                     })}
 
-                    {/* AI Projected Bar */}
+                    {/* OLS trend estimate */}
                     {data?.forecast?.available && (
                       <div className="group relative flex h-full min-w-0 flex-1 flex-col justify-end items-center">
                         <div className="absolute -top-12 z-20 hidden rounded-lg border border-amber-500/50 bg-neutral-900 px-2.5 py-1 text-[11px] text-white shadow-xl group-hover:block whitespace-nowrap">
-                          <p className="font-semibold text-amber-400">AI Projection: {data.forecast.month}</p>
+                          <p className="font-semibold text-amber-400">OLS trend estimate: {data.forecast.month}</p>
                           <p className="text-white font-bold">{formatPeso(data.forecast.predicted_revenue)}</p>
-                          <p className="text-[10px] text-neutral-400">Method: {data.forecast.method}</p>
+                          <p className="text-[10px] text-neutral-400">Method: {data.forecast.method?.replace(/_/g, ' ')}</p>
                         </div>
 
                         <span className="mb-2 text-[10px] font-bold text-amber-400 text-center truncate max-w-full">
@@ -579,13 +605,15 @@ const AiAnalytics = () => {
                           <div
                             className="w-full bg-gradient-to-t from-amber-600 to-amber-400 transition-all duration-700 rounded-t-md shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                             style={{
-                              height: `${Math.max(((data.forecast.predicted_revenue || 0) / maxRevenue) * 100, 4)}%`,
+                              height: `${data.forecast.predicted_revenue && data.forecast.predicted_revenue > 0
+                                ? Math.max((data.forecast.predicted_revenue / maxRevenue) * 100, 4)
+                                : 0}%`,
                             }}
                           />
                         </div>
 
                         <span className="mt-2 text-[11px] font-bold text-amber-400 text-center flex items-center gap-0.5">
-                          <Sparkles className="h-3 w-3" />
+                          <TrendingUp className="h-3 w-3" />
                           {data.forecast.month?.split(' ')[0]}
                         </span>
                       </div>
@@ -593,7 +621,7 @@ const AiAnalytics = () => {
                   </div>
                 ) : (
                   <div className="flex h-64 items-center justify-center text-sm text-neutral-500">
-                    No historical completed revenue records available.
+                    No completed Job Order values are available for the displayed months.
                   </div>
                 )}
               </div>
@@ -601,7 +629,7 @@ const AiAnalytics = () => {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
                 <span className="flex items-center gap-1.5">
                   <Info className="h-3.5 w-3.5 text-neutral-500" />
-                  Calculated from closed Job Orders & paid Rental settlements only.
+                  Source: completed Job Order total_amount grouped by completion_date.
                 </span>
                 <span className="text-neutral-500">
                   Currency: Philippine Peso (PHP)
@@ -609,74 +637,92 @@ const AiAnalytics = () => {
               </div>
             </div>
 
-            {/* AI Decision Support & Forecasting Model Parameters */}
+            {/* Saved revenue trend model status */}
             <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-400" />
-                    Forecasting Model
+                    <TrendingUp className="h-4 w-4 text-amber-400" />
+                    Revenue Trend Model
                   </h3>
-                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-400">
-                    {data?.forecast?.confidence || 'Moderate'}
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
+                    data.forecast.available
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                      : 'border-neutral-700 bg-neutral-800 text-neutral-400'
+                  }`}>
+                    {data.forecast.available ? 'Trained' : 'Not trained'}
                   </span>
                 </div>
 
                 <div className="mt-5 space-y-4">
                   <div>
-                    <p className="text-xs text-neutral-400">Projected Target ({data?.forecast?.month || 'Next Cycle'})</p>
-                    <p className="mt-1 text-2xl font-black text-amber-400">
-                      {data?.forecast?.available
-                        ? formatPeso(data.forecast.predicted_revenue)
-                        : formatPeso(data?.quotation_performance?.pipeline_value)}
-                    </p>
+                    <p className="text-xs text-neutral-400">OLS estimate ({data.forecast.month || 'unavailable'})</p>
+                    <p className="mt-1 text-2xl font-black text-amber-400">{data.forecast.available ? formatPeso(data.forecast.predicted_revenue) : '—'}</p>
                   </div>
 
                   <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3.5 text-xs space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-neutral-400">Active Pipeline Value:</span>
-                      <strong className="text-white">{formatPeso(data?.quotation_performance?.pipeline_value)}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-400">Average Proposal Value:</span>
-                      <strong className="text-white">{formatPeso(data?.quotation_performance?.avg_quote_value)}</strong>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-neutral-400">Completed Job Orders:</span>
-                      <strong className="text-emerald-400">{data?.job_orders?.completed ?? 0} settled</strong>
+                      <strong className="text-emerald-400">{data?.job_orders?.completed ?? 0} completed</strong>
                     </div>
+                    {data.forecast.available && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-neutral-400">Training window:</span>
+                          <strong className="text-white">{data.forecast.period_start} – {data.forecast.period_end}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-neutral-400">Months with completed values:</span>
+                          <strong className="text-white">{data.forecast.months_with_data} / {data.forecast.months_in_dataset}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-neutral-400">Last trained:</span>
+                          <strong className="text-white">{data.forecast.trained_at ? new Date(data.forecast.trained_at).toLocaleString() : '—'}</strong>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold text-neutral-300">Methodology & Assumptions</p>
+                    <p className="text-xs font-semibold text-neutral-300">Method and data source</p>
                     <p className="mt-1 text-xs leading-relaxed text-neutral-400">
-                      {data?.forecast?.method ||
-                        'Linear multi-period moving velocity synthesized across billable project milestones.'}
+                      {data.forecast.available
+                        ? `${data.forecast.method}. Trained from ${data.forecast.source}.`
+                        : data.forecast.reason}
                     </p>
                   </div>
+                  {trainingError && <p className="text-xs text-red-400" role="alert">{trainingError}</p>}
+                  {trainingResult?.trained && (
+                    <p className="text-xs text-emerald-400" role="status">
+                      Model fitted and saved. Training period: {trainingResult.period_start} – {trainingResult.period_end}; {trainingResult.months_with_data} months contained completed Job Order values.
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-neutral-800">
-                <Link
-                  href="/crm/quotations"
-                  className="flex items-center justify-between text-xs font-semibold text-amber-400 hover:text-amber-300 transition"
-                >
-                  <span>Accelerate Pipeline Closures</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
+                {canTrainModel && (
+                  <button
+                    type="button"
+                    onClick={handleTrainModel}
+                    disabled={training}
+                    className="w-full rounded-xl border border-amber-500/40 bg-amber-500 px-4 py-2.5 text-xs font-bold text-neutral-950 transition hover:bg-amber-400 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {training ? 'Fitting model…' : 'Train Your AI'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Section 2: Heavy Equipment Telemetry & Category Utilization */}
+          {/* Section 2: Equipment status and category utilization */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Fleet Status Breakdown */}
             <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 shadow-sm">
               <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Truck className="h-4 w-4 text-cyan-400" />
-                  Heavy Fleet Telemetry
+                  Equipment Status
                 </h3>
                 <Link
                   href="/equipment/availability"
@@ -787,7 +833,7 @@ const AiAnalytics = () => {
             </div>
           </div>
 
-          {/* Section 3: Rental Overdue & Risk Mitigation Radar */}
+          {/* Section 3: Overdue rentals */}
           <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-neutral-800/80 pb-4">
               <div>
@@ -796,7 +842,7 @@ const AiAnalytics = () => {
                   Rental Overdue & Risk Mitigation Radar
                 </h3>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  High-priority telemetry tracking unreturned heavy machinery past scheduled return dates
+                  Active rentals with scheduled end dates before today
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -806,8 +852,8 @@ const AiAnalytics = () => {
                     : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                 }`}>
                   {(data?.rental_trends?.overdue ?? 0) > 0
-                    ? `${data?.rental_trends?.overdue} Machinery Exceeded Timeline`
-                    : 'All Deployments On Schedule'}
+                    ? `${data?.rental_trends?.overdue} overdue rentals`
+                    : 'No overdue rentals'}
                 </span>
                 <Link
                   href="/rentals"
@@ -826,10 +872,8 @@ const AiAnalytics = () => {
                       <tr className="border-b border-neutral-800 text-neutral-400">
                         <th className="pb-3 font-semibold">Rental #</th>
                         <th className="pb-3 font-semibold">Equipment Name</th>
-                        <th className="pb-3 font-semibold">Client / Account</th>
                         <th className="pb-3 font-semibold">Scheduled Return</th>
                         <th className="pb-3 font-semibold text-center">Days Overdue</th>
-                        <th className="pb-3 font-semibold">Est. Demurrage</th>
                         <th className="pb-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
@@ -842,10 +886,6 @@ const AiAnalytics = () => {
                           <td className="py-3.5 font-medium text-white">
                             {item.equipment_name}
                           </td>
-                          <td className="py-3.5 text-neutral-300">
-                            <div>{item.customer_name}</div>
-                            <div className="text-[11px] text-neutral-500">{item.customer_phone}</div>
-                          </td>
                           <td className="py-3.5 text-neutral-400">
                             {item.rental_end_date}
                           </td>
@@ -854,19 +894,7 @@ const AiAnalytics = () => {
                               {item.days_overdue} days
                             </span>
                           </td>
-                          <td className="py-3.5 font-semibold text-red-400">
-                            {formatPeso(item.estimated_penalty)}
-                          </td>
                           <td className="py-3.5 text-right space-x-2">
-                            {item.customer_phone && item.customer_phone !== 'N/A' && (
-                              <a
-                                href={`tel:${item.customer_phone}`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-[11px] font-medium text-neutral-200 hover:border-amber-500/50 hover:text-amber-400 transition"
-                              >
-                                <Phone className="h-3 w-3" />
-                                Contact
-                              </a>
-                            )}
                             <Link
                               href={`/rentals`}
                               className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-400 hover:bg-red-500/20 transition"
@@ -893,7 +921,7 @@ const AiAnalytics = () => {
             </div>
           </div>
 
-          {/* Section 4: Prescriptive AI Strategic Recommendations */}
+          {/* Section 4: Data-driven operational indicators */}
           <div className="rounded-2xl border border-neutral-800 bg-[#17171a] p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
               <div className="flex items-center gap-2">
@@ -902,7 +930,7 @@ const AiAnalytics = () => {
                 </span>
                 <div>
                   <h3 className="text-base font-bold text-white">
-                    Prescriptive AI Recommendations & Strategic Advisory
+                    Operational Indicators
                   </h3>
                   <p className="text-xs text-neutral-400 mt-0.5">
                     Prioritized algorithmic actions to boost conversion, protect fleet margins, and resolve bottlenecks
@@ -910,7 +938,7 @@ const AiAnalytics = () => {
                 </div>
               </div>
               <span className="rounded-full border border-neutral-700 bg-neutral-800 px-3 py-1 text-xs text-neutral-300 font-medium">
-                {data?.recommendations?.length ?? 0} Advisories
+                {data?.recommendations?.length ?? 0} Indicators
               </span>
             </div>
 
@@ -973,7 +1001,7 @@ const AiAnalytics = () => {
                 })
               ) : (
                 <div className="col-span-3 py-6 text-center text-xs text-neutral-500">
-                  No active advisory items generated at this time.
+                  No indicators meet the current data thresholds.
                 </div>
               )}
             </div>
@@ -989,40 +1017,18 @@ const AiAnalytics = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    IntelliTrack AI Chatbot & Copilot
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    IntelliTrack AI Copilot
+                    <span className={`flex h-2 w-2 rounded-full ${data.ai_assistant_available ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
                   </h3>
                   <p className="text-xs text-neutral-400">
-                    Live Conversational Assistant • Supports English & Tagalog • Connected to PostgreSQL
+                    {data.ai_assistant_available
+                      ? 'Server-configured AI provider • Business data context'
+                      : 'AI provider is not configured on the server'}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                <button
-                  onClick={() => {
-                    setTempKey(geminiKey);
-                    setShowKeyModal(true);
-                  }}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                    geminiKey
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                      : 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                  }`}
-                >
-                  {geminiKey ? (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>Gemini AI Connected</span>
-                    </>
-                  ) : (
-                    <>
-                      <Key className="h-3.5 w-3.5" />
-                      <span>Use Gemini API (Free)</span>
-                    </>
-                  )}
-                </button>
-
                 <button
                   onClick={handleClearChat}
                   title="Clear Chat History"
@@ -1120,7 +1126,7 @@ const AiAnalytics = () => {
                     <button
                       key={idx}
                       onClick={() => handleCopilotSubmit(qp)}
-                      disabled={copilotLoading}
+                      disabled={copilotLoading || !data.ai_assistant_available}
                       className="shrink-0 rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[11px] text-neutral-300 hover:border-amber-500/50 hover:bg-neutral-800 hover:text-white transition disabled:opacity-50"
                     >
                       💬 {qp}
@@ -1141,12 +1147,12 @@ const AiAnalytics = () => {
                     handleCopilotSubmit();
                   }
                 }}
-                placeholder="Type 'hi', 'kamusta', or ask about fleet status, revenue forecast, or overdue risks..."
+                placeholder="Ask about current business records or the trained revenue trend..."
                 className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
               <button
                 onClick={() => handleCopilotSubmit()}
-                disabled={copilotLoading || !prompt.trim()}
+                disabled={copilotLoading || !prompt.trim() || !data.ai_assistant_available}
                 className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500 px-5 py-3 text-sm font-bold text-neutral-950 shadow-md transition hover:bg-amber-400 disabled:opacity-50"
               >
                 {copilotLoading ? (
@@ -1161,98 +1167,6 @@ const AiAnalytics = () => {
             </div>
           </div>
 
-          {/* Google Gemini API Key Configuration Modal */}
-          {showKeyModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-              <div className="w-full max-w-lg rounded-2xl border border-neutral-800 bg-[#18181b] p-6 shadow-2xl space-y-5">
-                <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                      <Sparkles className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <h3 className="text-base font-bold text-white">Google Gemini AI Configuration</h3>
-                      <p className="text-xs text-neutral-400">Free Tier Generative AI for IntelliTrack Copilot</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowKeyModal(false)}
-                    className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white transition"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-4 text-xs space-y-2.5 text-neutral-300 leading-relaxed">
-                  <p className="font-semibold text-white flex items-center gap-1.5">
-                    <Info className="h-4 w-4 text-amber-400" />
-                    Paano kumuha ng 100% LIBRENG Gemini API Key:
-                  </p>
-                  <ol className="list-decimal pl-4 space-y-1 text-neutral-400">
-                    <li>Pumunta sa Google AI Studio gamit ang link sa ibaba.</li>
-                    <li>Mag-log in sa iyong Google account at i-click ang <strong>"Get API key"</strong>.</li>
-                    <li>Kopyahin ang iyong API key at i-paste ito sa text box sa ibaba.</li>
-                  </ol>
-                  <a
-                    href="https://aistudio.google.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 pt-1 text-xs font-semibold text-emerald-400 hover:underline"
-                  >
-                    <span>Buksan ang Google AI Studio (Libre)</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-neutral-300">
-                    Gemini API Key:
-                  </label>
-                  <input
-                    type="password"
-                    value={tempKey}
-                    onChange={(e) => setTempKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-                  />
-                  <p className="text-[11px] text-neutral-500">
-                    Maaari mo ring i-save ito sa iyong <code className="text-neutral-400">.env</code> bilang <code className="text-neutral-400">GEMINI_API_KEY</code>.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-800">
-                  {geminiKey ? (
-                    <button
-                      type="button"
-                      onClick={() => handleSaveGeminiKey('')}
-                      className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition"
-                    >
-                      Alisin ang Key (Gamitin ang Built-in)
-                    </button>
-                  ) : (
-                    <div />
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowKeyModal(false)}
-                      className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 transition"
-                    >
-                      Kanselahin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveGeminiKey(tempKey)}
-                      className="rounded-xl border border-emerald-500/40 bg-emerald-500 px-4 py-2 text-xs font-bold text-neutral-950 hover:bg-emerald-400 shadow-md transition"
-                    >
-                      I-save ang Key
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </AppLayout>
     </>

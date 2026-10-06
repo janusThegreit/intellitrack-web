@@ -60,11 +60,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('view-clients', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('manage-clients', function (User $user) {
-            return $user->isSalesManager() || $user->isSalesBusinessDevelopment();
+            return $user->isAdministrator() || $user->isSalesManager() || $user->isSalesBusinessDevelopment();
         });
 
         Gate::define('view-rentals', function (User $user) {
@@ -103,8 +103,12 @@ class AppServiceProvider extends ServiceProvider
             return $user->isAdministrator();
         });
 
+        Gate::define('manage-system-settings', function (User $user) {
+            return $user->isAdministrator();
+        });
+
         Gate::define('view-customer', function (User $user, Customer $customer) {
-            return $user->isSalesBusinessDevelopment() || $user->isSalesManager();
+            return $user->isAdministrator() || $user->isSalesBusinessDevelopment() || $user->isSalesManager();
         });
 
         Gate::define('approve-quotation', function (User $user, Quotation $quotation) {

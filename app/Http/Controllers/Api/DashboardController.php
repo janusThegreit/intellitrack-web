@@ -40,15 +40,21 @@ class DashboardController extends Controller
                 'active_users' => User::where('is_active', true)->count(),
                 'inactive_users' => User::where('is_active', false)->count(),
                 'roles_breakdown' => [
-                    'administrator' => $rolesCount['administrator'] ?? 0,
-                    'sales_manager' => $rolesCount['sales_manager'] ?? 0,
-                    'sales_business_development' => $rolesCount['sales_business_development'] ?? 0,
-                    'staff' => $rolesCount['staff'] ?? 0,
-                    'customer' => $rolesCount['customer'] ?? 0,
+                    'super_admin' => $rolesCount['super_admin'] ?? 0,
+                    'admin' => ($rolesCount['admin'] ?? 0) + ($rolesCount['administrator'] ?? 0),
+                    'sales_manager' => ($rolesCount['sales_manager'] ?? 0) + ($rolesCount['manager'] ?? 0),
+                    'sales_business_development' => array_sum(array_intersect_key($rolesCount, array_flip([
+                        'sales_business_development',
+                        'sales_bd',
+                        'operations_technical',
+                        'operations_staff',
+                        'technical_staff',
+                        'staff',
+                    ]))),
+                    'client' => ($rolesCount['client'] ?? 0) + ($rolesCount['customer'] ?? 0),
                 ],
                 'total_audit_logs' => ActivityLog::count(),
                 'maintenance_mode' => Cache::get('system_maintenance_mode', false),
-                'db_status' => 'Connected',
                 'recent_audit_logs' => ActivityLog::with('user')
                     ->latest()
                     ->limit(8)
@@ -56,22 +62,10 @@ class DashboardController extends Controller
             ];
         }
 
-        $isSalesRole = $user && in_array($user->role, ['sales_manager', 'sales_business_development', 'administrator']);
+        $isSalesRole = $user && ($user->isSalesManager() || $user->isSalesBusinessDevelopment());
         $salesManagerSummary = null;
 
         if ($isSalesRole) {
-            $ytdRevenue = (float) (
-                JobOrder::where('status', 'completed')->whereYear('completion_date', now()->year)->sum('total_amount')
-                + Rental::where('status', 'completed')->whereYear('created_at', now()->year)->sum('total_amount')
-            );
-            $prevYearRevenue = (float) (
-                JobOrder::where('status', 'completed')->whereYear('completion_date', now()->subYear()->year)->sum('total_amount')
-                + Rental::where('status', 'completed')->whereYear('created_at', now()->subYear()->year)->sum('total_amount')
-            );
-            $yoyGrowthPct = $prevYearRevenue > 0
-                ? round((($ytdRevenue - $prevYearRevenue) / $prevYearRevenue) * 100, 1)
-                : 0;
-
             $pipelineValue = (float) \App\Models\Quotation::whereIn('status', ['under_review', 'approved', 'sent', 'accepted'])->sum('total_amount');
             $quotationTotal = \App\Models\Quotation::count();
             $acceptedQuotations = \App\Models\Quotation::where('status', 'accepted')->count();
@@ -89,9 +83,6 @@ class DashboardController extends Controller
             $totalCranesCount = Equipment::where('category', 'like', '%crane%')->count();
 
             $salesManagerSummary = [
-                'ytd_revenue' => $ytdRevenue,
-                'prev_year_revenue' => $prevYearRevenue,
-                'yoy_growth_pct' => $yoyGrowthPct,
                 'pipeline_value' => $pipelineValue,
                 'win_rate' => $winRate,
                 'pending_approvals_count' => \App\Models\Quotation::where('status', 'under_review')->count(),
@@ -102,7 +93,7 @@ class DashboardController extends Controller
             ];
         }
 
-        $isOperationsRole = $user && in_array($user->role, ['operations_technical', 'administrator', 'staff']);
+        $isOperationsRole = $user && $user->isOperationsTechnical();
         $operationsSummary = null;
 
         if ($isOperationsRole) {
@@ -155,6 +146,7 @@ class DashboardController extends Controller
             'admin_summary' => $adminSummary,
             'sales_manager_summary' => $salesManagerSummary,
             'operations_summary' => $operationsSummary,
+            'activity_chart' => $this->getActivityChart($user),
             'total_customers' => Customer::count(),
             'active_job_orders' => JobOrder::whereIn('status', ['pending', 'approved', 'in-progress'])->count(),
             'active_rentals' => Rental::where('status', 'active')->count(),
@@ -165,13 +157,7 @@ class DashboardController extends Controller
             'active_projects' => Project::where('status', 'active')->count(),
             'total_equipment' => Equipment::count(),
             'available_equipment' => Equipment::where('status', 'available')->count(),
-            'revenue_this_month' => JobOrder::where('status', 'completed')
-                ->whereMonth('completion_date', now()->month)
-                ->whereYear('completion_date', now()->year)
-                ->sum('total_amount'),
-            'revenue_this_year' => JobOrder::where('status', 'completed')
-                ->whereYear('completion_date', now()->year)
-                ->sum('total_amount'),
+            'pending_quotations' => $salesManagerSummary['pending_approvals_count'] ?? 0,
             'pending_notifications' => Notification::where('user_id', $userId)
                 ->whereNull('read_at')
                 ->count(),
@@ -200,12 +186,48 @@ class DashboardController extends Controller
         ]);
     }
 
+    private function getActivityChart(User $user): array
+    {
+        $isAdmin = $user->isAdministrator();
+        $table = $isAdmin ? 'activity_logs' : 'job_orders';
+        $driver = DB::connection()->getDriverName();
+        $periodExpression = match ($driver) {
+            'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'mysql' => "DATE_FORMAT(created_at, '%Y-%m')",
+            'sqlsrv' => "FORMAT(created_at, 'yyyy-MM')",
+            default => throw new \RuntimeException("Dashboard activity chart does not support the [{$driver}] database driver."),
+        };
+        $start = now()->startOfMonth()->subMonths(5);
+        $end = now()->endOfMonth();
+
+        $counts = DB::table($table)
+            ->selectRaw("{$periodExpression} as period, COUNT(*) as total")
+            ->whereBetween('created_at', [$start, $end])
+            ->groupByRaw($periodExpression)
+            ->get()
+            ->keyBy('period');
+
+        return [
+            'title' => $isAdmin ? 'System Activity' : 'Job Orders Created',
+            'source' => $isAdmin ? 'Activity log records' : 'Job order records by creation date',
+            'points' => collect(range(0, 5))->map(function (int $offset) use ($start, $counts): array {
+                $month = $start->copy()->addMonths($offset);
+
+                return [
+                    'label' => $month->format('M Y'),
+                    'count' => (int) ($counts[$month->format('Y-m')]->total ?? 0),
+                ];
+            })->values(),
+        ];
+    }
+
     /**
      * Get recent activities
      */
     public function recentActivities(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('manage-users');
         $limit = $request->input('limit', 20);
         $activities = ActivityLog::with('user')
             ->latest()

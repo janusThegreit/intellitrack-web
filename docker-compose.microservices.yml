@@ -20,6 +20,12 @@ services:
       SESSION_DRIVER: file
       SESSION_LIFETIME: 120
       CACHE_STORE: file
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres-gateway
+      DB_PORT: 5432
+      DB_DATABASE: intellitrack_gateway_db
+      DB_USERNAME: intellitrack_user
+      DB_PASSWORD: intellitrack_password
       AUTH_SERVICE_URL: http://auth-service:8001
       CUSTOMER_SERVICE_URL: http://customer-service:8002
       INVENTORY_SERVICE_URL: http://inventory-service:8003
@@ -33,6 +39,7 @@ services:
       REDIS_PORT: 6379
     depends_on:
       - redis
+      - postgres-gateway
       - auth-service
       - customer-service
       - inventory-service
@@ -288,6 +295,20 @@ services:
       - intellitrack-net
 
   # ----------------------------------------------------
+  # Gateway Local Data Store
+  # ----------------------------------------------------
+  postgres-gateway:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: intellitrack_gateway_db
+      POSTGRES_USER: intellitrack_user
+      POSTGRES_PASSWORD: intellitrack_password
+    volumes:
+      - gateway_db_data:/var/lib/postgresql/data
+    networks:
+      - intellitrack-net
+
+  # ----------------------------------------------------
   # Database per Service (Isolated PostgreSQL Stores)
   # ----------------------------------------------------
   postgres-auth:
@@ -380,6 +401,7 @@ services:
 
 volumes:
   redis_data:
+  gateway_db_data:
   auth_db_data:
   customer_db_data:
   inventory_db_data:

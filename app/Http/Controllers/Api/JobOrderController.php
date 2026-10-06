@@ -19,7 +19,7 @@ class JobOrderController extends Controller
      */
     public function index(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('manage-job-orders');
         $query = JobOrder::query()->with(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']);
 
         if ($request->filled('search')) {
@@ -80,7 +80,7 @@ class JobOrderController extends Controller
      */
     public function show(JobOrder $jobOrder)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('manage-job-orders');
         $jobOrder->load(['customer', 'createdBy', 'assignedTo', 'jobOrderItems.equipment', 'rentals', 'feedback']);
         return response()->json($jobOrder);
     }

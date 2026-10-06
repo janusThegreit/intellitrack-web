@@ -5,42 +5,43 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use Illuminate\Http\Client\Response as HttpResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 
 class RoleController extends Controller
 {
     public function index()
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('manage-users');
 
         $users = User::select(['id', 'name', 'email', 'phone', 'role', 'avatar_url', 'is_active', 'last_login_at', 'created_at'])
             ->orderBy('name')
             ->get();
 
-        $usersByRole = $users->groupBy('role');
+        $usersByRole = $users->groupBy(fn (User $user) => $user->canonicalRole());
 
         $rolesDefinition = [
             [
-                'key' => 'administrator',
-                'value' => 'administrator',
-                'name' => 'Administrator',
-                'label' => 'Administrator',
-                'badge' => 'Superadmin',
-                'tier' => 'Tier 1 — Full IAM Superadmin',
+                'key' => 'super_admin',
+                'value' => 'super_admin',
+                'name' => 'Super Admin',
+                'label' => 'Super Admin',
+                'badge' => 'System Owner',
+                'tier' => 'Tier 1 — Full System Authority',
                 'scope' => 'Complete IAM Governance & System Oversight',
-                'description' => 'Unrestricted authority across all system modules, user provisioning, emergency maintenance mode, and financial approvals.',
+                'description' => 'Unrestricted authority across all system modules, user provisioning, emergency maintenance mode, and platform administration.',
             ],
             [
-                'key' => 'operations_technical',
-                'value' => 'operations_technical',
-                'name' => 'Operations & Technical Staff',
-                'label' => 'Operations & Technical Staff',
-                'badge' => 'Operations & Tech',
-                'tier' => 'Tier 2 — Operations & Technical Authority',
-                'scope' => 'Fleet Health, Crane Maintenance & Dispatch',
-                'description' => 'Direct authority over tower crane status, routine and emergency maintenance logs, inspection checklists, and job order fulfillment.',
+                'key' => 'admin',
+                'value' => 'admin',
+                'name' => 'Admin',
+                'label' => 'Admin',
+                'badge' => 'Administrative Access',
+                'tier' => 'Tier 2 — Administrative Management',
+                'scope' => 'System Administration & Core Controls',
+                'description' => 'Administrative authority across the platform while remaining distinct from the system owner super admin role.',
             ],
             [
                 'key' => 'sales_manager',
@@ -48,7 +49,7 @@ class RoleController extends Controller
                 'name' => 'Sales Manager',
                 'label' => 'Sales Manager',
                 'badge' => 'Commercial Lead',
-                'tier' => 'Tier 2 — Commercial Management Authority',
+                'tier' => 'Tier 3 — Commercial Management Authority',
                 'scope' => 'Commercial Pipelines & Quotation Approvals',
                 'description' => 'Authorizes deal pricing, margin discounts, customer contracts, and oversees sales team pipeline performance.',
             ],
@@ -58,28 +59,18 @@ class RoleController extends Controller
                 'name' => 'Sales Business Development',
                 'label' => 'Sales Business Development',
                 'badge' => 'Account Executive',
-                'tier' => 'Tier 3 — Field Sales & Acquisition',
+                'tier' => 'Tier 4 — Field Sales & Acquisition',
                 'scope' => 'Client Inquiries, Lead Intake & Quotation Drafts',
                 'description' => 'Captures incoming client inquiries, drafts initial equipment rental quotations, and maintains communications history.',
             ],
             [
-                'key' => 'staff',
-                'value' => 'staff',
-                'name' => 'Operations Staff',
-                'label' => 'Operations Staff',
-                'badge' => 'Field Operations',
-                'tier' => 'Tier 4 — Field Logistics & Support',
-                'scope' => 'On-site Execution & Task Fulfillment',
-                'description' => 'Handles assigned job order tasks, on-site equipment checklists, and rig mobilization/demobilization activities.',
-            ],
-            [
-                'key' => 'customer',
-                'value' => 'customer',
-                'name' => 'Customer / Client Portal',
-                'label' => 'Customer / Client Portal',
+                'key' => 'client',
+                'value' => 'client',
+                'name' => 'Client',
+                'label' => 'Client',
                 'badge' => 'External Client',
-                'tier' => 'Tier 5 — External Partner Portal',
-                'scope' => 'Client Self-Service & Rental Visibility',
+                'tier' => 'External Role — Client Portal',
+                'scope' => 'Client Self-Service & Rental Visibility; outside the employee hierarchy',
                 'description' => 'External client account with view-only visibility into company-specific quotations, active job orders, and rental contracts.',
             ],
         ];
@@ -108,17 +99,28 @@ class RoleController extends Controller
     public function updateUserRole(Request $request, User $user)
     {
         Gate::authorize('manage-users');
+        $this->authorizeTargetUser($user);
+        $this->authorizeAuthServiceLink($user);
 
         $validated = $request->validate([
-            'role' => ['required', 'in:administrator,sales_manager,sales_business_development,operations_technical,staff,customer'],
+            'role' => ['required', 'in:' . implode(',', $this->supportedRoles())],
         ]);
 
-        if ($user->id === auth()->id() && $validated['role'] !== 'administrator') {
-            abort(422, 'You cannot remove your own administrator privileges.');
+        $this->authorizeRoleAssignment($validated['role']);
+
+        if ($user->id === auth()->id() && $validated['role'] !== $user->role) {
+            abort(422, 'You cannot remove your own administrative privileges.');
         }
 
         $oldRole = $user->role;
-        $user->update(['role' => $validated['role']]);
+        $response = $this->authServiceRequest('PUT', '/api/users/'.$user->auth_user_id.'/role', [
+            'role' => $validated['role'],
+        ]);
+        if (! $response->successful()) {
+            return $this->authServiceError($response);
+        }
+
+        $this->syncGatewayUser($user, $response->json('data'));
 
         ActivityLogService::logSecurity('role_elevation', "Role for user '{$user->name}' ({$user->email}) updated from '{$oldRole}' to '{$validated['role']}'.", auth()->user(), [
             'target_user_id' => $user->id,
@@ -145,7 +147,7 @@ class RoleController extends Controller
             });
         }
         if ($request->filled('role') && $request->input('role') !== 'all') {
-            $query->where('role', $request->input('role'));
+            $query->whereIn('role', $this->roleAliasesFor($request->input('role')));
         }
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('is_active', $request->input('status') === 'active');
@@ -175,6 +177,7 @@ class RoleController extends Controller
     public function show(User $user)
     {
         Gate::authorize('manage-users');
+        $this->authorizeTargetUser($user);
 
         $assignedJobsCount = \App\Models\JobOrder::where('assigned_to', $user->id)->count();
         $managedProjectsCount = \App\Models\Project::where('project_manager_id', $user->id)->count();
@@ -207,17 +210,21 @@ class RoleController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'role' => 'required|in:administrator,sales_manager,sales_business_development,operations_technical,staff,customer',
+            'role' => 'required|in:' . implode(',', $this->supportedRoles()),
             'password' => 'required|string|min:8',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:30',
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
-        $validated['is_active'] = true;
+        $this->authorizeRoleAssignment($validated['role']);
+        $response = $this->authServiceRequest('POST', '/api/users', $validated);
+        if (! $response->successful()) {
+            return $this->authServiceError($response);
+        }
 
-        $user = User::create($validated);
+        $authUser = $response->json('data');
+        $user = $this->syncGatewayUser(null, $authUser);
 
         ActivityLogService::log(auth()->user(), 'created', User::class, $user->id, "New user account '{$user->name}' ({$user->email}) created with role '{$user->role}'.", null, [
             'name' => $user->name,
@@ -232,11 +239,13 @@ class RoleController extends Controller
     public function update(Request $request, User $user)
     {
         Gate::authorize('manage-users');
+        $this->authorizeTargetUser($user);
+        $this->authorizeAuthServiceLink($user);
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|max:255|unique:users,email,'.$user->id,
-            'role' => 'sometimes|in:administrator,sales_manager,sales_business_development,operations_technical,staff,customer',
+            'role' => 'sometimes|in:' . implode(',', $this->supportedRoles()),
             'password' => 'nullable|string|min:8',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
@@ -244,19 +253,39 @@ class RoleController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-        if ($user->id === auth()->id() && isset($validated['role']) && $validated['role'] !== 'administrator') {
+        if (isset($validated['role'])) {
+            $this->authorizeRoleAssignment($validated['role']);
+        }
+
+        if ($user->id === auth()->id() && isset($validated['role']) && $validated['role'] !== $user->role) {
             abort(422, 'You cannot remove your own administrator privileges.');
         }
 
-        $oldValues = $user->only(['name', 'email', 'role', 'phone', 'first_name', 'last_name', 'is_active']);
+        $newStatus = $validated['is_active'] ?? null;
+        unset($validated['is_active']);
 
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        if ($user->id === auth()->id() && $newStatus === false) {
+            abort(422, 'You cannot deactivate your own account.');
         }
 
-        $user->update($validated);
+        $oldValues = $user->only(['name', 'email', 'role', 'phone', 'first_name', 'last_name', 'is_active']);
+        $response = $this->authServiceRequest('PUT', '/api/users/'.$user->auth_user_id, $validated);
+        if (! $response->successful()) {
+            return $this->authServiceError($response);
+        }
+
+        $authUser = $response->json('data');
+        if ($newStatus !== null && $newStatus !== $user->is_active) {
+            $statusResponse = $this->authServiceRequest('PATCH', '/api/users/'.$user->auth_user_id.'/status', [
+                'is_active' => $newStatus,
+            ]);
+            if (! $statusResponse->successful()) {
+                return $this->authServiceError($statusResponse);
+            }
+            $authUser = $statusResponse->json('data');
+        }
+
+        $this->syncGatewayUser($user, $authUser);
 
         ActivityLogService::log(auth()->user(), 'updated', User::class, $user->id, "User account '{$user->name}' ({$user->email}) was updated by administrator.", $oldValues, $user->only(['name', 'email', 'role', 'phone', 'first_name', 'last_name', 'is_active']));
 
@@ -266,12 +295,14 @@ class RoleController extends Controller
     public function destroy(User $user)
     {
         Gate::authorize('manage-users');
+        $this->authorizeTargetUser($user);
+        $this->authorizeAuthServiceLink($user);
 
         if ($user->id === auth()->id()) {
             abort(422, 'You cannot delete your own account.');
         }
 
-        if ($user->isAdministrator() && User::where('role', 'administrator')->count() <= 1) {
+        if ($user->isAdministrator() && User::whereIn('role', ['super_admin', 'admin', 'administrator'])->count() <= 1) {
             abort(422, 'Cannot delete the only remaining administrator.');
         }
 
@@ -279,6 +310,11 @@ class RoleController extends Controller
         $deletedEmail = $user->email;
         $deletedRole = $user->role;
         $userId = $user->id;
+
+        $response = $this->authServiceRequest('DELETE', '/api/users/'.$user->auth_user_id);
+        if (! $response->successful()) {
+            return $this->authServiceError($response);
+        }
 
         $user->delete();
 
@@ -294,6 +330,8 @@ class RoleController extends Controller
     public function updateUserStatus(Request $request, User $user)
     {
         Gate::authorize('manage-users');
+        $this->authorizeTargetUser($user);
+        $this->authorizeAuthServiceLink($user);
 
         $data = $request->validate(['is_active' => ['required', 'boolean']]);
 
@@ -302,7 +340,12 @@ class RoleController extends Controller
         }
 
         $statusText = $data['is_active'] ? 'activated' : 'deactivated';
-        $user->update($data);
+        $response = $this->authServiceRequest('PATCH', '/api/users/'.$user->auth_user_id.'/status', $data);
+        if (! $response->successful()) {
+            return $this->authServiceError($response);
+        }
+
+        $this->syncGatewayUser($user, $response->json('data'));
 
         ActivityLogService::logSecurity('status_change', "User account '{$user->name}' ({$user->email}) was {$statusText} by administrator.", auth()->user(), [
             'target_user_id' => $user->id,
@@ -314,14 +357,139 @@ class RoleController extends Controller
 
     public function assignableStaff()
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('manage-job-orders');
 
         $staff = User::where('is_active', true)
-            ->whereIn('role', ['staff', 'operations_technical', 'sales_business_development', 'sales_manager', 'administrator'])
+            ->whereIn('role', ['staff', 'operations_technical', 'sales_business_development', 'sales_manager', 'admin', 'administrator'])
             ->select('id', 'name', 'email', 'role')
             ->orderBy('name')
             ->get();
 
         return response()->json($staff);
+    }
+
+    private function authorizeTargetUser(User $target): void
+    {
+        if ($target->isSuperAdmin() && ! auth()->user()->isSuperAdmin()) {
+            abort(403, 'Only a Super Admin can manage a Super Admin account.');
+        }
+    }
+
+    private function authorizeRoleAssignment(string $role): void
+    {
+        if ($role === 'super_admin' && ! auth()->user()->isSuperAdmin()) {
+            abort(403, 'Only a Super Admin can assign the Super Admin role.');
+        }
+    }
+
+    private function supportedRoles(): array
+    {
+        return [
+            'super_admin',
+            'admin',
+            'administrator',
+            'sales_manager',
+            'manager',
+            'sales_business_development',
+            'sales_bd',
+            'client',
+            'customer',
+            'operations_technical',
+            'operations_staff',
+            'technical_staff',
+            'staff',
+        ];
+    }
+
+    private function roleAliasesFor(string $role): array
+    {
+        return match (User::canonicalRoleFor($role)) {
+            'super_admin' => ['super_admin'],
+            'admin' => ['admin', 'administrator'],
+            'sales_manager' => ['sales_manager', 'manager'],
+            'sales_business_development' => [
+                'sales_business_development',
+                'sales_bd',
+                'operations_technical',
+                'operations_staff',
+                'technical_staff',
+                'staff',
+            ],
+            'client' => ['client', 'customer'],
+            default => [$role],
+        };
+    }
+
+    private function authorizeAuthServiceLink(User $user): void
+    {
+        if (! $user->auth_user_id) {
+            abort(422, 'This account is not linked to the Auth Service and cannot be managed here.');
+        }
+    }
+
+    private function authServiceRequest(string $method, string $path, array $payload = []): HttpResponse
+    {
+        try {
+            return Http::timeout(5)
+                ->acceptJson()
+                ->withHeader('X-Service-Token', config('services.microservices.internal_secret'))
+                ->send(
+                    $method,
+                    rtrim(config('gateway.services.auth.base_url'), '/').$path,
+                    $payload === [] ? [] : ['json' => $payload],
+                );
+        } catch (\Illuminate\Http\Client\ConnectionException $exception) {
+            report($exception);
+            abort(502, 'Authentication service is currently unavailable. Please try again later.');
+        }
+    }
+
+    private function authServiceError(HttpResponse $response)
+    {
+        if ($response->status() === 422 || $response->status() === 404 || $response->status() === 409) {
+            return response()->json($response->json(), $response->status());
+        }
+
+        report(new \RuntimeException('Auth Service IAM request returned HTTP '.$response->status()));
+
+        return response()->json([
+            'message' => 'Authentication service is currently unavailable. Please try again later.',
+        ], 502);
+    }
+
+    private function syncGatewayUser(?User $user, mixed $authUser): User
+    {
+        if (
+            ! is_array($authUser)
+            || ! is_numeric($authUser['id'] ?? null)
+            || (int) $authUser['id'] < 1
+            || ! filter_var($authUser['email'] ?? null, FILTER_VALIDATE_EMAIL)
+            || ! is_string($authUser['role'] ?? null)
+            || ! array_key_exists('is_active', $authUser)
+            || ! is_bool($authUser['is_active'])
+        ) {
+            report(new \RuntimeException('Auth Service returned an invalid IAM user response.'));
+            abort(502, 'Unable to synchronize the account from the Authentication Service.');
+        }
+
+        $user ??= User::where('auth_user_id', (int) $authUser['id'])->first()
+            ?? User::where('email', $authUser['email'])->first()
+            ?? new User();
+
+        $user->forceFill([
+            'auth_user_id' => (int) $authUser['id'],
+            'name' => $authUser['name'] ?? trim(($authUser['first_name'] ?? '').' '.($authUser['last_name'] ?? '')),
+            'email' => $authUser['email'],
+            'first_name' => $authUser['first_name'] ?? null,
+            'last_name' => $authUser['last_name'] ?? null,
+            'phone' => $authUser['phone'] ?? null,
+            'role' => $authUser['role'],
+            'client_id' => $authUser['client_id'] ?? null,
+            'is_active' => $authUser['is_active'],
+            'last_login_at' => $authUser['last_login_at'] ?? null,
+            'password' => null,
+        ])->save();
+
+        return $user;
     }
 }

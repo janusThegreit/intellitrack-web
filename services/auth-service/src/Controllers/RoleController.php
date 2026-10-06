@@ -15,10 +15,16 @@ class RoleController extends Controller
     {
         $roles = [
             [
-                'id' => 'administrator',
-                'name' => 'Administrator',
-                'description' => 'Full access to all modules, users, security, and settings.',
+                'id' => 'super_admin',
+                'name' => 'Super Admin',
+                'description' => 'Unrestricted access to all modules, users, security, and settings.',
                 'permissions' => ['all'],
+            ],
+            [
+                'id' => 'admin',
+                'name' => 'Admin',
+                'description' => 'User and system administration, distinct from Super Admin.',
+                'permissions' => ['manage-users', 'manage-system-settings', 'view-core-dashboard', 'view-crm'],
             ],
             [
                 'id' => 'sales_manager',
@@ -33,14 +39,8 @@ class RoleController extends Controller
                 'permissions' => ['view-crm', 'create-quotations', 'view-clients'],
             ],
             [
-                'id' => 'staff',
-                'name' => 'Operations Staff',
-                'description' => 'Manage job orders, rentals, equipment dispatch, and maintenance tracking.',
-                'permissions' => ['manage-job-orders', 'view-rentals', 'manage-equipment', 'view-projects'],
-            ],
-            [
-                'id' => 'customer',
-                'name' => 'Customer / Client Portal',
+                'id' => 'client',
+                'name' => 'Client',
                 'description' => 'View quotations, rental history, and submit inquiries.',
                 'permissions' => ['view-own-quotations', 'view-own-rentals', 'submit-inquiry'],
             ],

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { AppLayout } from '../../Layouts/AppLayout';
 import { 
   Search, UserPlus, Eye, Edit2, Trash2, X, Download,
@@ -66,50 +67,42 @@ interface RoleConfig {
 }
 
 const ROLE_CONFIGS: Record<string, RoleConfig> = {
-  administrator: {
-    label: 'Administrator',
-    shortRole: 'Superadmin',
+  super_admin: {
+    label: 'Super Admin',
+    shortRole: 'Super Admin',
     border: 'border-purple-500/40',
     text: 'text-purple-400',
     bg: 'bg-purple-950/30',
     badgeBg: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
     icon: Shield,
-    description: 'Unrestricted IAM administrative authority across fleet assets, financial models, user credentials, and root configurations.',
-    clearanceLevel: 'Tier 1 — Full System Superadmin',
-    scope: 'IAM Governance & Strategic Operations',
+    description: 'Highest-level access to every existing internal module and the client portal.',
+    clearanceLevel: 'Tier 1 — Full System Super Admin',
+    scope: 'Full System Authority',
     granted: [
-      'Full User Management & Role Elevation (IAM)',
-      'System Maintenance Mode & Emergency Broadcasts',
-      'High-Value Quotation Final Approvals & Margin Overrides',
-      'Fleet Logistics, Maintenance & Inventory Records',
-      'Security Audit Log Inspection & Compliance Export',
-      'Sales Intelligence AI Copilot Analytics',
+      'All existing modules and API permissions',
+      'Super Admin-only role assignment',
     ],
     restricted: [],
   },
-  operations_technical: {
-    label: 'Operations & Technical Staff',
-    shortRole: 'Operations & Tech',
-    border: 'border-emerald-500/40',
-    text: 'text-emerald-400',
-    bg: 'bg-emerald-950/30',
-    badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
-    icon: Wrench,
-    description: 'Specialized heavy equipment monitoring, tower crane maintenance logs, inspection checklists, and job order scheduling & execution.',
-    clearanceLevel: 'Tier 2 — Operations & Technical Authority',
-    scope: 'Fleet Reliability, Crane Maintenance & Job Order Dispatch',
+  admin: {
+    label: 'Admin',
+    shortRole: 'Admin',
+    border: 'border-violet-500/40',
+    text: 'text-violet-400',
+    bg: 'bg-violet-950/30',
+    badgeBg: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
+    icon: Shield,
+    description: 'Administrative access distinct from the highest-level Super Admin role.',
+    clearanceLevel: 'Tier 2 — Administrative Management',
+    scope: 'User Management, System Settings, CRM & Client Management',
     granted: [
-      'Heavy Equipment & Tower Crane Fleet Status Monitoring',
-      'Preventative & Emergency Maintenance Scheduling',
-      'Job Order Scheduling, Crew Dispatch & Task Checklists',
-      'Equipment Mobilization & Return Demobilization Inspections',
-      'Operational Dashboard Telemetry & Fleet Matrix',
-      'Project Milestones & Logistics Task Management',
+      'User and role management',
+      'System settings and audit logs',
+      'CRM and client management',
     ],
     restricted: [
-      'User Account Creation & Role Modification (IAM)',
-      'Quotation Discount & Financial Margin Overrides',
-      'System Maintenance Mode & Root Configuration',
+      'Super Admin account management and role assignment',
+      'Sales-only reports, fleet, job orders, and projects',
     ],
   },
   sales_manager: {
@@ -121,13 +114,13 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
     badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
     icon: TrendingUp,
     description: 'Commercial sales leadership, quotation approval workflows, deal pipeline governance, and client relationship management.',
-    clearanceLevel: 'Tier 2 — Commercial Management Authority',
+    clearanceLevel: 'Tier 3 — Commercial Management Authority',
     scope: 'Quotation Approvals, Revenue Pipelines & Client Relations',
     granted: [
-      'Quotation Creation, Pricing & Margin Approvals',
+      'Quotation creation and approval (excluding own quotations)',
       'CRM Deals Pipeline & Opportunity Stage Tracking',
       'Customer 360 Relationship Profiles & Engagement',
-      'Sales Performance Analytics & AI Copilot Insights',
+      'Reports and AI Analytics',
       'Client Inquiry Conversion to Formal Quotations',
     ],
     restricted: [
@@ -137,59 +130,39 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
   sales_business_development: {
     label: 'Sales Business Development',
-    shortRole: 'Sales BD',
+    shortRole: 'Sales Business Development',
     border: 'border-blue-500/40',
     text: 'text-blue-400',
     bg: 'bg-blue-950/30',
     badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
     icon: Target,
-    description: 'Client prospecting, customer inquiry intake, initial draft quotation preparation, and communication logging.',
-    clearanceLevel: 'Tier 3 — Field Sales & Client Acquisition',
-    scope: 'Client Acquisition, Inquiry Intake & Lead Pipeline',
+    description: 'Client prospecting, CRM engagement, job orders, rentals, projects, and reporting.',
+    clearanceLevel: 'Tier 4 — Sales Business Development',
+    scope: 'CRM, Client Management, Job Orders, Fleet & Rentals, Projects, and Analytics',
     granted: [
-      'Client Inquiries Intake & Lead Follow-ups',
-      'Draft Quotation Preparation & Submission',
-      'Customer Profiles & Communications Log',
-      'View Active Equipment Availability Catalog',
+      'Inquiries, opportunities, quotations, follow-ups, communications, and feedback',
+      'Customer profiles and client communications',
+      'Job-order management',
+      'Fleet, rental requirements, and rental management',
+      'Project management and analytics',
     ],
     restricted: [
       'Final Quotation Price Approval & Margin Override',
-      'Fleet Maintenance Operations',
-      'User Administration & Security Settings',
+      'User and role management',
+      'System settings and audit logs',
+      'Client-owned portal data',
     ],
   },
-  staff: {
-    label: 'Operations Staff',
-    shortRole: 'Field Staff',
-    border: 'border-slate-500/40',
-    text: 'text-slate-300',
-    bg: 'bg-slate-900/30',
-    badgeBg: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
-    icon: Truck,
-    description: 'Field operations staff responsible for job order checklists, on-site equipment handling, and task execution.',
-    clearanceLevel: 'Tier 4 — Field Logistics & Support',
-    scope: 'On-site Execution & Assigned Task Fulfillment',
-    granted: [
-      'Assigned Job Orders & Task Fulfillment Checklists',
-      'Equipment Check-in / Demobilization Checklist',
-      'Personal Profile & Account Activity View',
-    ],
-    restricted: [
-      'Financial Quotations & Margin Controls',
-      'User Management & System Settings',
-      'Executive BI Reports',
-    ],
-  },
-  customer: {
-    label: 'Customer / Client Portal',
-    shortRole: 'Client Portal',
+  client: {
+    label: 'Client',
+    shortRole: 'Client',
     border: 'border-indigo-500/40',
     text: 'text-indigo-300',
     bg: 'bg-indigo-950/30',
     badgeBg: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
     icon: UserCheck,
     description: 'External client account with restricted visibility into company-specific rentals, active job orders, and approved quotations.',
-    clearanceLevel: 'Tier 5 — External Client Access',
+    clearanceLevel: 'External Role — Client Portal',
     scope: 'Client Self-Service & Rental Visibility',
     granted: [
       'View Own Approved Quotations & Rental Contracts',
@@ -204,8 +177,27 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
 };
 
+const CANONICAL_ROLE_CONFIGS: Record<string, RoleConfig> = {
+  super_admin: ROLE_CONFIGS.super_admin,
+  admin: ROLE_CONFIGS.admin,
+  sales_manager: ROLE_CONFIGS.sales_manager,
+  sales_business_development: ROLE_CONFIGS.sales_business_development,
+  client: ROLE_CONFIGS.client,
+};
+
+const normalizeAssignableRole = (role: string): string => {
+  if (role === 'administrator') return 'admin';
+  if (role === 'manager') return 'sales_manager';
+  if (['sales_bd', 'operations_technical', 'operations_staff', 'technical_staff', 'staff'].includes(role)) {
+    return 'sales_business_development';
+  }
+  if (role === 'customer') return 'client';
+  return role in CANONICAL_ROLE_CONFIGS ? role : '';
+};
+
 const formatRole = (role: string) => {
-  return ROLE_CONFIGS[role]?.label || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(role)]?.label
+    || 'Unmapped role';
 };
 
 const formatDate = (dateString?: string) => {
@@ -226,6 +218,10 @@ const getInitials = (name: string) => {
 };
 
 export default function UsersIndex() {
+  const { auth } = usePage<any>().props;
+  const isSuperAdmin = auth?.user?.role === 'super_admin';
+  const roleOptions = Object.entries(CANONICAL_ROLE_CONFIGS)
+    .filter(([role]) => isSuperAdmin || role !== 'super_admin');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, active: 0, inactive: 0, recent: 0 });
   
@@ -248,7 +244,7 @@ export default function UsersIndex() {
     name: '',
     email: '',
     phone: '',
-    role: 'operations_technical',
+    role: 'client',
     password: '',
     is_active: true,
   });
@@ -266,7 +262,7 @@ export default function UsersIndex() {
     name: '', 
     email: '', 
     phone: '', 
-    role: 'operations_technical', 
+    role: 'client',
     password: '', 
     is_active: true 
   });
@@ -306,7 +302,7 @@ export default function UsersIndex() {
       name: user.name,
       email: user.email,
       phone: user.phone || '',
-      role: user.role,
+      role: normalizeAssignableRole(user.role),
       password: '',
       is_active: user.is_active,
     });
@@ -378,9 +374,11 @@ export default function UsersIndex() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        role: formData.role,
         is_active: formData.is_active,
       };
+      if (formData.role && formData.role !== normalizeAssignableRole(selectedUser.role)) {
+        payload.role = formData.role;
+      }
       if (formData.password) {
         payload.password = formData.password;
       }
@@ -581,12 +579,11 @@ export default function UsersIndex() {
                 className="rounded-lg border border-border-default bg-surface-input py-1.5 pl-3 pr-8 text-xs text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
               >
                 <option value="all">All Roles</option>
-                <option value="administrator">Administrator</option>
-                <option value="operations_technical">Operations & Technical Staff</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="admin">Admin</option>
                 <option value="sales_manager">Sales Manager</option>
                 <option value="sales_business_development">Sales Business Dev</option>
-                <option value="staff">Operations Staff</option>
-                <option value="customer">Customer Portal</option>
+                <option value="client">Client</option>
               </select>
             </div>
 
@@ -632,7 +629,8 @@ export default function UsersIndex() {
             </thead>
             <tbody className="divide-y divide-zinc-800/40">
               {users.length > 0 ? users.map((user) => {
-                const roleConfig = ROLE_CONFIGS[user.role] || ROLE_CONFIGS.staff;
+                const roleConfig = CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(user.role)] || CANONICAL_ROLE_CONFIGS.sales_business_development;
+                const canManageTarget = isSuperAdmin || user.role !== 'super_admin';
                 const RoleIcon = roleConfig.icon;
 
                 return (
@@ -706,6 +704,7 @@ export default function UsersIndex() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleStatus(user)}
+                        disabled={!canManageTarget}
                         title={`Click to ${user.is_active ? 'suspend' : 'activate'} user`}
                         className={clsx(
                           "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition hover:scale-105",
@@ -741,6 +740,7 @@ export default function UsersIndex() {
                         {/* View Dossier */}
                         <button 
                           onClick={() => openViewModal(user)}
+                          disabled={!canManageTarget}
                           title="View User 360 Dossier & Permissions"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-amber-400 hover:bg-amber-400/10 hover:text-amber-300"
                         >
@@ -750,6 +750,7 @@ export default function UsersIndex() {
                         {/* Edit User */}
                         <button 
                           onClick={() => openEditModal(user)}
+                          disabled={!canManageTarget}
                           title="Edit User Profile & Role"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-blue-400 hover:bg-blue-400/10 hover:text-blue-300"
                         >
@@ -759,6 +760,7 @@ export default function UsersIndex() {
                         {/* Status Toggle */}
                         <button 
                           onClick={() => toggleStatus(user)} 
+                          disabled={!canManageTarget}
                           title={user.is_active ? "Deactivate User" : "Activate User"}
                           className={clsx(
                             "flex h-8 w-8 items-center justify-center rounded-lg border border-border-default transition hover:bg-border-subtle",
@@ -771,6 +773,7 @@ export default function UsersIndex() {
                         {/* Delete User */}
                         <button 
                           onClick={() => openDeleteModal(user)} 
+                          disabled={!canManageTarget}
                           title="Delete User Account"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-400"
                         >
@@ -801,7 +804,7 @@ export default function UsersIndex() {
       {/* ========================================================================= */}
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} size="2xl">
         {viewUser && (() => {
-          const roleConfig = ROLE_CONFIGS[viewUser.role] || ROLE_CONFIGS.staff;
+          const roleConfig = CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(viewUser.role)] || CANONICAL_ROLE_CONFIGS.sales_business_development;
           const RoleIcon = roleConfig.icon;
 
           return (
@@ -954,7 +957,7 @@ export default function UsersIndex() {
                       <div className="mb-2.5 flex items-center gap-2">
                         <Lock className="h-4 w-4 text-rose-400" />
                         <span className="text-xs font-bold text-rose-300">
-                          Restricted Actions ({roleConfig.restricted.length > 0 ? roleConfig.restricted.length : '0 - Superadmin'})
+                          Restricted Actions ({roleConfig.restricted.length > 0 ? roleConfig.restricted.length : '0 - Super Admin'})
                         </span>
                       </div>
                       {roleConfig.restricted.length > 0 ? (
@@ -968,7 +971,7 @@ export default function UsersIndex() {
                         </ul>
                       ) : (
                         <p className="text-xs italic text-zinc-400">
-                          No restrictions. User holds highest level Superadmin permissions.
+                          No restrictions. User holds highest-level Super Admin permissions.
                         </p>
                       )}
                     </div>
@@ -999,7 +1002,7 @@ export default function UsersIndex() {
 
               {/* Footer Actions */}
               <div className="flex items-center justify-between border-t border-border-subtle bg-zinc-900/90 p-4">
-                <button
+                {(!viewUser || isSuperAdmin || viewUser.role !== 'super_admin') && <button
                   onClick={() => toggleStatus(viewUser)}
                   className={clsx(
                     "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition",
@@ -1010,10 +1013,11 @@ export default function UsersIndex() {
                 >
                   {viewUser.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                   {viewUser.is_active ? 'Suspend Account' : 'Reactivate Account'}
-                </button>
+                </button>}
 
                 <div className="flex items-center gap-2.5">
-                  <button
+                {(!viewUser || isSuperAdmin || viewUser.role !== 'super_admin') && (
+                <button
                     onClick={() => {
                       setIsViewModalOpen(false);
                       openEditModal(viewUser);
@@ -1023,6 +1027,7 @@ export default function UsersIndex() {
                     <Edit2 className="h-3.5 w-3.5" />
                     Edit User Profile
                   </button>
+                  )}
                   <button
                     onClick={() => setIsViewModalOpen(false)}
                     className="rounded-lg bg-[#ffcc00] px-4 py-2 text-xs font-bold text-black transition hover:bg-[#ffcc00]/90"
@@ -1082,9 +1087,9 @@ export default function UsersIndex() {
               </div>
               <span className={clsx(
                 "rounded-md border px-2.5 py-1 text-xs font-semibold shrink-0",
-                ROLE_CONFIGS[formData.role]?.badgeBg || 'bg-zinc-800 text-zinc-300'
+                CANONICAL_ROLE_CONFIGS[formData.role]?.badgeBg || ROLE_CONFIGS[formData.role]?.badgeBg || 'bg-zinc-800 text-zinc-300'
               )}>
-                {ROLE_CONFIGS[formData.role]?.label || formData.role}
+                {formatRole(formData.role)}
               </span>
             </div>
 
@@ -1175,7 +1180,7 @@ export default function UsersIndex() {
               </label>
 
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(ROLE_CONFIGS).map(([roleKey, config]) => {
+                {roleOptions.map(([roleKey, config]) => {
                   const Icon = config.icon;
                   const isSelected = formData.role === roleKey;
 
@@ -1377,7 +1382,7 @@ export default function UsersIndex() {
               </label>
 
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(ROLE_CONFIGS).map(([roleKey, config]) => {
+                {roleOptions.map(([roleKey, config]) => {
                   const Icon = config.icon;
                   const isSelected = formData.role === roleKey;
 

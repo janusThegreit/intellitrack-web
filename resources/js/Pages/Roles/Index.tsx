@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { AppLayout } from '../../Layouts/AppLayout';
 import { 
   Shield, Wrench, TrendingUp, Target, Truck, UserCheck, 
@@ -51,191 +52,143 @@ interface PermissionDef {
   key: string;
   label: string;
   description: string;
-  module: 'IAM & Administration' | 'Fleet & Tower Cranes' | 'Crane Maintenance' | 'Job Orders & Dispatch' | 'CRM & Quotations' | 'Analytics & AI';
-  // Allowed roles for this permission
+  module: 'Dashboard' | 'CRM & Client Management' | 'Job Orders' | 'Fleet & Rentals' | 'Projects' | 'Analytics & AI' | 'User & Role Management' | 'System Settings' | 'Client Portal';
   allowedRoles: string[];
 }
 
 const PERMISSIONS: PermissionDef[] = [
-  // IAM & Administration
   {
     key: 'manage-users',
-    label: 'User Account Provisioning & Deactivation',
-    description: 'Create, modify credentials, and revoke system access for internal and external accounts.',
-    module: 'IAM & Administration',
-    allowedRoles: ['administrator'],
+    label: 'User Management',
+    description: 'Access the existing user-management pages and IAM endpoints.',
+    module: 'User & Role Management',
+    allowedRoles: ['admin'],
   },
   {
     key: 'manage-roles',
-    label: 'Role Elevation & Access Matrix Governance',
-    description: 'Reassign user roles, modify authority scopes, and review clearance levels.',
-    module: 'IAM & Administration',
-    allowedRoles: ['administrator'],
-  },
-  {
-    key: 'system-maintenance',
-    label: 'System Maintenance Mode & Emergency Lockdown',
-    description: 'Toggle system-wide maintenance broadcasts and restrict non-admin access.',
-    module: 'IAM & Administration',
-    allowedRoles: ['administrator'],
+    label: 'Roles & Access',
+    description: 'Review role membership and manage role assignments.',
+    module: 'User & Role Management',
+    allowedRoles: ['admin'],
   },
   {
     key: 'view-audit-logs',
-    label: 'Security Audit Log Inspection & Compliance Export',
-    description: 'Review tamper-evident security telemetry, login records, and export audit trails.',
-    module: 'IAM & Administration',
-    allowedRoles: ['administrator'],
-  },
-
-  // Fleet & Tower Cranes
-  {
-    key: 'view-rentals',
-    label: 'Fleet Inventory & Live Availability Catalog',
-    description: 'Inspect crane specifications, boom configurations, load charts, and real-time status.',
-    module: 'Fleet & Tower Cranes',
-    allowedRoles: ['administrator', 'operations_technical', 'sales_manager', 'sales_business_development'],
+    label: 'Audit Logs',
+    description: 'Review security and system audit activity.',
+    module: 'User & Role Management',
+    allowedRoles: ['admin'],
   },
   {
-    key: 'manage-rentals',
-    label: 'Heavy Asset Deployment & Field Demobilization',
-    description: 'Authorize mobilization of cranes to client project sites and process equipment returns.',
-    module: 'Fleet & Tower Cranes',
-    allowedRoles: ['administrator', 'operations_technical', 'sales_manager', 'sales_business_development'],
+    key: 'manage-system-settings',
+    label: 'System Settings',
+    description: 'Manage existing system settings and maintenance controls.',
+    module: 'System Settings',
+    allowedRoles: ['admin'],
   },
   {
-    key: 'equipment-inspection',
-    label: 'Technical Rigging & Structural Safety Checklists',
-    description: 'Complete pre-erection load tests, mast tie-in verifications, and compliance checklists.',
-    module: 'Fleet & Tower Cranes',
-    allowedRoles: ['administrator', 'operations_technical', 'staff'],
+    key: 'view-core-dashboard',
+    label: 'Dashboard',
+    description: 'Access the existing internal dashboard.',
+    module: 'Dashboard',
+    allowedRoles: ['admin', 'sales_manager', 'sales_business_development'],
   },
-
-  // Crane Maintenance & Engineering
-  {
-    key: 'manage-maintenance',
-    label: 'Preventative & Emergency Crane Maintenance Scheduling',
-    description: 'Schedule routine service intervals, wire rope inspections, and hydraulic maintenance.',
-    module: 'Crane Maintenance',
-    allowedRoles: ['administrator', 'operations_technical'],
-  },
-  {
-    key: 'complete-maintenance',
-    label: 'Maintenance Sign-off & Return to Service Clearance',
-    description: 'Certify completed maintenance work and transition equipment back to Available state.',
-    module: 'Crane Maintenance',
-    allowedRoles: ['administrator', 'operations_technical'],
-  },
-  {
-    key: 'maintenance-telemetry',
-    label: 'Crane Telematics & Component Wear Analysis',
-    description: 'Monitor operating hours, engine runtimes, and predict component wear lifecycles.',
-    module: 'Crane Maintenance',
-    allowedRoles: ['administrator', 'operations_technical'],
-  },
-
-  // Job Orders & Dispatch
-  {
-    key: 'manage-job-orders',
-    label: 'Job Order Creation, Scheduling & Crew Assignment',
-    description: 'Generate operational work orders, assign certified crane operators, and set schedules.',
-    module: 'Job Orders & Dispatch',
-    allowedRoles: ['administrator', 'operations_technical', 'sales_manager', 'sales_business_development'],
-  },
-  {
-    key: 'job-order-execution',
-    label: 'Field Task Fulfillment & Site Checklists',
-    description: 'Log on-site setup progress, operator hours, and complete mobilization checklists.',
-    module: 'Job Orders & Dispatch',
-    allowedRoles: ['administrator', 'operations_technical', 'staff'],
-  },
-  {
-    key: 'view-projects',
-    label: 'Project 360 Gantt & Logistics Milestones',
-    description: 'Monitor multi-phase construction project timelines and crane allocation milestones.',
-    module: 'Job Orders & Dispatch',
-    allowedRoles: ['administrator', 'operations_technical', 'sales_manager', 'sales_business_development'],
-  },
-
-  // CRM & Quotations
   {
     key: 'view-crm',
-    label: 'Client Inquiry Intake & Commercial Pipeline',
-    description: 'Review inbound rental inquiries, lead stages, and account communications.',
-    module: 'CRM & Quotations',
-    allowedRoles: ['administrator', 'sales_manager', 'sales_business_development'],
+    label: 'CRM',
+    description: 'Access inquiries, opportunities, quotations, follow-ups, communications, and feedback.',
+    module: 'CRM & Client Management',
+    allowedRoles: ['admin', 'sales_manager', 'sales_business_development'],
   },
   {
     key: 'view-clients',
-    label: 'Corporate Client 360 Profiles & Relationship History',
-    description: 'Access customer company directories, authorized contacts, and historical deals.',
-    module: 'CRM & Quotations',
-    allowedRoles: ['administrator', 'sales_manager', 'sales_business_development'],
-  },
-  {
-    key: 'create-quotation',
-    label: 'Draft Quotation & Crane Rental Estimation',
-    description: 'Assemble crane hire proposals, mobilization transport fees, and crew rates.',
-    module: 'CRM & Quotations',
-    allowedRoles: ['administrator', 'sales_manager', 'sales_business_development'],
+    label: 'Client Management',
+    description: 'Browse and manage the existing customer directory.',
+    module: 'CRM & Client Management',
+    allowedRoles: ['admin', 'sales_manager', 'sales_business_development'],
   },
   {
     key: 'approve-quotations',
-    label: 'Commercial Margin Overrides & Quotation Final Approvals',
-    description: 'Authorize client discounts, financial payment terms, and lock official contracts.',
-    module: 'CRM & Quotations',
-    allowedRoles: ['administrator', 'sales_manager'],
+    label: 'Quotation Approval',
+    description: 'Approve quotations subject to the existing creator-separation rule.',
+    module: 'CRM & Client Management',
+    allowedRoles: ['sales_manager'],
   },
   {
-    key: 'customer-portal-access',
-    label: 'Client Self-Service Rental & Invoice Visibility',
-    description: 'Secure view-only access to approved client quotations and active site job orders.',
-    module: 'CRM & Quotations',
-    allowedRoles: ['administrator', 'customer'],
+    key: 'manage-job-orders',
+    label: 'Job Order Management',
+    description: 'Access and manage the existing job-order workflows.',
+    module: 'Job Orders',
+    allowedRoles: ['sales_manager', 'sales_business_development'],
   },
-
-  // Analytics & AI
   {
-    key: 'view-core-dashboard',
-    label: 'Executive Operational Telemetry Dashboard',
-    description: 'Access real-time fleet KPIs, revenue velocity, and critical operational alerts.',
-    module: 'Analytics & AI',
-    allowedRoles: ['administrator', 'operations_technical', 'sales_manager', 'sales_business_development'],
+    key: 'view-rentals',
+    label: 'Fleet & Rentals',
+    description: 'Access equipment, rental requirements, rentals, and maintenance pages.',
+    module: 'Fleet & Rentals',
+    allowedRoles: ['sales_manager', 'sales_business_development'],
+  },
+  {
+    key: 'view-projects',
+    label: 'Project Management',
+    description: 'Access the existing project and task-management pages.',
+    module: 'Projects',
+    allowedRoles: ['sales_manager', 'sales_business_development'],
   },
   {
     key: 'view-reports',
-    label: 'BI Financial & Equipment Utilization Reports',
-    description: 'Generate revenue breakdown reports, rental duration metrics, and client volume stats.',
+    label: 'Reports & AI Analytics',
+    description: 'Access the existing reports, analytics, and AI pages.',
     module: 'Analytics & AI',
-    allowedRoles: ['administrator', 'sales_manager', 'sales_business_development'],
+    allowedRoles: ['sales_manager', 'sales_business_development'],
   },
   {
-    key: 'use-ai-copilot',
-    label: 'Sales Intelligence AI Copilot & Risk Forecasting',
-    description: 'Query conversational AI for pipeline forecast, customer sentiment, and deal recommendations.',
-    module: 'Analytics & AI',
-    allowedRoles: ['administrator', 'sales_manager'],
+    key: 'access-client-portal',
+    label: 'Client Portal',
+    description: 'Access the separate client-facing portal and its self-service pages.',
+    module: 'Client Portal',
+    allowedRoles: ['admin', 'client'],
   },
 ];
 
 const MODULE_ICONS: Record<string, any> = {
-  'IAM & Administration': Shield,
-  'Fleet & Tower Cranes': Layers,
-  'Crane Maintenance': Wrench,
-  'Job Orders & Dispatch': FileCheck,
-  'CRM & Quotations': Briefcase,
+  Dashboard: Layers,
+  'CRM & Client Management': Briefcase,
+  'Job Orders': FileCheck,
+  'Fleet & Rentals': Truck,
+  Projects: Target,
   'Analytics & AI': Sparkles,
+  'User & Role Management': Shield,
+  'System Settings': Wrench,
+  'Client Portal': UserCheck,
 };
 
 const ROLE_ICONS: Record<string, any> = {
+  super_admin: Shield,
+  admin: Shield,
   administrator: Shield,
   operations_technical: Wrench,
   sales_manager: TrendingUp,
   sales_business_development: Target,
   staff: Truck,
+  client: UserCheck,
   customer: UserCheck,
 };
 
 const ROLE_THEMES: Record<string, { bg: string; border: string; text: string; badge: string; gradient: string }> = {
+  super_admin: {
+    bg: 'bg-purple-500/10',
+    border: 'border-purple-500/30',
+    text: 'text-purple-400',
+    badge: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
+    gradient: 'from-purple-600 to-indigo-900',
+  },
+  admin: {
+    bg: 'bg-violet-500/10',
+    border: 'border-violet-500/30',
+    text: 'text-violet-400',
+    badge: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
+    gradient: 'from-violet-600 to-purple-900',
+  },
   administrator: {
     bg: 'bg-purple-500/10',
     border: 'border-purple-500/30',
@@ -271,6 +224,13 @@ const ROLE_THEMES: Record<string, { bg: string; border: string; text: string; ba
     badge: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
     gradient: 'from-slate-600 to-zinc-900',
   },
+  client: {
+    bg: 'bg-indigo-500/10',
+    border: 'border-indigo-500/30',
+    text: 'text-indigo-300',
+    badge: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
+    gradient: 'from-indigo-600 to-violet-900',
+  },
   customer: {
     bg: 'bg-indigo-500/10',
     border: 'border-indigo-500/30',
@@ -292,12 +252,14 @@ const getInitials = (name: string) => {
 };
 
 export default function RolesIndex() {
+  const { auth } = usePage<any>().props;
+  const isSuperAdmin = auth?.user?.role === 'super_admin';
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   
   // Selection & Tabs
-  const [selectedRoleKey, setSelectedRoleKey] = useState<string>('operations_technical');
+  const [selectedRoleKey, setSelectedRoleKey] = useState<string>('super_admin');
   const [activeTab, setActiveTab] = useState<'inspector' | 'matrix'>('inspector');
   
   // Matrix Filters
@@ -348,7 +310,9 @@ export default function RolesIndex() {
 
   // Calculate permissions for selected role
   const rolePermissions = PERMISSIONS.map(p => {
-    const isGranted = p.allowedRoles.includes(selectedRole?.key || '');
+    const roleKey = selectedRole?.key || '';
+    const isGranted = roleKey === 'super_admin'
+      || p.allowedRoles.includes(roleKey);
     return {
       ...p,
       isGranted,
@@ -378,11 +342,14 @@ export default function RolesIndex() {
   const exportMatrixCsv = () => {
     const roleKeys = roles.map(r => r.key);
     const headers = ['Module', 'Permission Key', 'Permission Name', ...roles.map(r => r.name)];
+    const hasPermission = (roleKey: string, permission: PermissionDef) =>
+      roleKey === 'super_admin'
+      || permission.allowedRoles.includes(roleKey);
     const rows = PERMISSIONS.map(p => [
       `"${p.module}"`,
       `"${p.key}"`,
       `"${p.label}"`,
-      ...roleKeys.map(rKey => p.allowedRoles.includes(rKey) ? 'GRANTED' : 'RESTRICTED')
+      ...roleKeys.map(rKey => hasPermission(rKey, p) ? 'GRANTED' : 'RESTRICTED')
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -481,7 +448,7 @@ export default function RolesIndex() {
               <Shield className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-white">{roles.length || 6}</p>
+          <p className="mt-3 text-3xl font-extrabold text-white">{roles.length || 5}</p>
           <p className="mt-1 text-[11px] text-content-secondary">Configured role classifications</p>
         </div>
 
@@ -504,7 +471,7 @@ export default function RolesIndex() {
             </div>
           </div>
           <p className="mt-3 text-3xl font-extrabold text-white">{PERMISSIONS.length}</p>
-          <p className="mt-1 text-[11px] text-content-secondary">Across 6 operational modules</p>
+          <p className="mt-1 text-[11px] text-content-secondary">Across 9 existing modules</p>
         </div>
 
         <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-surface-card p-5 shadow-lg">
@@ -514,7 +481,7 @@ export default function RolesIndex() {
               <Lock className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-xl font-bold text-white">Tier 1 Superadmin</p>
+          <p className="mt-3 text-xl font-bold text-white">Tier 1 Super Admin</p>
           <p className="mt-1 text-[11px] text-purple-400/80">Strict zero-trust root protection</p>
         </div>
       </div>
@@ -628,13 +595,15 @@ export default function RolesIndex() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setIsAssignModalOpen(true)}
-                      className="flex shrink-0 items-center gap-2 rounded-lg bg-[#ffcc00] px-3.5 py-2 text-xs font-bold text-black shadow-lg shadow-amber-500/10 transition hover:bg-[#ffcc00]/90"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Assign User to Role
-                    </button>
+                    {(isSuperAdmin || selectedRole.key !== 'super_admin') && (
+                      <button
+                        onClick={() => setIsAssignModalOpen(true)}
+                        className="flex shrink-0 items-center gap-2 rounded-lg bg-[#ffcc00] px-3.5 py-2 text-xs font-bold text-black shadow-lg shadow-amber-500/10 transition hover:bg-[#ffcc00]/90"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Assign User to Role
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -872,7 +841,8 @@ export default function RolesIndex() {
                       </td>
 
                       {roles.map(r => {
-                        const isGranted = perm.allowedRoles.includes(r.key);
+                        const isGranted = r.key === 'super_admin'
+                          || perm.allowedRoles.includes(r.key);
 
                         return (
                           <td key={r.key} className="px-4 py-3.5 text-center align-middle">
@@ -961,7 +931,7 @@ export default function RolesIndex() {
                 type="text"
                 value={assignSearch}
                 onChange={(e) => setAssignSearch(e.target.value)}
-                placeholder="Search staff by name or email..."
+                placeholder="Search users by name or email..."
                 className="w-full rounded-lg border border-border-default bg-surface-input py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
               />
             </div>
@@ -969,6 +939,7 @@ export default function RolesIndex() {
             {/* Users List */}
             <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
               {allUsersList
+                .filter(user => isSuperAdmin || user.role !== 'super_admin')
                 .filter(u => {
                   if (!assignSearch) return true;
                   const q = assignSearch.toLowerCase();
@@ -976,6 +947,7 @@ export default function RolesIndex() {
                 })
                 .map(user => {
                   const isAlreadyInRole = user.role === selectedRole?.key;
+                  const canAssign = isSuperAdmin || (user.role !== 'super_admin' && user.id !== auth?.user?.id && selectedRole?.key !== 'super_admin');
 
                   return (
                     <div 
@@ -997,10 +969,14 @@ export default function RolesIndex() {
                         <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
                           Current Role
                         </span>
+                      ) : !canAssign ? (
+                        <span className="rounded-md border border-zinc-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          Restricted
+                        </span>
                       ) : (
                         <button
                           disabled={processingAssign}
-                          onClick={() => handleReassignUserRole(user.id, selectedRole?.key || 'staff')}
+                          onClick={() => handleReassignUserRole(user.id, selectedRole?.key || 'sales_business_development')}
                           className="flex items-center gap-1.5 rounded-lg bg-[#ffcc00] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#ffcc00]/90 disabled:opacity-50 transition"
                         >
                           <UserPlus className="h-3.5 w-3.5" />

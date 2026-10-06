@@ -71,12 +71,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/job-orders/completion', fn () => Inertia::render('JobOrders/Index', ['view' => 'completion']))->middleware('can:manage-job-orders')->name('job-orders.completion');
     Route::get('/projects', fn () => Inertia::render('Projects/Index'))->middleware('can:view-projects')->name('projects');
     Route::get('/record/{type}/{id}', fn (string $type, int $id) => Inertia::render('Records/Show', ['type' => $type, 'recordId' => $id]))->middleware('can:view-core-dashboard')->name('record.show');
-    Route::get('/reports', fn () => Inertia::render('Reports/Index'))->middleware('can:view-core-dashboard')->name('reports');
+    Route::get('/reports', fn () => Inertia::render('Reports/Index'))->middleware('can:view-reports')->name('reports');
     Route::get('/ai-analytics', fn () => Inertia::render('AiAnalytics/Index'))->middleware('can:view-reports')->name('ai-analytics');
     Route::get('/users', fn () => Inertia::render('Users/Index'))->middleware('can:manage-users')->name('users');
     Route::get('/roles', fn () => Inertia::render('Roles/Index'))->middleware('can:manage-users')->name('roles');
     Route::get('/logs', fn () => Inertia::render('Logs/Index'))->middleware('can:manage-users')->name('logs');
-    Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings');
+    Route::get('/settings', fn () => Inertia::render('Settings/Index'))->middleware('can:manage-system-settings')->name('settings');
     Route::get('/ai', [AiController::class, 'index'])->middleware('can:view-reports')->name('ai.index');
     Route::post('/ai/ask', [AiController::class, 'askAi'])->middleware('can:view-reports')->name('ai.ask');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

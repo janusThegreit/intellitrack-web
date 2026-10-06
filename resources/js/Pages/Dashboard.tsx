@@ -38,15 +38,14 @@ interface AdminSummary {
   active_users: number;
   inactive_users: number;
   roles_breakdown: {
-    administrator: number;
+    super_admin: number;
+    admin: number;
     sales_manager: number;
     sales_business_development: number;
-    staff: number;
-    customer: number;
+    client: number;
   };
   total_audit_logs: number;
   maintenance_mode: boolean;
-  db_status: string;
   recent_audit_logs: Array<{
     id: number;
     user?: { name: string; email: string; role: string };
@@ -58,9 +57,6 @@ interface AdminSummary {
 }
 
 interface SalesManagerSummary {
-  ytd_revenue: number;
-  prev_year_revenue: number;
-  yoy_growth_pct: number;
   pipeline_value: number;
   win_rate: number;
   pending_approvals_count: number;
@@ -127,6 +123,11 @@ interface OperationsSummary {
 }
 
 interface DashboardData {
+  activity_chart?: {
+    title: string;
+    source: string;
+    points: Array<{ label: string; count: number }>;
+  };
   admin_summary?: AdminSummary | null;
   sales_manager_summary?: SalesManagerSummary | null;
   operations_summary?: OperationsSummary | null;
@@ -141,8 +142,6 @@ interface DashboardData {
   active_projects: number;
   total_equipment: number;
   available_equipment: number;
-  revenue_this_month: number;
-  revenue_this_year: number;
   pending_notifications: number;
   completion_status?: {
     total: number;
@@ -157,32 +156,81 @@ interface DashboardData {
   recent_rentals?: any[];
 }
 
+const ActivityChart = ({ chart }: { chart?: DashboardData['activity_chart'] }) => {
+  const points = chart?.points ?? [];
+  const maxCount = Math.max(...points.map((point) => point.count), 1);
+
+  return (
+    <section className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md">
+      <div className="border-b border-border-subtle/80 pb-4">
+        <h3 className="text-base font-bold text-content-primary">{chart?.title ?? 'Activity'}</h3>
+        <p className="text-xs text-content-secondary">
+          Last 6 months · Source: {chart?.source ?? 'No data source available'}
+        </p>
+      </div>
+      {points.length === 0 ? (
+        <p className="py-8 text-center text-xs text-content-secondary">No activity data available.</p>
+      ) : (
+        <>
+          {points.every((point) => point.count === 0) && (
+            <p className="mt-4 text-center text-xs text-content-secondary">No records in this period.</p>
+          )}
+          <div
+            className="mt-6 grid grid-cols-3 gap-4 sm:grid-cols-6"
+            role="img"
+            aria-label={`${chart?.title ?? 'Activity'} over the last 6 months`}
+          >
+            {points.map((point) => (
+              <div key={point.label} className="flex min-w-0 flex-col items-center gap-2">
+                <span className="text-xs font-semibold text-content-primary">{point.count}</span>
+                <div className="flex h-32 w-full items-end justify-center rounded-lg bg-surface-app/50 px-2">
+                  <div
+                    className="w-full max-w-10 rounded-t-md bg-amber-500 transition-all"
+                    style={{ height: point.count > 0 ? `${Math.max((point.count / maxCount) * 100, 4)}%` : '0%' }}
+                    title={`${point.label}: ${point.count}`}
+                  />
+                </div>
+                <span className="text-center text-[10px] text-content-secondary">{point.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
 const Dashboard = () => {
   const { auth } = usePage<any>().props;
   const userRole = auth?.user?.role || (typeof window !== 'undefined' ? localStorage.getItem('intelitrack-user-role') : null) || '';
-  const isAdmin = userRole === 'administrator' || userRole === 'admin';
-  const isOperationsTechnical = userRole === 'operations_technical' || userRole === 'staff';
+  const isAdmin = ['super_admin', 'administrator', 'admin'].includes(userRole);
+  const isOperationsTechnical = ['operations_technical', 'operations_staff', 'technical_staff', 'staff'].includes(userRole);
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      setLoading(true);
+      setLoadError(false);
       try {
         const response = await axios.get('/api/dashboard/summary');
         setData(response.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
     };
     fetchDashboardData();
-  }, []);
+  }, [retryCount]);
 
-  const totalEquipment = data?.total_equipment || 24;
-  const availableEquipment = data?.available_equipment || 18;
-  const utilizationRate = totalEquipment > 0 ? Math.round(((totalEquipment - availableEquipment) / totalEquipment) * 100) : 65;
+  const totalEquipment = data?.total_equipment ?? 0;
+  const availableEquipment = data?.available_equipment ?? 0;
+  const utilizationRate = totalEquipment > 0 ? Math.round(((totalEquipment - availableEquipment) / totalEquipment) * 100) : 0;
 
   if (loading) {
     if (isAdmin) {
@@ -259,15 +307,29 @@ const Dashboard = () => {
     );
   }
 
+  if (loadError) {
+    return (
+      <AppLayout title="Dashboard">
+        <Head title="Dashboard" />
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
+          <h2 className="text-base font-bold text-content-primary">Dashboard data could not be loaded</h2>
+          <p className="mt-1 text-sm text-content-secondary">Please try again. No statistics are shown until the data is available.</p>
+          <Button variant="secondary" size="md" className="mt-4" onClick={() => setRetryCount((count) => count + 1)}>
+            Retry
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (isAdmin || data?.admin_summary) {
     const admin: AdminSummary = data?.admin_summary ?? {
       total_users: 0,
       active_users: 0,
       inactive_users: 0,
-      roles_breakdown: { administrator: 0, sales_manager: 0, sales_business_development: 0, staff: 0, customer: 0 },
+      roles_breakdown: { super_admin: 0, admin: 0, sales_manager: 0, sales_business_development: 0, client: 0 },
       total_audit_logs: 0,
       maintenance_mode: false,
-      db_status: 'Connected',
       recent_audit_logs: [],
     };
     return (
@@ -292,13 +354,6 @@ const Dashboard = () => {
                   Centralized management for Identity & Access (IAM), Role-Based Access Control (RBAC), Security Audit Logs, and Server Health.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-400 border border-emerald-500/20">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                    </span>
-                    Database: PostgreSQL 17 (Connected)
-                  </span>
                   <span className={clsx(
                     'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium border',
                     admin.maintenance_mode
@@ -335,8 +390,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* 4 Admin KPI Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 3 Admin KPI Cards */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {/* KPI 1: System Accounts */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/5">
               <div className="flex items-center justify-between">
@@ -358,6 +413,7 @@ const Dashboard = () => {
                 <span>•</span>
                 <span className="text-content-muted">{admin.inactive_users} Inactive</span>
               </div>
+              <p className="mt-2 text-xs text-content-secondary">Source: user account records</p>
             </div>
 
             {/* KPI 2: Access Roles */}
@@ -370,14 +426,14 @@ const Dashboard = () => {
               </div>
               <div className="mt-4 flex items-baseline justify-between">
                 <span className="text-3xl font-extrabold tracking-tight text-content-primary">
-                  4 Roles
+                  5 Roles
                 </span>
                 <Link href="/roles" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-0.5">
                   View Matrix <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
               <p className="mt-3 text-xs text-content-secondary">
-                Admin, Sales Manager, Sales BD, Staff
+                Super Admin, Admin, Sales Manager, Sales Business Development, Client
               </p>
             </div>
 
@@ -398,31 +454,13 @@ const Dashboard = () => {
                 </Link>
               </div>
               <p className="mt-3 text-xs text-content-secondary">
-                Real-time activity audit trail logged
+                Source: activity log records
               </p>
             </div>
 
-            {/* KPI 4: Infrastructure & Security */}
-            <div className="group relative overflow-hidden rounded-2xl border border-border-default/70 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">System Governance</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500 border border-violet-500/20">
-                  <Settings className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold tracking-tight text-content-primary">
-                  Active
-                </span>
-                <Link href="/settings" className="text-xs font-semibold text-violet-500 hover:underline flex items-center gap-0.5">
-                  Settings <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <p className="mt-3 text-xs text-content-secondary">
-                Separation of Duties (SoD) Active
-              </p>
-            </div>
           </div>
+
+          <ActivityChart chart={data?.activity_chart} />
 
           {/* 2-Column Section: Role Matrix & SoD Architecture Framework */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
@@ -431,7 +469,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
                 <div>
                   <h3 className="text-base font-bold text-content-primary">Identity & Access Roles Distribution</h3>
-                  <p className="text-xs text-content-secondary">Current active staff accounts segmented by organizational responsibility</p>
+                  <p className="text-xs text-content-secondary">Canonical roles in the employee hierarchy; Clients are external</p>
                 </div>
                 <Link href="/users" className="text-xs font-semibold text-indigo-500 hover:underline flex items-center gap-1">
                   Manage Users <ArrowUpRight className="h-3.5 w-3.5" />
@@ -442,60 +480,75 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-app/40 border border-border-subtle/50">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 font-bold text-xs">
-                      ADM
+                      SA
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-content-primary">Administrator (System Governance)</p>
-                      <p className="text-[11px] text-content-secondary">IT infrastructure, user security, audit trail, system settings</p>
+                      <p className="text-xs font-bold text-content-primary">Super Admin — Tier 1</p>
+                      <p className="text-[11px] text-content-secondary">Highest-level access to all system modules</p>
                     </div>
                   </div>
                   <span className="text-xs font-extrabold text-content-primary px-3 py-1 rounded-full bg-surface-card border border-border-subtle">
-                    {admin.roles_breakdown.administrator || 1} Accounts
+                    {admin.roles_breakdown.super_admin} Accounts
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-app/40 border border-border-subtle/50">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 font-bold text-xs">
-                      MGR
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 font-bold text-xs">
+                      ADM
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-content-primary">Sales Manager (Approval & Operations)</p>
-                      <p className="text-[11px] text-content-secondary">Quotation approval, job order assignment, AI analytics, BI reports</p>
+                      <p className="text-xs font-bold text-content-primary">Admin — Tier 2</p>
+                      <p className="text-[11px] text-content-secondary">User management, system settings, CRM and client management</p>
                     </div>
                   </div>
                   <span className="text-xs font-extrabold text-content-primary px-3 py-1 rounded-full bg-surface-card border border-border-subtle">
-                    {admin.roles_breakdown.sales_manager || 0} Accounts
+                    {admin.roles_breakdown.admin} Accounts
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-app/40 border border-border-subtle/50">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 font-bold text-xs">
-                      SBD
+                      MGR
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-content-primary">Sales Business Development (Frontline Sales)</p>
-                      <p className="text-[11px] text-content-secondary">Client registration, inquiry intake, client communication, quotation drafting</p>
+                      <p className="text-xs font-bold text-content-primary">Sales Manager — Tier 3</p>
+                      <p className="text-[11px] text-content-secondary">Sales management, quotation approvals, client and pipeline oversight</p>
                     </div>
                   </div>
                   <span className="text-xs font-extrabold text-content-primary px-3 py-1 rounded-full bg-surface-card border border-border-subtle">
-                    {admin.roles_breakdown.sales_business_development || 0} Accounts
+                    {admin.roles_breakdown.sales_manager} Accounts
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-app/40 border border-border-subtle/50">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs">
-                      OPS
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 font-bold text-xs">
+                      SBD
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-content-primary">Operations & Technical Staff</p>
-                      <p className="text-[11px] text-content-secondary">Equipment status, job order scheduling, crane maintenance logs</p>
+                      <p className="text-xs font-bold text-content-primary">Sales Business Development — Tier 4</p>
+                      <p className="text-[11px] text-content-secondary">CRM, clients, quotations, job orders, rentals, projects and analytics</p>
                     </div>
                   </div>
                   <span className="text-xs font-extrabold text-content-primary px-3 py-1 rounded-full bg-surface-card border border-border-subtle">
-                    {admin.roles_breakdown.staff || 0} Accounts
+                    {admin.roles_breakdown.sales_business_development} Accounts
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-app/40 border border-border-subtle/50">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 font-bold text-xs">
+                      CLI
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-content-primary">Client — External Portal Role</p>
+                      <p className="text-[11px] text-content-secondary">Customer-facing access, separate from the employee hierarchy</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-content-primary px-3 py-1 rounded-full bg-surface-card border border-border-subtle">
+                    {admin.roles_breakdown.client} Accounts
                   </span>
                 </div>
               </div>
@@ -516,7 +569,7 @@ const Dashboard = () => {
                   <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3.5">
                     <p className="font-bold text-indigo-300">1. Operational Isolation</p>
                     <p className="mt-1 text-[11px] text-slate-300">
-                      Ang Administrator ay hindi lumilikha ng commercial quotations, customer billing, o rental rates. Ito ay nakatalaga lamang sa Sales BD at Sales Manager.
+                      Ang Super Admin ang may pinakamataas na access. Pinamamahalaan ng Admin ang users, settings, CRM, at clients; Sales Manager ang quotation approvals; at Sales Business Development ang sales pipeline.
                     </p>
                   </div>
 
@@ -530,7 +583,7 @@ const Dashboard = () => {
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5">
                     <p className="font-bold text-amber-300">3. Lockout Protection</p>
                     <p className="mt-1 text-[11px] text-slate-300">
-                      Pinipigilan ng system policy ang pag-delete o deactivation ng huling aktibong Administrator account.
+                      Naka-log ang account changes at pinoprotektahan ang Super Admin account laban sa ordinaryong Admin role changes.
                     </p>
                   </div>
                 </div>
@@ -606,24 +659,24 @@ const Dashboard = () => {
   // =========================================================================
   if (isOperationsTechnical || (data?.operations_summary && !isAdmin && !data?.sales_manager_summary)) {
     const ops: OperationsSummary = data?.operations_summary ?? {
-      total_fleet: totalEquipment,
-      available_fleet: availableEquipment,
-      deployed_fleet: totalEquipment - availableEquipment,
-      maintenance_fleet: 1,
-      tower_cranes_count: 5,
-      cranes_deployed: 3,
-      cranes_maintenance: 1,
-      cranes_available: 1,
-      active_job_orders_count: data?.active_job_orders || 0,
-      scheduled_maintenance_count: 3,
-      completed_maintenance_count: 1,
+      total_fleet: 0,
+      available_fleet: 0,
+      deployed_fleet: 0,
+      maintenance_fleet: 0,
+      tower_cranes_count: 0,
+      cranes_deployed: 0,
+      cranes_maintenance: 0,
+      cranes_available: 0,
+      active_job_orders_count: 0,
+      scheduled_maintenance_count: 0,
+      completed_maintenance_count: 0,
       upcoming_maintenance: [],
       active_job_orders: data?.recent_job_orders || [],
       active_projects: data?.recent_projects || [],
       heavy_fleet: [],
     };
 
-    const opsUtilization = ops.total_fleet > 0 ? Math.round(((ops.total_fleet - ops.available_fleet) / ops.total_fleet) * 100) : 67;
+    const opsUtilization = ops.total_fleet > 0 ? Math.round(((ops.total_fleet - ops.available_fleet) / ops.total_fleet) * 100) : 0;
 
     return (
       <AppLayout title="Fleet & Technical Operations">
@@ -649,18 +702,8 @@ const Dashboard = () => {
                   Heavy Fleet & Operations Command
                 </h1>
                 <p className="mt-1 text-sm text-slate-300 max-w-xl">
-                  Real-time tower crane telematics, active job order crew dispatch, preventative maintenance schedules, and rigging safety certifications.
+                  Equipment, job-order, and maintenance summaries from existing system records.
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-400 border border-emerald-500/20">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Fleet Readiness: 100% Operational
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2.5 py-1 font-medium text-blue-400 border border-blue-500/20">
-                    <Activity className="h-3.5 w-3.5" />
-                    Wind Velocity Monitoring: Active (≤45 km/h Standard)
-                  </span>
-                </div>
               </div>
 
               {/* Technical Quick Actions */}
@@ -692,7 +735,7 @@ const Dashboard = () => {
             {/* Card 1: Fleet Availability */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-emerald-500/50 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Fleet Availability</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Equipment Availability</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <Truck className="h-5 w-5" />
                 </div>
@@ -703,8 +746,8 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-[11px] text-content-secondary mb-1">
-                    <span>Fleet Utilization</span>
-                    <span className="font-bold text-emerald-400">{opsUtilization}% Deployed</span>
+                    <span>Equipment not marked available</span>
+                    <span className="font-bold text-emerald-400">{opsUtilization}%</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-surface-input overflow-hidden">
                     <div 
@@ -720,14 +763,14 @@ const Dashboard = () => {
             {/* Card 2: Tower Cranes Active In-Field */}
             <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-blue-500/50 hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Tower Cranes In-Field</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Equipment Marked Rented</span>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   <Layers className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  {ops.cranes_deployed} <span className="text-sm font-normal text-content-secondary">Active on Sites</span>
+                  {ops.cranes_deployed} <span className="text-sm font-normal text-content-secondary">Marked rented</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[11px] font-bold text-blue-400">
@@ -737,7 +780,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                {ops.cranes_available} units currently stationed at yard depot
+                {ops.cranes_available} crane records with available status
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
             </div>
@@ -757,12 +800,12 @@ const Dashboard = () => {
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-bold text-amber-400">
                     <Clock className="h-3 w-3" />
-                    Rigging & Operator Mobilized
+                    Approved or in progress
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                All scheduled work orders running on timetable
+                Source: approved and in-progress job orders
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-yellow-500" />
             </div>
@@ -777,21 +820,23 @@ const Dashboard = () => {
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                  {ops.scheduled_maintenance_count} <span className="text-sm font-normal text-content-secondary">Due / In-Progress</span>
+                  {ops.scheduled_maintenance_count} <span className="text-sm font-normal text-content-secondary">Scheduled / In-Progress</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
                     <CheckCircle2 className="h-3 w-3" />
-                    {ops.completed_maintenance_count} Certified this month
+                    {ops.completed_maintenance_count} Completed records
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] text-content-secondary">
-                Safety compliance load tests & inspections logged
+                Source: scheduled, in-progress, and completed maintenance records
               </p>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-400 to-indigo-500" />
             </div>
           </div>
+
+          <ActivityChart chart={data?.activity_chart} />
 
           {/* Two-Column Heavy Assets & Maintenance Matrix */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -835,14 +880,14 @@ const Dashboard = () => {
                               </span>
                             </div>
                             <p className="text-[11px] text-content-secondary mt-0.5">
-                              Model: {crane.crane_model || crane.category} • Max Load: <strong className="text-content-primary">{crane.maximum_load ? `${crane.maximum_load} ${crane.maximum_load_unit || 'Tons'}` : 'High Capacity'}</strong>
+                              Model: {crane.crane_model || crane.category} • Max Load: <strong className="text-content-primary">                              {crane.maximum_load ? `${crane.maximum_load} ${crane.maximum_load_unit || ''}` : 'Not recorded'}</strong>
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
                           <span className="text-[10px] text-content-muted">
-                            {crane.location || 'Metro Manila Depot'}
+                            {crane.location || 'Location not recorded'}
                           </span>
                           <span className={clsx(
                             "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
@@ -857,7 +902,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <div className="py-8 text-center text-xs text-content-secondary">
-                      Loading heavy crane fleet records...
+                      No matching crane records.
                     </div>
                   )}
                 </div>
@@ -1138,32 +1183,7 @@ const Dashboard = () => {
             </div>
 
             {/* Commercial Performance Roll-Up Cards */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Card 1: 2026 YTD Revenue with YoY Badge */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-amber-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-amber-500/50 hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">2026 YTD Settled Revenue</span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <DollarSign className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl font-black text-content-primary tracking-tight font-mono">
-                    ₱{Number(data.sales_manager_summary.ytd_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                      <TrendingUp className="h-3 w-3" />
-                      +{data.sales_manager_summary.yoy_growth_pct}% vs 2025
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-2 text-[11px] text-content-secondary">
-                  2025 Baseline: ₱{Number(data.sales_manager_summary.prev_year_revenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </p>
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-600" />
-              </div>
-
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {/* Card 2: Sales Pipeline Value */}
               <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-blue-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-blue-500/50 hover:shadow-md">
                 <div className="flex items-center justify-between">
@@ -1183,7 +1203,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] text-content-secondary">
-                  Tracked proposals in active negotiation
+                  Quotation totals in review, approved, sent, or accepted status
                 </p>
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600" />
               </div>
@@ -1191,7 +1211,7 @@ const Dashboard = () => {
               {/* Card 3: Crane Fleet Demand & Deployment */}
               <div className="group relative overflow-hidden rounded-2xl border border-border-default/80 bg-surface-card dark:border-indigo-500/30 dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-950/90 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-indigo-500/50 hover:shadow-md">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Fleet Utilization</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-secondary">Crane Records Marked Rented</span>
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                     <Truck className="h-5 w-5" />
                   </div>
@@ -1202,7 +1222,7 @@ const Dashboard = () => {
                   </div>
                   <div className="mt-2 flex items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                      {data.sales_manager_summary.total_cranes_count > 0 ? Math.round((data.sales_manager_summary.active_cranes_count / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Deployed
+                      {data.sales_manager_summary.total_cranes_count > 0 ? Math.round((data.sales_manager_summary.active_cranes_count / data.sales_manager_summary.total_cranes_count) * 100) : 0}% Marked rented
                     </span>
                   </div>
                 </div>
@@ -1339,11 +1359,8 @@ const Dashboard = () => {
               <span className="text-3xl font-black tracking-tight text-content-primary">
                 {loading ? '...' : (data?.total_customers ?? 0)}
               </span>
-              <span className="text-xs font-semibold text-emerald-500 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-0.5" /> +12%
-              </span>
             </div>
-            <p className="mt-2 text-xs text-content-secondary">Active corporate & construction accounts</p>
+            <p className="mt-2 text-xs text-content-secondary">Source: customer records</p>
           </div>
 
           {/* KPI 2: Active Job Orders */}
@@ -1360,10 +1377,10 @@ const Dashboard = () => {
                 {loading ? '...' : (data?.active_job_orders ?? 0)}
               </span>
               <span className="text-xs font-semibold text-blue-500 flex items-center">
-                <Layers className="h-3 w-3 mr-0.5" /> In-Progress
+                <Layers className="h-3 w-3 mr-0.5" /> Open statuses
               </span>
             </div>
-            <p className="mt-2 text-xs text-content-secondary">Field dispatches & installations</p>
+            <p className="mt-2 text-xs text-content-secondary">Source: pending, approved, and in-progress job orders</p>
           </div>
 
           {/* KPI 3: Fleet Rentals */}
@@ -1380,10 +1397,10 @@ const Dashboard = () => {
                 {loading ? '...' : (data?.active_rentals ?? 0)}
               </span>
               <span className="text-xs font-semibold text-emerald-500 flex items-center">
-                <CheckCircle2 className="h-3 w-3 mr-0.5" /> Deployed
+                <CheckCircle2 className="h-3 w-3 mr-0.5" /> Active status
               </span>
             </div>
-            <p className="mt-2 text-xs text-content-secondary">Heavy cranes on project sites</p>
+            <p className="mt-2 text-xs text-content-secondary">Source: rental records with active status</p>
           </div>
 
           {/* KPI 4: Active Projects */}
@@ -1400,11 +1417,13 @@ const Dashboard = () => {
                 {loading ? '...' : (data?.active_projects ?? 0)}
               </span>
               <span className="text-xs font-semibold text-violet-500 flex items-center">
-                <Compass className="h-3 w-3 mr-0.5" /> Ongoing
+                <Compass className="h-3 w-3 mr-0.5" /> Active status
               </span>
             </div>
-            <p className="mt-2 text-xs text-content-secondary">Construction site contracts</p>
+            <p className="mt-2 text-xs text-content-secondary">Source: project records with active status</p>
           </div>
+
+          <ActivityChart chart={data?.activity_chart} />
 
         </div>
 
@@ -1415,8 +1434,8 @@ const Dashboard = () => {
           <div className="rounded-3xl border border-border-default/80 bg-surface-card/90 p-6 shadow-sm backdrop-blur-md lg:col-span-7">
             <div className="flex items-center justify-between border-b border-border-subtle/80 pb-4">
               <div>
-                <h3 className="text-base font-bold text-content-primary">Fleet Utilization & Inventory Status</h3>
-                <p className="text-xs text-content-secondary">Heavy equipment and tower crane allocation metrics</p>
+                <h3 className="text-base font-bold text-content-primary">Equipment Availability & Inventory Status</h3>
+                <p className="text-xs text-content-secondary">Equipment inventory and availability records</p>
               </div>
               <Link href="/rental-requirements" className="text-xs font-semibold text-amber-500 hover:underline flex items-center gap-1">
                 View Fleet <ArrowUpRight className="h-3.5 w-3.5" />
@@ -1428,27 +1447,27 @@ const Dashboard = () => {
               {/* Stat 1 */}
               <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
                 <p className="text-xs font-medium text-content-secondary">Total Fleet Size</p>
-                <p className="mt-2 text-2xl font-extrabold text-content-primary">{data?.total_equipment || 24}</p>
+                <p className="mt-2 text-2xl font-extrabold text-content-primary">{data?.total_equipment ?? 0}</p>
                 <div className="mt-2 flex items-center gap-1 text-[11px] text-content-muted">
-                  <span>Tower & Mobile Cranes</span>
+                  <span>Source: equipment records</span>
                 </div>
               </div>
 
               {/* Stat 2 */}
               <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
                 <p className="text-xs font-medium text-content-secondary">Available for Rental</p>
-                <p className="mt-2 text-2xl font-extrabold text-emerald-500">{data?.available_equipment || 18}</p>
+                <p className="mt-2 text-2xl font-extrabold text-emerald-500">{data?.available_equipment ?? 0}</p>
                 <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3" /> Ready to dispatch
+                  <CheckCircle2 className="h-3 w-3" /> Status: available
                 </div>
               </div>
 
               {/* Stat 3 */}
               <div className="rounded-2xl border border-border-subtle bg-surface-app/50 p-4">
-                <p className="text-xs font-medium text-content-secondary">Fleet Utilization</p>
+                <p className="text-xs font-medium text-content-secondary">Not Marked Available</p>
                 <p className="mt-2 text-2xl font-extrabold text-amber-500">{utilizationRate}%</p>
                 <div className="mt-2 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
-                  <Activity className="h-3 w-3" /> High demand
+                  <Activity className="h-3 w-3" /> Based on equipment status
                 </div>
               </div>
             </div>
@@ -1456,8 +1475,8 @@ const Dashboard = () => {
             {/* Visual Utilization Progress Bar */}
             <div className="mt-6 space-y-2">
               <div className="flex justify-between text-xs font-semibold">
-                <span className="text-content-secondary">Fleet Deployment Capacity</span>
-                <span className="text-amber-500">{utilizationRate}% Allocated</span>
+                <span className="text-content-secondary">Equipment not marked available</span>
+                <span className="text-amber-500">{utilizationRate}%</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-surface-input">
                 <div 
@@ -1533,7 +1552,7 @@ const Dashboard = () => {
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-app/60 p-3.5 text-xs">
               <Clock className="h-4 w-4 text-amber-500 shrink-0" />
               <span className="text-content-secondary">
-                Maintenance window scheduled for fleet cranes every Sunday 02:00 AM UTC.
+                Use the maintenance records above to review scheduled and completed work.
               </span>
             </div>
           </div>

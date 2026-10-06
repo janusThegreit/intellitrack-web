@@ -57,7 +57,7 @@ class AuthController extends Controller
             );
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::whereRaw('LOWER(email) = ?', [Str::lower($request->email)])->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
@@ -104,6 +104,10 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->input('email'))),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -120,16 +124,12 @@ class AuthController extends Controller
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
-            // Only allow non-privileged roles for self-registration
-            'role' => 'nullable|string|in:staff,customer',
+            'role' => 'prohibited',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::validationError($validator->errors());
         }
-
-        // Force lowest-privilege role for self-registration (never admin/manager)
-        $role = $request->input('role', 'customer');
 
         $user = User::create([
             'name' => $request->name,
@@ -138,7 +138,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
-            'role' => $role,
+            'role' => 'client',
             'is_active' => false, // Require admin approval
         ]);
 

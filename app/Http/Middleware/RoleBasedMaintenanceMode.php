@@ -34,7 +34,7 @@ class RoleBasedMaintenanceMode
             }
 
             // Allow if user is authenticated and is an administrator
-            if (Auth::check() && Auth::user()->role === 'administrator') {
+            if (Auth::check() && Auth::user()->isAdministrator()) {
                 return $next($request);
             }
 

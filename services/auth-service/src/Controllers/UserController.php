@@ -59,7 +59,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:administrator,sales_manager,sales_business_development,staff,customer',
+            'role' => 'required|string|in:super_admin,admin,administrator,sales_manager,manager,sales_business_development,sales_bd,client,customer,operations_technical,operations_staff,technical_staff,staff',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -96,7 +96,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:users,email,' . $id,
-            'role' => 'nullable|string|in:administrator,sales_manager,sales_business_development,staff,customer',
+            'role' => 'nullable|string|in:super_admin,admin,administrator,sales_manager,manager,sales_business_development,sales_bd,client,customer,operations_technical,operations_staff,technical_staff,staff',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -128,7 +128,7 @@ class UserController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'role' => 'required|string|in:administrator,sales_manager,sales_business_development,staff,customer',
+            'role' => 'required|string|in:super_admin,admin,administrator,sales_manager,manager,sales_business_development,sales_bd,client,customer,operations_technical,operations_staff,technical_staff,staff',
         ]);
 
         if ($validator->fails()) {

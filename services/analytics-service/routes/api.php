@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use IntelliTrack\Services\Analytics\Controllers\SalesAnalyticsController;
 use IntelliTrack\Services\Analytics\Controllers\ReportController;
 
-Route::middleware(['correlation'])->group(function () {
+Route::middleware(['correlation', 'internal_auth'])->group(function () {
     // Sales analytics
     Route::get('/analytics/summary', [SalesAnalyticsController::class, 'summary']);
 

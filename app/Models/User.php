@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'client_id', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'auth_user_id', 'client_id', 'is_active', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -111,6 +111,23 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role === 'super_admin';
+    }
+
+    public function canonicalRole(): string
+    {
+        return self::canonicalRoleFor($this->role);
+    }
+
+    public static function canonicalRoleFor(string $role): string
+    {
+        return match ($role) {
+            'admin', 'administrator' => 'admin',
+            'sales_manager', 'manager' => 'sales_manager',
+            'sales_business_development', 'sales_bd',
+            'operations_technical', 'operations_staff', 'technical_staff', 'staff' => 'sales_business_development',
+            'client', 'customer' => 'client',
+            default => $role,
+        };
     }
 
     /**

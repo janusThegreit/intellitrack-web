@@ -21,14 +21,16 @@ Route::middleware(['correlation'])->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
 
     // Roles & Permissions
-    Route::get('/roles', [RoleController::class, 'index']);
+    Route::middleware('internal_auth')->group(function () {
+        Route::get('/roles', [RoleController::class, 'index']);
 
-    // Users IAM CRUD
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::post('/users', [UserController::class, 'store']);
-    Route::put('/users/{id}', [UserController::class, 'update']);
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
-    Route::put('/users/{id}/role', [UserController::class, 'updateUserRole']);
-    Route::patch('/users/{id}/status', [UserController::class, 'updateUserStatus']);
+        // User IAM operations are Gateway-only; credentials remain in this service.
+        Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{id}', [UserController::class, 'show']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::put('/users/{id}/role', [UserController::class, 'updateUserRole']);
+        Route::patch('/users/{id}/status', [UserController::class, 'updateUserStatus']);
+    });
 });

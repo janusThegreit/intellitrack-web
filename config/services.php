@@ -37,7 +37,21 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+    ],
+
+    'microservices' => [
+        'internal_secret' => env('MICROSERVICE_INTERNAL_SECRET', 'secret-internal-token'),
+    ],
+
+    'gateway' => [
+        'internal_secret' => env('MICROSERVICE_INTERNAL_SECRET', 'secret-internal-token'),
+        'services' => [
+            'auth' => [
+                'base_url' => env('AUTH_SERVICE_URL', 'http://127.0.0.1:8001'),
+                'timeout' => 5,
+            ],
+        ],
     ],
 
 ];

@@ -31,7 +31,7 @@ class DashboardAccessTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/dashboard/summary')
             ->assertOk()
-            ->assertJsonStructure(['total_customers', 'active_job_orders', 'revenue_this_month']);
+            ->assertJsonStructure(['total_customers', 'active_job_orders', 'activity_chart']);
     }
 
     public function test_sales_business_development_users_can_open_crm(): void

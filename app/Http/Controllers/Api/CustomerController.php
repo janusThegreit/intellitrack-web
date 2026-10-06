@@ -15,7 +15,7 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('view-clients');
         $query = Customer::query();
 
         if ($request->boolean('archived')) {
@@ -68,7 +68,7 @@ class CustomerController extends Controller
      */
     public function export(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('view-clients');
 
         $query = Customer::query();
 

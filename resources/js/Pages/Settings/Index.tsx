@@ -81,13 +81,13 @@ interface RoleThemeConfig {
 }
 
 const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
-  administrator: {
+  admin: {
     badgeTitle: 'Administration & System Governance',
     pageTitle: 'Settings & System Governance',
-    pageSubtitle: 'Manage your administrator identity, security credentials, and system-wide maintenance policies.',
-    verifiedBadge: 'Verified Super Administrator',
+    pageSubtitle: 'Manage your admin identity, security credentials, and system-wide maintenance policies.',
+    verifiedBadge: 'Verified Admin',
     department: 'IntelliTrack Core Infrastructure & IAM',
-    roleLabel: 'Administrator',
+    roleLabel: 'Admin',
     badgeBg: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
     tabLabel: 'Governance Policy',
     icon: Shield,
@@ -106,7 +106,7 @@ const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
     pageSubtitle: 'Manage your engineering profile, dispatch contact details, crane telematics alerts, and rigging safety certifications.',
     verifiedBadge: 'Certified Technical Authority',
     department: 'Heavy Fleet Engineering & Rigging Logistics',
-    roleLabel: 'Operations & Technical Staff',
+    roleLabel: 'Sales Business Development',
     badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     tabLabel: 'Technical & Fleet Alerts',
     icon: Wrench,
@@ -161,7 +161,7 @@ const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
     pageSubtitle: 'Manage your operator credentials, job site assignments, and safety notifications.',
     verifiedBadge: 'Verified Field Operations Personnel',
     department: 'Field Logistics & Equipment Handling',
-    roleLabel: 'Operations Staff',
+    roleLabel: 'Sales Business Development',
     badgeBg: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
     tabLabel: 'Field Task Alerts',
     icon: Truck,
@@ -178,7 +178,7 @@ const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
     pageSubtitle: 'Manage your authorized company contact details, rental notifications, and billing preferences.',
     verifiedBadge: 'Verified Corporate Client Partner',
     department: 'Authorized Client Organization',
-    roleLabel: 'Customer / Client Portal',
+    roleLabel: 'Client',
     badgeBg: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
     tabLabel: 'Rental Notifications',
     icon: UserCheck,
@@ -189,6 +189,30 @@ const ROLE_SETTINGS_MAP: Record<string, RoleThemeConfig> = {
       { id: 'cust_mob', title: 'Crane Site Mobilization & Erection Updates', description: 'Real-time progress updates when rented cranes are en-route or erected on your project site.', defaultChecked: true },
     ],
   },
+};
+
+const canonicalSettingsRole = (role?: string): string => {
+  if (role === 'administrator') return 'admin';
+  if (role === 'manager') return 'sales_manager';
+  if (['sales_bd', 'operations_technical', 'operations_staff', 'technical_staff', 'staff'].includes(role ?? '')) {
+    return 'sales_business_development';
+  }
+  if (role === 'customer') return 'client';
+  return role || 'admin';
+};
+
+const settingsConfigFor = (role?: string): RoleThemeConfig => {
+  const config = ROLE_SETTINGS_MAP[canonicalSettingsRole(role)] || ROLE_SETTINGS_MAP.admin;
+
+  return role === 'super_admin'
+    ? {
+        ...config,
+        badgeTitle: 'Super Admin & System Governance',
+        pageTitle: 'Super Admin Settings',
+        verifiedBadge: 'Verified Super Admin',
+        roleLabel: 'Super Admin',
+      }
+    : config;
 };
 
 export default function Settings() {
@@ -243,14 +267,14 @@ export default function Settings() {
       .then(res => res.ok ? res.json() : Promise.reject())
       .then((data: Profile) => {
         setProfile(data);
-        const config = ROLE_SETTINGS_MAP[data.role] || ROLE_SETTINGS_MAP.administrator;
+        const config = settingsConfigFor(data.role);
         const initialPrefs: Record<string, boolean> = {};
         config.preferencesItems.forEach(item => {
           initialPrefs[item.id] = item.defaultChecked;
         });
         setPreferenceToggles(initialPrefs);
 
-        if (data.role === 'administrator') {
+        if (['super_admin', 'admin', 'administrator'].includes(data.role)) {
           fetchMaintenanceDetails();
         }
       })
@@ -435,10 +459,10 @@ export default function Settings() {
 
   const initial = (profile?.name || 'U').slice(0, 1).toUpperCase();
   const unreadCount = notifications.filter(n => !n.read_at).length;
-  const isAdmin = profile?.role === 'administrator';
+  const isAdmin = ['super_admin', 'admin', 'administrator'].includes(profile?.role ?? '');
 
   // Active Role Theme Config
-  const roleConfig = ROLE_SETTINGS_MAP[profile?.role || 'administrator'] || ROLE_SETTINGS_MAP.administrator;
+  const roleConfig = settingsConfigFor(profile?.role);
   const RoleIcon = roleConfig.icon;
 
   return (
