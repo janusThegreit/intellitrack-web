@@ -3,16 +3,15 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\User;
 use App\Services\ActivityLogService;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Mail\LoginOtpMail;
@@ -23,33 +22,31 @@ use Illuminate\Support\Facades\Schema;
 
 class AuthController extends Controller
 {
-    /**
-     * Maximum login attempts before lockout.
-     */
     private const MAX_LOGIN_ATTEMPTS = 5;
-
-    /**
-     * Lockout duration in seconds (2 minutes).
-     */
     private const LOCKOUT_DURATION_SECONDS = 120;
 
-    /**
-     * Show the login form
-     */
     public function showLoginForm(): Response
     {
         return Inertia::render('Auth/Login');
     }
 
     /**
-     * Handle login request with rate limiting and 2FA Email OTP generation.
+     * Show the public client registration form.
+     */
+    public function showRegisterForm(): Response
+    {
+        return Inertia::render('Auth/Register');
+    }
+
+    /**
+     * Authenticate credentials through the Auth Service, then apply the existing
+     * Gateway-side session and optional email OTP flow.
      *
      * Security measures:
      * - Rate limiting: 5 attempts per 2 minutes per email+IP combination
-     * - Account deactivation check: blocks login for suspended accounts
-     * - Password verification prior to dispatching OTP
-     * - 6-Digit One-Time Password valid for 10 minutes
-     * - Branded email notification via configured SMTP (e.g. free Gmail SMTP)
+     * - Password verification remains in the Auth Service
+     * - Account deactivation check
+     * - Existing email OTP flow when enabled and supported by the Gateway schema
      */
     public function login(Request $request): RedirectResponse|JsonResponse
     {
@@ -57,10 +54,9 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
+        $credentials['email'] = strtolower(trim($credentials['email']));
 
         $remember = $request->boolean('remember');
-
-        // Rate limiting: prevent brute-force attacks
         $throttleKey = $this->throttleKey($request);
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
@@ -79,33 +75,26 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Check if the user exists and is active before attempting authentication
-        $user = User::where('email', $credentials['email'])->first();
-
-        if ($user && !$user->is_active) {
-            RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
-
-            ActivityLogService::logSecurity('blocked_login', "Blocked sign-in attempt for deactivated user account: '{$user->email}'.", $user, [
-                'email' => $credentials['email'],
-                'ip' => $request->ip(),
-            ]);
-
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'message' => 'Your account has been deactivated. Please contact your administrator.',
-                ], 403);
-            }
+        try {
+            $response = Http::timeout(5)
+                ->acceptJson()
+                ->post(rtrim(config('gateway.services.auth.base_url'), '/') . '/api/auth/login', [
+                    'email' => $credentials['email'],
+                    'password' => $credentials['password'],
+                ]);
+        } catch (\Throwable $e) {
+            report($e);
 
             return back()->withErrors([
-                'email' => 'Your account has been deactivated. Please contact your administrator.',
+                'email' => 'Authentication service is currently unavailable. Please try again later.',
             ])->onlyInput('email');
         }
 
-        // Verify password against hashed password
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if ($response->status() === 401) {
             RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
+            $user = User::where('email', $credentials['email'])->first();
 
-            ActivityLogService::logSecurity('failed_login', "Failed sign-in attempt for email '{$credentials['email']}' (invalid password/credentials).", $user, [
+            ActivityLogService::logSecurity('failed_login', "Failed sign-in attempt for email '{$credentials['email']}' (invalid Auth Service credentials).", $user, [
                 'attempted_email' => $credentials['email'],
                 'ip' => $request->ip(),
             ]);
@@ -121,7 +110,99 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Password is valid! Clear failed login throttle
+        if ($response->status() === 403) {
+            RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Your account has been deactivated. Please contact your administrator.',
+                ], 403);
+            }
+
+            return back()->withErrors([
+                'email' => 'Your account has been deactivated. Please contact your administrator.',
+            ])->onlyInput('email');
+        }
+
+        if (in_array($response->status(), [422, 429], true)) {
+            $message = $response->json('message') ?? 'Unable to authenticate your account at this time.';
+
+            if ($response->status() === 429 && $request->wantsJson()) {
+                return response()->json(['message' => $message], 429);
+            }
+
+            return back()->withErrors(['email' => $message])->onlyInput('email');
+        }
+
+        if (! $response->successful()) {
+            report(new \RuntimeException('Auth Service returned HTTP ' . $response->status()));
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Authentication service is currently unavailable. Please try again later.',
+                ], 503);
+            }
+
+            return back()->withErrors([
+                'email' => 'Authentication service is currently unavailable. Please try again later.',
+            ])->onlyInput('email');
+        }
+
+        $payload = $response->json();
+        $authData = is_array($payload) && ($payload['success'] ?? false) === true
+            ? ($payload['data'] ?? null)
+            : null;
+
+        if (
+            ! is_array($authData)
+            || ! is_array($authData['user'] ?? null)
+            || ! is_numeric($authData['user']['id'] ?? null)
+            || (int) $authData['user']['id'] < 1
+            || ! filter_var($authData['user']['email'] ?? null, FILTER_VALIDATE_EMAIL)
+            || ! is_string($authData['user']['role'] ?? null)
+            || ! array_key_exists('is_active', $authData['user'])
+            || ! is_bool($authData['user']['is_active'])
+        ) {
+            report(new \RuntimeException('Auth Service returned an invalid authentication response.'));
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Unable to complete authentication. Please try again.'], 502);
+            }
+
+            return back()->withErrors([
+                'email' => 'Unable to complete authentication. Please try again.',
+            ])->onlyInput('email');
+        }
+
+        try {
+            $user = $this->syncGatewayUserFromAuthService($authData['user'], $authData);
+        } catch (\RuntimeException $e) {
+            report($e);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Unable to synchronize your account. Please contact support.'], 500);
+            }
+
+            return back()->withErrors([
+                'email' => 'Unable to synchronize your account. Please contact support.',
+            ])->onlyInput('email');
+        }
+
+        if (! $user->is_active) {
+            RateLimiter::hit($throttleKey, self::LOCKOUT_DURATION_SECONDS);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Your account has been deactivated. Please contact your administrator.',
+                ], 403);
+            }
+
+            return back()->withErrors([
+                'email' => 'Your account has been deactivated. Please contact your administrator.',
+            ])->onlyInput('email');
+        }
+
+        // Credentials were verified by the Auth Service; clear the Gateway throttle.
         RateLimiter::clear($throttleKey);
 
         $has2FaColumns = Schema::hasColumn('users', 'two_factor_code');
@@ -130,8 +211,10 @@ class AuthController extends Controller
         // If 2FA is not explicitly enabled or migration is not yet applied, sign in directly!
         if (! $is2FaEnabled || ! $has2FaColumns) {
             Auth::login($user, $remember);
-            $request->session()->regenerate();
 
+if (! $request->wantsJson()) {
+    $request->session()->regenerate();
+}
             if (Schema::hasColumn('users', 'last_login_at')) {
                 $user->update(['last_login_at' => now()]);
             }
@@ -142,15 +225,16 @@ class AuthController extends Controller
                 'ip' => $request->ip(),
             ]);
 
+            $redirect = $user->isClient() ? '/portal' : '/dashboard';
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'redirect' => '/dashboard',
+                    'redirect' => $redirect,
                     'user' => $user,
                 ]);
             }
 
-            return redirect()->intended('/dashboard');
+            return $user->isClient() ? redirect('/portal') : redirect()->intended('/dashboard');
         }
 
         // Generate cryptographically secure 6-digit OTP code
@@ -164,17 +248,21 @@ class AuthController extends Controller
         } catch (\Throwable $e) {
             Log::warning("Failed to save 2FA OTP for {$user->email}: {$e->getMessage()}. Falling back to direct login.");
             Auth::login($user, $remember);
-            $request->session()->regenerate();
 
+if (! $request->wantsJson()) {
+    $request->session()->regenerate();
+}
+
+            $redirect = $user->isClient() ? '/portal' : '/dashboard';
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'redirect' => '/dashboard',
+                    'redirect' => $redirect,
                     'user' => $user,
                 ]);
             }
 
-            return redirect()->intended('/dashboard');
+            return $user->isClient() ? redirect('/portal') : redirect()->intended('/dashboard');
         }
 
         // Save remember choice and user id in session
@@ -275,8 +363,8 @@ class AuthController extends Controller
         $request->session()->forget('login_2fa_user_id');
 
         // Log the user in!
-        Auth::login($user, $remember);
-        $request->session()->regenerate();
+
+        $request->sessiAuth::login($user, $remember);on()->regenerate();
 
         ActivityLogService::logAuth($user, 'login_2fa_success', "User '{$user->name}' successfully signed in with 2FA email verification.", [
             'role' => $user->role,
@@ -284,15 +372,16 @@ class AuthController extends Controller
             'ip' => $request->ip(),
         ]);
 
+        $redirect = $user->isClient() ? '/portal' : '/dashboard';
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'redirect' => '/dashboard',
+                'redirect' => $redirect,
                 'user' => $user,
             ]);
         }
 
-        return redirect()->intended('/dashboard');
+        return $user->isClient() ? redirect('/portal') : redirect()->intended('/dashboard');
     }
 
     /**
@@ -381,93 +470,189 @@ class AuthController extends Controller
         return "{$maskedName}@{$domain}";
     }
 
-    /**
-     * Show registration form
-     */
-    public function showRegisterForm(): Response
-    {
-        return Inertia::render('Auth/Login');
-    }
-
-    /**
-     * Handle registration request.
-     *
-     * Security measures:
-     * - Strong password validation using Laravel's Password rule object
-     * - New accounts default to inactive (is_active = false) requiring admin approval
-     * - Default role is the lowest-privilege 'customer' role
-     */
     public function register(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => [
-                'required',
-                'string',
-                'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-                    ->uncompromised(),
-            ],
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'company_name' => ['required', 'string', 'max:255'],
+            'contact_person' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'project_location' => ['nullable', 'string', 'max:500'],
+            'role' => ['prohibited'],
         ]);
+        $validated['email'] = strtolower(trim($validated['email']));
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'first_name' => $validated['first_name'] ?? null,
-            'last_name' => $validated['last_name'] ?? null,
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
-            'role' => 'customer',       // Lowest-privilege role for self-registration
-            'is_active' => false,       // Require admin approval before account activation
-        ]);
+        try {
+            $response = Http::timeout(5)
+                ->acceptJson()
+                ->post(rtrim(config('gateway.services.auth.base_url'), '/') . '/api/auth/register', [
+                    'name' => $validated['contact_person'],
+                    'email' => $validated['email'],
+                    'password' => $validated['password'],
+                    'password_confirmation' => $request->input('password_confirmation'),
+                    'phone' => $validated['phone'] ?? null,
+                ]);
+        } catch (\Throwable $e) {
+            report($e);
 
-        event(new Registered($user));
-
-        ActivityLogService::logAuth($user, 'registered', "New user registration submitted for '{$user->name}' ({$user->email}), pending admin review.", [
-            'role' => $user->role,
-            'ip' => $request->ip(),
-        ]);
-
-        // Do NOT auto-login: account requires admin approval
-        return redirect('/login')->with('status', 'Registration successful! Your account is pending administrator approval.');
-    }
-
-    /**
-     * Handle logout with full session invalidation.
-     */
-    public function logout(Request $request): RedirectResponse
-    {
-        $user = Auth::user();
-        if ($user) {
-            ActivityLogService::logAuth($user, 'logout', "User '{$user->name}' ({$user->email}) logged out successfully.");
+            return back()->withErrors([
+                'email' => 'Authentication service is currently unavailable. Please try again later.',
+            ])->onlyInput('company_name', 'contact_person', 'email');
         }
 
+        if ($response->status() === 422) {
+            $errors = $response->json('errors');
+
+            return back()
+                ->withErrors(is_array($errors) ? $errors : [
+                    'email' => $response->json('message') ?? 'Unable to register your account.',
+                ])
+                ->onlyInput('company_name', 'contact_person', 'email');
+        }
+
+        if (! $response->successful()) {
+            report(new \RuntimeException('Auth Service registration returned HTTP ' . $response->status()));
+
+            return back()->withErrors([
+                'email' => 'Unable to register your account at this time.',
+            ])->onlyInput('company_name', 'contact_person', 'email');
+        }
+
+        $payload = $response->json();
+        $authUser = is_array($payload) && ($payload['success'] ?? false) === true
+            ? ($payload['data']['user'] ?? null)
+            : null;
+
+        if (
+            ! is_array($authUser)
+            || ! is_numeric($authUser['id'] ?? null)
+            || (int) $authUser['id'] < 1
+            || ! filter_var($authUser['email'] ?? null, FILTER_VALIDATE_EMAIL)
+            || strtolower((string) $authUser['email']) !== $validated['email']
+            || ! is_string($authUser['role'] ?? null)
+            || ! in_array(strtolower(trim($authUser['role'])), ['client', 'customer'], true)
+            || ! array_key_exists('is_active', $authUser)
+            || ! is_bool($authUser['is_active'])
+        ) {
+            report(new \RuntimeException('Auth Service returned an invalid registration response.'));
+
+            return back()->withErrors([
+                'email' => 'Unable to complete registration. Please try again.',
+            ])->onlyInput('company_name', 'contact_person', 'email');
+        }
+
+        try {
+            $user = $this->syncGatewayUserFromAuthService($authUser, $payload['data'], false);
+        } catch (\RuntimeException $e) {
+            report($e);
+
+            return back()->withErrors([
+                'email' => 'Your account was registered but could not be synchronized. Please contact support.',
+            ])->onlyInput('company_name', 'contact_person', 'email');
+        }
+
+        $customer = Customer::withTrashed()->firstOrNew(['email' => strtolower($validated['email'])]);
+        $customer->fill([
+            'name' => $validated['company_name'],
+            'company_name' => $validated['company_name'],
+            'contact_person' => $validated['contact_person'],
+            'email' => strtolower($validated['email']),
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'project_location' => $validated['project_location'] ?? null,
+            'customer_type' => 'business',
+            'status' => 'active',
+            'source' => 'Client Portal',
+        ]);
+        $customer->save();
+        if ($customer->trashed()) {
+            $customer->restore();
+        }
+
+        $user->update(['client_id' => $customer->id]);
+
+        ActivityLogService::logAuth($user, 'registered', "Client '{$user->name}' registered on the public portal.", [
+            'email' => $user->email,
+        ]);
+
+        return redirect()->route('login')->with('status', 'Registration successful. Please sign in.');
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
         Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 
-    /**
-     * Generate a unique throttle key combining email and IP address.
-     *
-     * Using both email and IP prevents:
-     * - Attackers from locking out legitimate users by flooding their email
-     * - Bypassing rate limits by switching email addresses from same IP
-     */
-    private function throttleKey(Request $request): string
+    protected function syncGatewayUserFromAuthService(array $authUser, array $authData, bool $login = true): User
     {
-        return Str::transliterate(
-            Str::lower($request->input('email')) . '|' . $request->ip()
-        );
+        $email = strtolower((string) ($authUser['email'] ?? ''));
+        $authUserId = (int) ($authUser['id'] ?? 0);
+        $gatewayUser = User::where('auth_user_id', $authUserId)->first();
+        $emailUser = User::where('email', $email)->first();
+
+        if ($gatewayUser && $emailUser && $gatewayUser->getKey() !== $emailUser->getKey()) {
+            throw new \RuntimeException('Auth Service identity conflicts with an existing Gateway email record.');
+        }
+
+        if (! $gatewayUser) {
+            $gatewayUser = $emailUser;
+        }
+
+        if ($gatewayUser && $gatewayUser->auth_user_id !== null && (int) $gatewayUser->auth_user_id !== $authUserId) {
+            throw new \RuntimeException('Gateway user is already linked to a different Auth Service identity.');
+        }
+
+        $gatewayUser ??= new User();
+
+        $firstName = $authUser['first_name'] ?? null;
+        $lastName = $authUser['last_name'] ?? null;
+        $name = $authUser['name'] ?? trim(($firstName ?? '') . ' ' . ($lastName ?? '')) ?: $email;
+
+        $gatewayUser->fill([
+            'auth_user_id' => $authUserId,
+            'name' => $name,
+            'email' => $email,
+            'password' => null,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'nickname' => $authUser['nickname'] ?? null,
+            'phone' => $authUser['phone'] ?? null,
+            'avatar_url' => $authUser['avatar_url'] ?? null,
+            'role' => $this->normalizeRole($authUser['role'] ?? $authData['role'] ?? null),
+            'client_id' => $authUser['client_id'] ?? $gatewayUser->client_id ?? null,
+            'is_active' => (bool) $authUser['is_active'],
+            'last_login_at' => $login ? now() : $gatewayUser->last_login_at,
+        ]);
+
+        $gatewayUser->save();
+
+        return $gatewayUser;
+    }
+
+    protected function normalizeRole(?string $role): string
+    {
+        $normalized = strtolower(trim((string) $role));
+
+        return match ($normalized) {
+            'super_admin', 'super-admin' => 'super_admin',
+            'admin', 'administrator' => 'admin',
+            'sales_manager', 'manager' => 'sales_manager',
+            'sales_business_development', 'sales-business-development', 'sales_bd' => 'sales_business_development',
+            'client', 'customer' => 'client',
+            'operations_technical', 'operations_staff', 'technical_staff', 'staff' => 'operations_technical',
+            default => throw new \RuntimeException('Auth Service returned an unrecognized user role.'),
+        };
+    }
+
+    protected function throttleKey(Request $request): string
+    {
+        return sha1(strtolower((string) $request->input('email')) . '|' . $request->ip());
     }
 }

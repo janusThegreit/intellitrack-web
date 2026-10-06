@@ -30,7 +30,8 @@ import {
   Gauge,
   CalendarCheck,
   Clock,
-  Activity,
+  TrendingUp,
+  Truck,
 } from 'lucide-react';
 
 import SalesAiFloatingChatbot from '../Components/SalesAiFloatingChatbot';
@@ -48,12 +49,19 @@ const IntelitrackIcon = () => (
 );
 
 const formatRole = (role: string = '') => ({
-  administrator: 'Administrator',
-  admin: 'Administrator',
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  administrator: 'Admin',
   sales_manager: 'Sales Manager',
   manager: 'Sales Manager',
-  sales_business_development: 'Sales Business Development (SBD)',
-  sales_bd: 'Sales Business Development (SBD)',
+  sales_business_development: 'Sales Business Development',
+  sales_bd: 'Sales Business Development',
+  operations_technical: 'Sales Business Development',
+  operations_staff: 'Sales Business Development',
+  technical_staff: 'Sales Business Development',
+  staff: 'Sales Business Development',
+  client: 'Client',
+  customer: 'Client',
 }[role] ?? (role ? role.replace(/_/g, ' ') : 'User'));
 
 interface NavItem {
@@ -67,20 +75,36 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
+    label: 'Client Portal',
+    icon: <UserCircle className="w-4 h-4" />,
+    href: '/portal',
+    roles: ['client', 'customer'],
+    children: [
+      { label: 'Overview', icon: <LayoutDashboard className="w-3.5 h-3.5" />, href: '/portal', roles: ['client', 'customer'] },
+      { label: 'Profile', icon: <UserCircle className="w-3.5 h-3.5" />, href: '/portal/profile', roles: ['client', 'customer'] },
+      { label: 'Inquiries', icon: <MessageSquare className="w-3.5 h-3.5" />, href: '/portal/inquiries', roles: ['client', 'customer'] },
+      { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/portal/quotations', roles: ['client', 'customer'] },
+      { label: 'Job Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/portal/job-orders', roles: ['client', 'customer'] },
+      { label: 'Rentals', icon: <Truck className="w-3.5 h-3.5" />, href: '/portal/rentals', roles: ['client', 'customer'] },
+      { label: 'Projects', icon: <FolderKanban className="w-3.5 h-3.5" />, href: '/portal/projects', roles: ['client', 'customer'] },
+      { label: 'Feedback', icon: <MessageSquareQuote className="w-3.5 h-3.5" />, href: '/portal/feedback', roles: ['client', 'customer'] },
+    ],
+  },
+  {
     label: 'Dashboard',
     icon: <LayoutDashboard className="w-4 h-4" />,
     href: '/dashboard',
-    roles: ['sales_manager', 'sales_business_development', 'administrator'],
+    roles: ['super_admin', 'sales_manager', 'sales_business_development', 'operations_technical', 'staff'],
   },
   {
     label: 'CRM & Inquiries',
     icon: <Users className="w-4 h-4" />,
     href: '/crm',
-    roles: ['sales_manager', 'sales_business_development'],
+    roles: ['admin', 'sales_manager', 'sales_business_development'],
     children: [
+      { label: 'Customers', icon: <UserCircle className="w-3.5 h-3.5" />, href: '/customers', roles: ['admin', 'administrator', 'sales_manager', 'sales_business_development'] },
       { label: 'Inquiries', icon: <MessageSquare className="w-3.5 h-3.5" />, href: '/inquiries' },
-      { label: 'Customers & Clients', icon: <UserCircle className="w-3.5 h-3.5" />, href: '/customers' },
-      { label: 'Quotations', icon: <FileStack className="w-3.5 h-3.5" />, href: '/quotations' },
+      { label: 'Sales Opportunities', icon: <TrendingUp className="w-3.5 h-3.5" />, href: '/sales-opportunities' },
       { label: 'Follow-Ups', icon: <PhoneCall className="w-3.5 h-3.5" />, href: '/crm/follow-ups' },
       { label: 'Communications', icon: <Mail className="w-3.5 h-3.5" />, href: '/crm/communications' },
       { label: 'Feedback', icon: <MessageSquareQuote className="w-3.5 h-3.5" />, href: '/crm/feedback' },
@@ -92,10 +116,9 @@ const navItems: NavItem[] = [
     href: '/job-orders',
     roles: ['sales_manager', 'sales_business_development'],
     children: [
-      { label: 'All Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders' },
-      { label: 'Registration & Queue', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests' },
-      { label: 'Operations Tracking', icon: <Activity className="w-3.5 h-3.5" />, href: '/job-orders/tracking' },
-      { label: 'Completed Orders', icon: <CheckCircle2 className="w-3.5 h-3.5" />, href: '/job-orders/completion' },
+      { label: 'All Orders', icon: <FileText className="w-3.5 h-3.5" />, href: '/job-orders', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
+      { label: 'Requests & Approvals', icon: <Clock className="w-3.5 h-3.5" />, href: '/job-orders/requests', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
+      { label: 'Completion', icon: <CheckCircle2 className="w-3.5 h-3.5" />, href: '/job-orders/completion', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
     ],
   },
   {
@@ -104,8 +127,10 @@ const navItems: NavItem[] = [
     href: '/rentals',
     roles: ['sales_manager', 'sales_business_development'],
     children: [
-      { label: 'Rental Requests', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals' },
-      { label: 'Equipment Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability' },
+      { label: 'Rental Requirements', icon: <FileText className="w-3.5 h-3.5" />, href: '/rental-requirements', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
+      { label: 'Equipment', icon: <Truck className="w-3.5 h-3.5" />, href: '/equipment', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
+      { label: 'Availability', icon: <Gauge className="w-3.5 h-3.5" />, href: '/equipment/availability', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
+      { label: 'Rentals', icon: <CalendarCheck className="w-3.5 h-3.5" />, href: '/rentals', roles: ['sales_manager', 'sales_business_development', 'operations_technical', 'staff'] },
     ],
   },
   {
@@ -119,7 +144,7 @@ const navItems: NavItem[] = [
     icon: <Sparkles className="w-4 h-4" />,
     href: '/ai-analytics',
     badge: 'AI',
-    roles: ['sales_manager'],
+    roles: ['sales_manager', 'sales_business_development'],
   },
   {
     label: 'Reports',
@@ -131,25 +156,25 @@ const navItems: NavItem[] = [
     label: 'User Management',
     icon: <Users className="w-4 h-4" />,
     href: '/users',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'Roles & Access',
     icon: <Shield className="w-4 h-4" />,
     href: '/roles',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'Audit Logs',
     icon: <History className="w-4 h-4" />,
     href: '/logs',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
   {
     label: 'System Settings',
     icon: <Settings className="w-4 h-4" />,
     href: '/settings',
-    roles: ['administrator'],
+    roles: ['admin', 'administrator', 'super_admin'],
   },
 ];
 
@@ -207,16 +232,25 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, currentPath =
     return current === target || current.startsWith(target + '/');
   };
 
-  const normalizedRole = userRole === 'admin' ? 'administrator' : (userRole === 'sales_bd' ? 'sales_business_development' : userRole);
+  const normalizedRole = ({
+    administrator: 'admin',
+    manager: 'sales_manager',
+    sales_bd: 'sales_business_development',
+    customer: 'client',
+    operations_technical: 'sales_business_development',
+    operations_staff: 'sales_business_development',
+    technical_staff: 'sales_business_development',
+    staff: 'sales_business_development',
+  } as Record<string, string>)[userRole] ?? userRole;
 
   const availableNavItems = useMemo(() => {
     return navItems
-      .filter((item) => !item.roles || item.roles.includes(normalizedRole))
+      .filter((item) => normalizedRole === 'super_admin' || !item.roles || item.roles.includes(normalizedRole))
       .map((item) => {
         if (!item.children) return item;
         return {
           ...item,
-          children: item.children.filter((child) => !child.roles || child.roles.includes(normalizedRole)),
+          children: item.children.filter((child) => normalizedRole === 'super_admin' || !child.roles || child.roles.includes(normalizedRole)),
         };
       });
   }, [normalizedRole]);
@@ -467,6 +501,7 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
   const accountName = profile?.nickname || profile?.first_name || profile?.name || 'Authorized User';
   const initials = accountName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   const unreadCount = notifications.filter(n => !n.read_at).length;
+  const canManageSystemSettings = ['super_admin', 'admin', 'administrator'].includes(profile?.role ?? userRole);
 
   return (
     <header className="relative z-40 w-full bg-surface-card/90 backdrop-blur-md border-b border-border-default/80 text-content-primary shrink-0">
@@ -628,10 +663,12 @@ const Header = ({ onSidebarToggle, title, action, userRole = '', dark = false, o
                   <p className="text-xs font-bold text-content-primary truncate">{accountName}</p>
                   <p className="text-[10px] font-semibold text-amber-500 uppercase">{formatRole(profile?.role ?? userRole)}</p>
                 </div>
-                <a href="/settings" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-input hover:text-content-primary transition-colors">
-                  <Settings className="h-4 w-4" />
-                  System Settings
-                </a>
+                {canManageSystemSettings && (
+                  <a href="/settings" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-input hover:text-content-primary transition-colors">
+                    <Settings className="h-4 w-4" />
+                    System Settings
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={signOut}

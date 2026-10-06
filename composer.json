@@ -23,6 +23,7 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
+            "IntelliTrack\\Services\\Auth\\": "services/auth-service/src/",
             "IntelliTrack\\Shared\\": "shared/src/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"

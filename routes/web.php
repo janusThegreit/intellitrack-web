@@ -3,17 +3,30 @@
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\PasswordResetRequestController;
+use App\Http\Controllers\ClientPortalController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return redirect('/dashboard');
-});
+    if (Auth::check()) {
+        $user = Auth::user();
+
+        if ($user?->isClient()) {
+            return redirect('/portal');
+        }
+
+        return redirect('/dashboard');
+    }
+
+    return Inertia::render('LandingPage');
+})->name('home');
 
 Route::get('/maintenance', fn () => Inertia::render('Maintenance'))->name('maintenance');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.store');
     Route::post('/login/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:15,1')->name('login.verify-otp');
     Route::post('/login/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:5,1')->name('login.resend-otp');
@@ -26,6 +39,17 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/portal', [ClientPortalController::class, 'dashboard'])->middleware('can:access-client-portal')->name('portal');
+    Route::get('/portal/profile', [ClientPortalController::class, 'profile'])->middleware('can:access-client-portal')->name('portal.profile');
+    Route::get('/portal/inquiries', [ClientPortalController::class, 'inquiries'])->middleware('can:access-client-portal')->name('portal.inquiries');
+    Route::post('/portal/inquiries', [ClientPortalController::class, 'storeInquiry'])->middleware('can:access-client-portal')->name('portal.inquiries.store');
+    Route::get('/portal/quotations', [ClientPortalController::class, 'quotations'])->middleware('can:access-client-portal')->name('portal.quotations');
+    Route::get('/portal/job-orders', [ClientPortalController::class, 'jobOrders'])->middleware('can:access-client-portal')->name('portal.job-orders');
+    Route::get('/portal/rentals', [ClientPortalController::class, 'rentals'])->middleware('can:access-client-portal')->name('portal.rentals');
+    Route::get('/portal/projects', [ClientPortalController::class, 'projects'])->middleware('can:access-client-portal')->name('portal.projects');
+    Route::get('/portal/feedback', [ClientPortalController::class, 'feedback'])->middleware('can:access-client-portal')->name('portal.feedback');
+    Route::post('/portal/feedback', [ClientPortalController::class, 'storeFeedback'])->middleware('can:access-client-portal')->name('portal.feedback.store');
+    Route::put('/portal/profile', [ClientPortalController::class, 'updateProfile'])->middleware('can:access-client-portal')->name('portal.profile.update');
     Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->middleware('can:view-core-dashboard')->name('dashboard');
     Route::get('/crm', fn () => Inertia::render('CRM/Index'))->middleware('can:view-crm')->name('crm');
     Route::get('/inquiries', fn () => Inertia::render('CRM/Index'))->middleware('can:view-crm')->name('inquiries');
@@ -57,7 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users', fn () => Inertia::render('Users/Index'))->middleware('can:manage-users')->name('users');
     Route::get('/roles', fn () => Inertia::render('Roles/Index'))->middleware('can:manage-users')->name('roles');
     Route::get('/logs', fn () => Inertia::render('Logs/Index'))->middleware('can:manage-users')->name('logs');
-    Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings');
+    Route::get('/settings', fn () => Inertia::render('Settings/Index'))->middleware('can:manage-system-settings')->name('settings');
     Route::get('/ai', [AiController::class, 'index'])->middleware('can:view-reports')->name('ai.index');
     Route::post('/ai/ask', [AiController::class, 'askAi'])->middleware('can:view-reports')->name('ai.ask');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

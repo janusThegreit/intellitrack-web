@@ -20,10 +20,9 @@ class ActivityLogService
         ?array $oldValues = null,
         ?array $newValues = null
     ): ActivityLog {
-        $userId = $user ? $user->id : (auth()->id() ?? User::where('role', 'administrator')->value('id') ?? 1);
+        $userId = $user?->id ?? auth()->id();
 
-        return ActivityLog::create([
-            'user_id' => $userId,
+        $attributes = [
             'action' => $action,
             'loggable_type' => $model,
             'loggable_id' => $modelId,
@@ -32,7 +31,18 @@ class ActivityLogService
             'new_values' => $newValues,
             'ip_address' => request()->ip() ?? '127.0.0.1',
             'user_agent' => request()->header('user-agent') ?? 'System/Internal',
-        ]);
+        ];
+
+        if ($userId !== null) {
+            $attributes['user_id'] = $userId;
+
+            return ActivityLog::create($attributes);
+        }
+
+        $log = new ActivityLog($attributes);
+        $log->user_id = null;
+
+        return $log;
     }
 
     /**

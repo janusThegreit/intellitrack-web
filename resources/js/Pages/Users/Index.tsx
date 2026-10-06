@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { AppLayout } from '../../Layouts/AppLayout';
-import { 
-  Search, UserPlus, Eye, EyeOff, Edit2, Trash2, X, Download,
-  CheckCircle2, XCircle, Shield, Wrench, TrendingUp, Target,
-  Truck, UserCheck, Mail, Phone, Key, Lock, Clock,
+import {
+  Search, UserPlus, Eye, Edit2, Trash2, X, Download,
+  CheckCircle2, XCircle, Shield, TrendingUp, Target,
+  UserCheck, Mail, Phone, Key, Lock, Clock,
   Calendar, Activity, Sparkles, Check, AlertTriangle, RefreshCw,
-  User as UserIcon, KeyRound, Copy, ShieldAlert, ShieldCheck,
-  Fingerprint, Globe, Terminal
+  User as UserIcon
 } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../../Components/Modal';
@@ -51,31 +51,6 @@ interface UserDossierData {
   }>;
 }
 
-interface PasswordResetRequestItem {
-  id: number;
-  user_id: number;
-  email: string;
-  reason?: string;
-  status: 'pending' | 'approved' | 'used' | 'rejected' | 'expired';
-  token?: string;
-  requested_at: string;
-  token_expires_at?: string;
-  is_used: boolean;
-  used_at?: string;
-  user?: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    avatar_url?: string;
-  };
-  approved_by?: {
-    id: number;
-    name: string;
-    email: string;
-  };
-}
-
 interface RoleConfig {
   label: string;
   shortRole: string;
@@ -92,50 +67,42 @@ interface RoleConfig {
 }
 
 const ROLE_CONFIGS: Record<string, RoleConfig> = {
-  administrator: {
-    label: 'Administrator',
-    shortRole: 'Superadmin',
+  super_admin: {
+    label: 'Super Admin',
+    shortRole: 'Super Admin',
     border: 'border-purple-500/40',
     text: 'text-purple-400',
     bg: 'bg-purple-950/30',
     badgeBg: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
     icon: Shield,
-    description: 'Unrestricted IAM administrative authority across fleet assets, financial models, user credentials, and root configurations.',
-    clearanceLevel: 'Tier 1 — Full System Superadmin',
-    scope: 'IAM Governance & Strategic Operations',
+    description: 'Highest-level access to every existing internal module and the client portal.',
+    clearanceLevel: 'Tier 1 — Full System Super Admin',
+    scope: 'Full System Authority',
     granted: [
-      'Full User Management & Role Elevation (IAM)',
-      'System Maintenance Mode & Emergency Broadcasts',
-      'High-Value Quotation Final Approvals & Margin Overrides',
-      'Fleet Logistics, Maintenance & Inventory Records',
-      'Security Audit Log Inspection & Compliance Export',
-      'Sales Intelligence AI Copilot Analytics',
+      'All existing modules and API permissions',
+      'Super Admin-only role assignment',
     ],
     restricted: [],
   },
-  operations_technical: {
-    label: 'Operations & Technical Staff',
-    shortRole: 'Operations & Tech',
-    border: 'border-emerald-500/40',
-    text: 'text-emerald-400',
-    bg: 'bg-emerald-950/30',
-    badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
-    icon: Wrench,
-    description: 'Specialized heavy equipment monitoring, tower crane maintenance logs, inspection checklists, and job order scheduling & execution.',
-    clearanceLevel: 'Tier 2 — Operations & Technical Authority',
-    scope: 'Fleet Reliability, Crane Maintenance & Job Order Dispatch',
+  admin: {
+    label: 'Admin',
+    shortRole: 'Admin',
+    border: 'border-violet-500/40',
+    text: 'text-violet-400',
+    bg: 'bg-violet-950/30',
+    badgeBg: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
+    icon: Shield,
+    description: 'Administrative access distinct from the highest-level Super Admin role.',
+    clearanceLevel: 'Tier 2 — Administrative Management',
+    scope: 'User Management, System Settings, CRM & Client Management',
     granted: [
-      'Heavy Equipment & Tower Crane Fleet Status Monitoring',
-      'Preventative & Emergency Maintenance Scheduling',
-      'Job Order Scheduling, Crew Dispatch & Task Checklists',
-      'Equipment Mobilization & Return Demobilization Inspections',
-      'Operational Dashboard Telemetry & Fleet Matrix',
-      'Project Milestones & Logistics Task Management',
+      'User and role management',
+      'System settings and audit logs',
+      'CRM and client management',
     ],
     restricted: [
-      'User Account Creation & Role Modification (IAM)',
-      'Quotation Discount & Financial Margin Overrides',
-      'System Maintenance Mode & Root Configuration',
+      'Super Admin account management and role assignment',
+      'Sales-only reports, fleet, job orders, and projects',
     ],
   },
   sales_manager: {
@@ -147,13 +114,13 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
     badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
     icon: TrendingUp,
     description: 'Commercial sales leadership, quotation approval workflows, deal pipeline governance, and client relationship management.',
-    clearanceLevel: 'Tier 2 — Commercial Management Authority',
+    clearanceLevel: 'Tier 3 — Commercial Management Authority',
     scope: 'Quotation Approvals, Revenue Pipelines & Client Relations',
     granted: [
-      'Quotation Creation, Pricing & Margin Approvals',
+      'Quotation creation and approval (excluding own quotations)',
       'CRM Deals Pipeline & Opportunity Stage Tracking',
       'Customer 360 Relationship Profiles & Engagement',
-      'Sales Performance Analytics & AI Copilot Insights',
+      'Reports and AI Analytics',
       'Client Inquiry Conversion to Formal Quotations',
     ],
     restricted: [
@@ -163,59 +130,39 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
   sales_business_development: {
     label: 'Sales Business Development',
-    shortRole: 'Sales BD',
+    shortRole: 'Sales Business Development',
     border: 'border-blue-500/40',
     text: 'text-blue-400',
     bg: 'bg-blue-950/30',
     badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
     icon: Target,
-    description: 'Client prospecting, customer inquiry intake, initial draft quotation preparation, and communication logging.',
-    clearanceLevel: 'Tier 3 — Field Sales & Client Acquisition',
-    scope: 'Client Acquisition, Inquiry Intake & Lead Pipeline',
+    description: 'Client prospecting, CRM engagement, job orders, rentals, projects, and reporting.',
+    clearanceLevel: 'Tier 4 — Sales Business Development',
+    scope: 'CRM, Client Management, Job Orders, Fleet & Rentals, Projects, and Analytics',
     granted: [
-      'Client Inquiries Intake & Lead Follow-ups',
-      'Draft Quotation Preparation & Submission',
-      'Customer Profiles & Communications Log',
-      'View Active Equipment Availability Catalog',
+      'Inquiries, opportunities, quotations, follow-ups, communications, and feedback',
+      'Customer profiles and client communications',
+      'Job-order management',
+      'Fleet, rental requirements, and rental management',
+      'Project management and analytics',
     ],
     restricted: [
       'Final Quotation Price Approval & Margin Override',
-      'Fleet Maintenance Operations',
-      'User Administration & Security Settings',
+      'User and role management',
+      'System settings and audit logs',
+      'Client-owned portal data',
     ],
   },
-  staff: {
-    label: 'Operations Staff',
-    shortRole: 'Field Staff',
-    border: 'border-slate-500/40',
-    text: 'text-slate-300',
-    bg: 'bg-slate-900/30',
-    badgeBg: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
-    icon: Truck,
-    description: 'Field operations staff responsible for job order checklists, on-site equipment handling, and task execution.',
-    clearanceLevel: 'Tier 4 — Field Logistics & Support',
-    scope: 'On-site Execution & Assigned Task Fulfillment',
-    granted: [
-      'Assigned Job Orders & Task Fulfillment Checklists',
-      'Equipment Check-in / Demobilization Checklist',
-      'Personal Profile & Account Activity View',
-    ],
-    restricted: [
-      'Financial Quotations & Margin Controls',
-      'User Management & System Settings',
-      'Executive BI Reports',
-    ],
-  },
-  customer: {
-    label: 'Customer / Client Portal',
-    shortRole: 'Client Portal',
+  client: {
+    label: 'Client',
+    shortRole: 'Client',
     border: 'border-indigo-500/40',
     text: 'text-indigo-300',
     bg: 'bg-indigo-950/30',
     badgeBg: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
     icon: UserCheck,
     description: 'External client account with restricted visibility into company-specific rentals, active job orders, and approved quotations.',
-    clearanceLevel: 'Tier 5 — External Client Access',
+    clearanceLevel: 'External Role — Client Portal',
     scope: 'Client Self-Service & Rental Visibility',
     granted: [
       'View Own Approved Quotations & Rental Contracts',
@@ -230,33 +177,27 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
 };
 
-const ASSIGNABLE_IAM_ROLE_KEYS = ['administrator', 'sales_manager', 'sales_business_development'] as const;
+const CANONICAL_ROLE_CONFIGS: Record<string, RoleConfig> = {
+  super_admin: ROLE_CONFIGS.super_admin,
+  admin: ROLE_CONFIGS.admin,
+  sales_manager: ROLE_CONFIGS.sales_manager,
+  sales_business_development: ROLE_CONFIGS.sales_business_development,
+  client: ROLE_CONFIGS.client,
+};
 
-interface PasswordEntropyResult {
-  score: number;
-  label: string;
-  color: string;
-  text: string;
-  width: string;
-}
-
-const calculatePasswordEntropy = (pwd: string): PasswordEntropyResult => {
-  if (!pwd) return { score: 0, label: 'No Key Generated', color: 'bg-zinc-700', text: 'text-zinc-500', width: '0%' };
-  let score = 0;
-  if (pwd.length >= 8) score += 1;
-  if (pwd.length >= 12) score += 1;
-  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
-  if (/[0-9]/.test(pwd)) score += 1;
-  if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
-
-  if (score <= 2) return { score: 1, label: 'Weak (Vulnerable)', color: 'bg-rose-500', text: 'text-rose-400', width: '25%' };
-  if (score === 3) return { score: 2, label: 'Moderate (Standard)', color: 'bg-amber-500', text: 'text-amber-400', width: '50%' };
-  if (score === 4) return { score: 3, label: 'Strong (Recommended)', color: 'bg-emerald-500', text: 'text-emerald-400', width: '75%' };
-  return { score: 4, label: 'Enterprise Grade (High Entropy)', color: 'bg-cyan-400', text: 'text-cyan-300', width: '100%' };
+const normalizeAssignableRole = (role: string): string => {
+  if (role === 'administrator') return 'admin';
+  if (role === 'manager') return 'sales_manager';
+  if (['sales_bd', 'operations_technical', 'operations_staff', 'technical_staff', 'staff'].includes(role)) {
+    return 'sales_business_development';
+  }
+  if (role === 'customer') return 'client';
+  return role in CANONICAL_ROLE_CONFIGS ? role : '';
 };
 
 const formatRole = (role: string) => {
-  return ROLE_CONFIGS[role]?.label || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(role)]?.label
+    || 'Unmapped role';
 };
 
 const formatDate = (dateString?: string) => {
@@ -277,41 +218,33 @@ const getInitials = (name: string) => {
 };
 
 export default function UsersIndex() {
+  const { auth } = usePage<any>().props;
+  const isSuperAdmin = auth?.user?.role === 'super_admin';
+  const roleOptions = Object.entries(CANONICAL_ROLE_CONFIGS)
+    .filter(([role]) => isSuperAdmin || role !== 'super_admin');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, active: 0, inactive: 0, recent: 0 });
-  
-  const [search, setSearch] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('search') || '';
-    }
-    return '';
-  });
+
+  const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [dossierData, setDossierData] = useState<UserDossierData | null>(null);
   const [loadingDossier, setLoadingDossier] = useState(false);
 
-  // Security & Credential state
-  const [showEditPassword, setShowEditPassword] = useState(false);
-  const [copiedPassword, setCopiedPassword] = useState(false);
-  const [isRevokingSessions, setIsRevokingSessions] = useState(false);
-  const [isResettingMfa, setIsResettingMfa] = useState(false);
-
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    role: 'sales_manager',
+    role: 'client',
     password: '',
     is_active: true,
   });
@@ -319,85 +252,19 @@ export default function UsersIndex() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Tab state: 'directory' or 'reset_requests'
-  const [activeTab, setActiveTab] = useState<'directory' | 'reset_requests'>('directory');
-  const [resetRequests, setResetRequests] = useState<PasswordResetRequestItem[]>([]);
-  const [resetStats, setResetStats] = useState({ total: 0, pending: 0, approved: 0, used: 0 });
-  const [loadingRequests, setLoadingRequests] = useState(false);
-  const [generatedLinkModal, setGeneratedLinkModal] = useState<{
-    isOpen: boolean;
-    request: PasswordResetRequestItem | null;
-    resetUrl: string;
-    copied: boolean;
-  }>({
-    isOpen: false,
-    request: null,
-    resetUrl: '',
-    copied: false,
-  });
-
-  const loadResetRequests = async () => {
-    setLoadingRequests(true);
-    try {
-      const res = await axios.get('/api/password-reset-requests');
-      setResetRequests(res.data.requests || []);
-      setResetStats(res.data.stats || { total: 0, pending: 0, approved: 0, used: 0 });
-    } catch (err) {
-      console.error('Failed to load password reset requests', err);
-    } finally {
-      setLoadingRequests(false);
-    }
-  };
-
-  const generateOneTimeLink = async (item: PasswordResetRequestItem) => {
-    try {
-      const res = await axios.post(`/api/password-reset-requests/${item.id}/generate-link`);
-      showToast('One-time password reset link generated successfully!');
-      setGeneratedLinkModal({
-        isOpen: true,
-        request: res.data.request || item,
-        resetUrl: res.data.reset_url,
-        copied: false,
-      });
-      loadResetRequests();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to generate reset link.');
-    }
-  };
-
-  const copyLinkToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setGeneratedLinkModal(prev => ({ ...prev, copied: true }));
-    showToast('Reset link copied to clipboard!');
-    setTimeout(() => {
-      setGeneratedLinkModal(prev => ({ ...prev, copied: false }));
-    }, 2500);
-  };
-
-  const rejectResetRequest = async (item: PasswordResetRequestItem) => {
-    if (!confirm(`Are you sure you want to reject the reset request for ${item.email}?`)) return;
-    try {
-      await axios.post(`/api/password-reset-requests/${item.id}/reject`);
-      showToast('Password reset request has been rejected.');
-      loadResetRequests();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to reject request.');
-    }
-  };
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
   const clearErrors = () => setErrors({});
-  const resetForm = () => setFormData({ 
-    name: '', 
-    email: '', 
-    phone: '', 
-    role: 'sales_manager', 
-    password: '', 
-    is_active: true 
+  const resetForm = () => setFormData({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'client',
+    password: '',
+    is_active: true
   });
 
   const load = () => {
@@ -414,10 +281,6 @@ export default function UsersIndex() {
       })
       .catch(console.error);
   };
-
-  useEffect(() => {
-    loadResetRequests();
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -439,12 +302,10 @@ export default function UsersIndex() {
       name: user.name,
       email: user.email,
       phone: user.phone || '',
-      role: (ASSIGNABLE_IAM_ROLE_KEYS as readonly string[]).includes(user.role) ? user.role : 'sales_manager',
+      role: normalizeAssignableRole(user.role),
       password: '',
       is_active: user.is_active,
     });
-    setShowEditPassword(false);
-    setCopiedPassword(false);
     setIsEditModalOpen(true);
   };
 
@@ -470,59 +331,13 @@ export default function UsersIndex() {
   };
 
   const generatePassword = () => {
-    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lower = 'abcdefghijkmnopqrstuvwxyz';
-    const digits = '23456789';
-    const symbols = '!@#$%^&*-_=+';
-    const all = upper + lower + digits + symbols;
-    
-    let pwd = [
-      upper[Math.floor(Math.random() * upper.length)],
-      lower[Math.floor(Math.random() * lower.length)],
-      digits[Math.floor(Math.random() * digits.length)],
-      symbols[Math.floor(Math.random() * symbols.length)],
-    ];
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pwd = '';
     for (let i = 0; i < 12; i++) {
-      pwd.push(all[Math.floor(Math.random() * all.length)]);
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    const result = pwd.sort(() => Math.random() - 0.5).join('');
-    setFormData(prev => ({ ...prev, password: result }));
-    setShowEditPassword(true);
-    showToast('Generated 16-character high-entropy cryptographic password!');
-  };
-
-  const copyPasswordToClipboard = () => {
-    if (!formData.password) return;
-    navigator.clipboard.writeText(formData.password);
-    setCopiedPassword(true);
-    showToast('Password copied to clipboard!');
-    setTimeout(() => setCopiedPassword(false), 2000);
-  };
-
-  const handleRevokeSessions = async (userId: number, userName: string) => {
-    if (!confirm(`Revoke all active sessions and authentication tokens for ${userName}? The user must log in again.`)) return;
-    setIsRevokingSessions(true);
-    try {
-      const res = await axios.post(`/api/users/${userId}/revoke-sessions`);
-      showToast(res.data.message || `All active sessions revoked for ${userName}.`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to revoke sessions.');
-    } finally {
-      setIsRevokingSessions(false);
-    }
-  };
-
-  const handleResetMfa = async (userId: number, userName: string) => {
-    if (!confirm(`Reset Two-Factor Authentication challenges for ${userName}? The user will verify a new security challenge on next login.`)) return;
-    setIsResettingMfa(true);
-    try {
-      const res = await axios.post(`/api/users/${userId}/reset-mfa`);
-      showToast(res.data.message || `2FA challenge reset for ${userName}.`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to reset 2FA challenge.');
-    } finally {
-      setIsResettingMfa(false);
-    }
+    setFormData(prev => ({ ...prev, password: pwd }));
+    showToast('Secure temporary password generated!');
   };
 
   const submitAdd = async (e: React.FormEvent) => {
@@ -559,9 +374,11 @@ export default function UsersIndex() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        role: formData.role,
         is_active: formData.is_active,
       };
+      if (formData.role && formData.role !== normalizeAssignableRole(selectedUser.role)) {
+        payload.role = formData.role;
+      }
       if (formData.password) {
         payload.password = formData.password;
       }
@@ -643,7 +460,7 @@ export default function UsersIndex() {
   };
 
   return (
-    <AppLayout showHeader={false}>
+    <AppLayout dark={true} showHeader={false}>
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/90 px-4 py-3 text-sm font-medium text-emerald-200 shadow-2xl backdrop-blur-md transition-all">
@@ -660,7 +477,7 @@ export default function UsersIndex() {
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-content-primary sm:text-2xl">User Management & IAM</h1>
+              <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">User Management & IAM</h1>
               <p className="text-xs text-content-secondary">
                 Configure identity, role assignments, technical clearances, and system authorization.
               </p>
@@ -671,7 +488,7 @@ export default function UsersIndex() {
         <div className="flex items-center gap-3">
           <button
             onClick={exportUsersCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3.5 py-2 text-xs font-semibold text-content-secondary transition hover:border-amber-500/40 hover:text-content-primary"
+            className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-card px-3.5 py-2 text-xs font-semibold text-content-secondary transition hover:border-zinc-500 hover:text-white"
           >
             <Download className="h-4 w-4" />
             Export CSV
@@ -691,11 +508,11 @@ export default function UsersIndex() {
         <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-surface-card p-5 shadow-lg">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-content-secondary">Total Accounts</p>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-input text-content-secondary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-content-secondary">
               <UserIcon className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">{stats.total}</p>
+          <p className="mt-3 text-3xl font-extrabold text-white">{stats.total}</p>
           <p className="mt-1 text-[11px] text-content-secondary">Configured system identities</p>
         </div>
 
@@ -706,7 +523,7 @@ export default function UsersIndex() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-400 font-mono">{stats.active}</p>
+          <p className="mt-3 text-3xl font-extrabold text-emerald-400">{stats.active}</p>
           <p className="mt-1 text-[11px] text-emerald-400/80">Authorized & operational</p>
         </div>
 
@@ -717,7 +534,7 @@ export default function UsersIndex() {
               <XCircle className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-rose-400 font-mono">{stats.inactive}</p>
+          <p className="mt-3 text-3xl font-extrabold text-rose-400">{stats.inactive}</p>
           <p className="mt-1 text-[11px] text-rose-400/80">Revoked / pending review</p>
         </div>
 
@@ -728,83 +545,18 @@ export default function UsersIndex() {
               <Sparkles className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-content-primary font-mono">
+          <p className="mt-3 text-3xl font-extrabold text-white">
             {stats.recent} <span className="text-xs font-normal text-content-secondary">this month</span>
           </p>
           <p className="mt-1 text-[11px] text-content-secondary">New staff accounts added</p>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('directory')}
-            className={clsx(
-              'flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer',
-              activeTab === 'directory'
-                ? 'bg-[#ffcc00] text-black shadow-lg shadow-amber-500/20'
-                : 'text-content-secondary hover:bg-surface-card hover:text-white'
-            )}
-          >
-            <UserCheck className="h-4 w-4" />
-            <span>User Directory & Clearances</span>
-            <span className={clsx(
-              'rounded-full px-2 py-0.5 text-[10px] font-mono',
-              activeTab === 'directory' ? 'bg-black/20 text-black font-black' : 'bg-surface-input text-zinc-400'
-            )}>
-              {stats.total}
-            </span>
-          </button>
+      {/* Main Content Area */}
+      <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl">
 
-          <button
-            onClick={() => {
-              setActiveTab('reset_requests');
-              loadResetRequests();
-            }}
-            className={clsx(
-              'flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer relative',
-              activeTab === 'reset_requests'
-                ? 'bg-[#ffcc00] text-black shadow-lg shadow-amber-500/20'
-                : 'text-content-secondary hover:bg-surface-card hover:text-white'
-            )}
-          >
-            <KeyRound className="h-4 w-4" />
-            <span>Password Reset Requests</span>
-            {resetStats.pending > 0 ? (
-              <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-black animate-pulse shadow-sm">
-                <span>{resetStats.pending}</span>
-                <span className="hidden sm:inline">PENDING</span>
-              </span>
-            ) : (
-              <span className={clsx(
-                'rounded-full px-2 py-0.5 text-[10px] font-mono',
-                activeTab === 'reset_requests' ? 'bg-black/20 text-black font-black' : 'bg-surface-input text-zinc-400'
-              )}>
-                {resetStats.total}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {activeTab === 'reset_requests' && (
-          <button
-            onClick={loadResetRequests}
-            disabled={loadingRequests}
-            className="flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-card hover:text-white transition-colors cursor-pointer"
-          >
-            <RefreshCw className={clsx('h-3.5 w-3.5', loadingRequests && 'animate-spin')} />
-            <span>Refresh Requests</span>
-          </button>
-        )}
-      </div>
-
-      {/* Main Content Area - User Directory */}
-      {activeTab === 'directory' && (
-        <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden flex flex-col">
-        
         {/* Filters Bar */}
-        <div className="sticky top-0 z-30 flex flex-col items-center justify-between gap-4 border-b border-border-subtle bg-surface-card/95 backdrop-blur-md p-4 sm:flex-row shadow-sm">
+        <div className="flex flex-col items-center justify-between gap-4 border-b border-border-subtle p-4 sm:flex-row">
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             {/* Search */}
             <div className="relative w-full sm:w-72">
@@ -817,29 +569,28 @@ export default function UsersIndex() {
                 className="w-full rounded-lg border border-border-default bg-surface-input py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
               />
             </div>
-            
+
             {/* Role Filter */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-content-secondary">Role:</span>
-              <select 
+              <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
                 className="rounded-lg border border-border-default bg-surface-input py-1.5 pl-3 pr-8 text-xs text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
               >
                 <option value="all">All Roles</option>
-                <option value="administrator">Administrator</option>
-                <option value="operations_technical">Operations & Technical Staff</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="admin">Admin</option>
                 <option value="sales_manager">Sales Manager</option>
                 <option value="sales_business_development">Sales Business Dev</option>
-                <option value="staff">Operations Staff</option>
-                <option value="customer">Customer Portal</option>
+                <option value="client">Client</option>
               </select>
             </div>
 
             {/* Status Filter */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-content-secondary">Status:</span>
-              <select 
+              <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="rounded-lg border border-border-default bg-surface-input py-1.5 pl-3 pr-8 text-xs text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
@@ -864,26 +615,27 @@ export default function UsersIndex() {
         </div>
 
         {/* Table */}
-        <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[420px]">
-          <table className="w-full text-left text-xs text-content-secondary border-collapse">
-            <thead className="sticky top-0 z-20 bg-surface-card shadow-sm">
-              <tr className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">User Identity</th>
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Assigned Role & IAM Clearance</th>
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Account Status</th>
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Last Active</th>
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Created Date</th>
-                <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 text-right border-b border-border-subtle shadow-sm">Actions</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-content-secondary">
+            <thead className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
+              <tr>
+                <th className="px-6 py-3.5">User Identity</th>
+                <th className="px-6 py-3.5">Assigned Role & IAM Clearance</th>
+                <th className="px-6 py-3.5">Account Status</th>
+                <th className="px-6 py-3.5">Last Active</th>
+                <th className="px-6 py-3.5">Created Date</th>
+                <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/40">
               {users.length > 0 ? users.map((user) => {
-                const roleConfig = ROLE_CONFIGS[user.role] || ROLE_CONFIGS.staff;
+                const roleConfig = CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(user.role)] || CANONICAL_ROLE_CONFIGS.sales_business_development;
+                const canManageTarget = isSuperAdmin || user.role !== 'super_admin';
                 const RoleIcon = roleConfig.icon;
 
                 return (
-                  <tr 
-                    key={user.id} 
+                  <tr
+                    key={user.id}
                     className="group transition-colors hover:bg-zinc-800/30"
                   >
                     {/* User Identity */}
@@ -952,11 +704,12 @@ export default function UsersIndex() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleStatus(user)}
+                        disabled={!canManageTarget}
                         title={`Click to ${user.is_active ? 'suspend' : 'activate'} user`}
                         className={clsx(
                           "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition hover:scale-105",
-                          user.is_active 
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400" 
+                          user.is_active
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
                             : "border-rose-500/40 bg-rose-500/10 text-rose-400"
                         )}
                       >
@@ -985,8 +738,9 @@ export default function UsersIndex() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {/* View Dossier */}
-                        <button 
+                        <button
                           onClick={() => openViewModal(user)}
+                          disabled={!canManageTarget}
                           title="View User 360 Dossier & Permissions"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-amber-400 hover:bg-amber-400/10 hover:text-amber-300"
                         >
@@ -994,8 +748,9 @@ export default function UsersIndex() {
                         </button>
 
                         {/* Edit User */}
-                        <button 
+                        <button
                           onClick={() => openEditModal(user)}
+                          disabled={!canManageTarget}
                           title="Edit User Profile & Role"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-blue-400 hover:bg-blue-400/10 hover:text-blue-300"
                         >
@@ -1003,8 +758,9 @@ export default function UsersIndex() {
                         </button>
 
                         {/* Status Toggle */}
-                        <button 
-                          onClick={() => toggleStatus(user)} 
+                        <button
+                          onClick={() => toggleStatus(user)}
+                          disabled={!canManageTarget}
                           title={user.is_active ? "Deactivate User" : "Activate User"}
                           className={clsx(
                             "flex h-8 w-8 items-center justify-center rounded-lg border border-border-default transition hover:bg-border-subtle",
@@ -1015,8 +771,9 @@ export default function UsersIndex() {
                         </button>
 
                         {/* Delete User */}
-                        <button 
-                          onClick={() => openDeleteModal(user)} 
+                        <button
+                          onClick={() => openDeleteModal(user)}
+                          disabled={!canManageTarget}
                           title="Delete User Account"
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default text-content-secondary transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-400"
                         >
@@ -1041,248 +798,13 @@ export default function UsersIndex() {
           </table>
         </div>
       </div>
-      )}
-
-      {/* Main Content Area - Password Reset Requests */}
-      {activeTab === 'reset_requests' && (
-        <div className="space-y-6">
-          {/* Reset Request Metrics Summary */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-400">Pending Review</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
-                  <Clock className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-2 text-2xl font-black text-amber-300 font-mono">{resetStats.pending}</p>
-              <p className="mt-1 text-[11px] text-amber-400/80">Awaiting admin link generation</p>
-            </div>
-
-            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-400">Active Links Issued</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
-                  <KeyRound className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-2 text-2xl font-black text-blue-300 font-mono">{resetStats.approved}</p>
-              <p className="mt-1 text-[11px] text-blue-400/80">Single-use links valid for 24h</p>
-            </div>
-
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Completed & Burned</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-2 text-2xl font-black text-emerald-300 font-mono">{resetStats.used}</p>
-              <p className="mt-1 text-[11px] text-emerald-400/80">Password updated & link expired</p>
-            </div>
-
-            <div className="rounded-xl border border-border-subtle bg-surface-card p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-content-secondary">Total Requests Logged</p>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-input text-content-secondary">
-                  <Shield className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-2 text-2xl font-black text-content-primary font-mono">{resetStats.total}</p>
-              <p className="mt-1 text-[11px] text-content-secondary">Audited reset requests</p>
-            </div>
-          </div>
-
-          {/* Reset Requests Table Card */}
-          <div className="rounded-xl border border-border-subtle bg-surface-card shadow-xl overflow-hidden flex flex-col">
-            <div className="sticky top-0 z-30 border-b border-border-subtle p-5 bg-surface-card/95 backdrop-blur-md shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <KeyRound className="h-4 w-4 text-[#ffcc00]" />
-                    <span>User Password Reset Authorization Log</span>
-                  </h2>
-                  <p className="text-xs text-content-secondary mt-1">
-                    When you generate a link, provide it to the user. The link will automatically deactivate permanently once the user updates their password.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[400px]">
-              <table className="w-full text-left text-xs text-content-secondary border-collapse">
-                <thead className="sticky top-0 z-20 bg-surface-card shadow-sm">
-                  <tr className="border-b border-border-subtle bg-surface-card text-[10px] font-bold uppercase tracking-wider text-content-secondary">
-                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Requester Identity</th>
-                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Request Reason / Remarks</th>
-                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Date & Time</th>
-                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 border-b border-border-subtle shadow-sm">Status & Single-Use State</th>
-                    <th className="sticky top-0 z-20 bg-surface-card px-6 py-3.5 text-right border-b border-border-subtle shadow-sm">Admin Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/40">
-                  {resetRequests.length > 0 ? (
-                    resetRequests.map((req) => {
-                      const isPending = req.status === 'pending';
-                      const isApproved = req.status === 'approved' && !req.is_used;
-                      const isUsed = req.is_used || req.status === 'used';
-                      const isExpired = req.status === 'expired';
-                      const isRejected = req.status === 'rejected';
-
-                      return (
-                        <tr key={req.id} className="group transition-colors hover:bg-zinc-800/30">
-                          {/* Requester Identity */}
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 font-bold text-white shadow-sm">
-                                {getInitials(req.user?.name || req.email)}
-                              </div>
-                              <div>
-                                <p className="font-bold text-white">{req.user?.name || 'Account Identity'}</p>
-                                <p className="text-[11px] text-zinc-400 font-mono">{req.email}</p>
-                                {req.user?.role && (
-                                  <span className="inline-block mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400">
-                                    {formatRole(req.user.role)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Reason */}
-                          <td className="px-6 py-4 max-w-xs">
-                            <p className="text-zinc-300 text-xs truncate" title={req.reason}>
-                              {req.reason || 'User requested password reset from login.'}
-                            </p>
-                          </td>
-
-                          {/* Time */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <p className="text-zinc-300 font-medium">{formatDateTime(req.requested_at)}</p>
-                            {req.used_at && (
-                              <p className="text-[10px] text-emerald-400 font-mono">
-                                Used: {formatDateTime(req.used_at)}
-                              </p>
-                            )}
-                          </td>
-
-                          {/* Status Badge */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {isPending && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 border border-amber-500/30">
-                                <Clock className="h-3 w-3 animate-spin" />
-                                <span>Pending Action</span>
-                              </span>
-                            )}
-                            {isApproved && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-300 border border-blue-500/30">
-                                <KeyRound className="h-3 w-3" />
-                                <span>Link Active (Unused)</span>
-                              </span>
-                            )}
-                            {isUsed && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 className="h-3 w-3" />
-                                <span>Completed &amp; Burned</span>
-                              </span>
-                            )}
-                            {isExpired && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400 border border-slate-700">
-                                <Clock className="h-3 w-3" />
-                                <span>Expired (&gt;24h)</span>
-                              </span>
-                            )}
-                            {isRejected && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 border border-rose-500/30">
-                                <XCircle className="h-3 w-3" />
-                                <span>Rejected</span>
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-6 py-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-2">
-                              {isPending && (
-                                <>
-                                  <button
-                                    onClick={() => generateOneTimeLink(req)}
-                                    className="flex items-center gap-1.5 rounded-lg bg-[#ffcc00] hover:bg-[#ffcc00]/90 px-3 py-1.5 text-xs font-bold text-black shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02] cursor-pointer"
-                                  >
-                                    <KeyRound className="h-3.5 w-3.5" />
-                                    <span>Generate Link</span>
-                                  </button>
-                                  <button
-                                    onClick={() => rejectResetRequest(req)}
-                                    className="rounded-lg border border-border-default px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors cursor-pointer"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-
-                              {isApproved && (
-                                <button
-                                  onClick={() => {
-                                    const fullUrl = req.token ? `${window.location.origin}/reset-password/${req.token}` : '';
-                                    setGeneratedLinkModal({
-                                      isOpen: true,
-                                      request: req,
-                                      resetUrl: fullUrl,
-                                      copied: false,
-                                    });
-                                  }}
-                                  className="flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 text-xs font-bold text-blue-300 transition-colors cursor-pointer"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                  <span>View / Copy Link</span>
-                                </button>
-                              )}
-
-                              {isUsed && (
-                                <span className="text-[11px] text-zinc-500 italic">
-                                  Link deactivated after single use
-                                </span>
-                              )}
-
-                              {(isExpired || isRejected) && (
-                                <span className="text-[11px] text-zinc-500 italic">
-                                  Awaiting new user request
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-content-secondary">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-input text-zinc-500">
-                            <KeyRound className="h-6 w-6" />
-                          </div>
-                          <p className="text-sm font-semibold text-zinc-300">No password reset requests</p>
-                          <p className="text-xs text-zinc-500">
-                            When users request a password reset from the login page, their requests will appear here for administrator authorization.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* USER 360 PROFILE & IAM DOSSIER MODAL */}
       {/* ========================================================================= */}
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} size="2xl">
         {viewUser && (() => {
-          const roleConfig = ROLE_CONFIGS[viewUser.role] || ROLE_CONFIGS.staff;
+          const roleConfig = CANONICAL_ROLE_CONFIGS[normalizeAssignableRole(viewUser.role)] || CANONICAL_ROLE_CONFIGS.sales_business_development;
           const RoleIcon = roleConfig.icon;
 
           return (
@@ -1344,7 +866,7 @@ export default function UsersIndex() {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => setIsViewModalOpen(false)}
                     className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
                   >
@@ -1435,7 +957,7 @@ export default function UsersIndex() {
                       <div className="mb-2.5 flex items-center gap-2">
                         <Lock className="h-4 w-4 text-rose-400" />
                         <span className="text-xs font-bold text-rose-300">
-                          Restricted Actions ({roleConfig.restricted.length > 0 ? roleConfig.restricted.length : '0 - Superadmin'})
+                          Restricted Actions ({roleConfig.restricted.length > 0 ? roleConfig.restricted.length : '0 - Super Admin'})
                         </span>
                       </div>
                       {roleConfig.restricted.length > 0 ? (
@@ -1449,7 +971,7 @@ export default function UsersIndex() {
                         </ul>
                       ) : (
                         <p className="text-xs italic text-zinc-400">
-                          No restrictions. User holds highest level Superadmin permissions.
+                          No restrictions. User holds highest-level Super Admin permissions.
                         </p>
                       )}
                     </div>
@@ -1480,21 +1002,22 @@ export default function UsersIndex() {
 
               {/* Footer Actions */}
               <div className="flex items-center justify-between border-t border-border-subtle bg-zinc-900/90 p-4">
-                <button
+                {(!viewUser || isSuperAdmin || viewUser.role !== 'super_admin') && <button
                   onClick={() => toggleStatus(viewUser)}
                   className={clsx(
                     "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition",
-                    viewUser.is_active 
+                    viewUser.is_active
                       ? "border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
                       : "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
                   )}
                 >
                   {viewUser.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                   {viewUser.is_active ? 'Suspend Account' : 'Reactivate Account'}
-                </button>
+                </button>}
 
                 <div className="flex items-center gap-2.5">
-                  <button
+                {(!viewUser || isSuperAdmin || viewUser.role !== 'super_admin') && (
+                <button
                     onClick={() => {
                       setIsViewModalOpen(false);
                       openEditModal(viewUser);
@@ -1504,6 +1027,7 @@ export default function UsersIndex() {
                     <Edit2 className="h-3.5 w-3.5" />
                     Edit User Profile
                   </button>
+                  )}
                   <button
                     onClick={() => setIsViewModalOpen(false)}
                     className="rounded-lg bg-[#ffcc00] px-4 py-2 text-xs font-bold text-black transition hover:bg-[#ffcc00]/90"
@@ -1563,9 +1087,9 @@ export default function UsersIndex() {
               </div>
               <span className={clsx(
                 "rounded-md border px-2.5 py-1 text-xs font-semibold shrink-0",
-                ROLE_CONFIGS[formData.role]?.badgeBg || 'bg-zinc-800 text-zinc-300'
+                CANONICAL_ROLE_CONFIGS[formData.role]?.badgeBg || ROLE_CONFIGS[formData.role]?.badgeBg || 'bg-zinc-800 text-zinc-300'
               )}>
-                {ROLE_CONFIGS[formData.role]?.label || formData.role}
+                {formatRole(formData.role)}
               </span>
             </div>
 
@@ -1577,8 +1101,8 @@ export default function UsersIndex() {
                   <UserIcon className="h-3.5 w-3.5 text-amber-400" />
                   Full Name <span className="text-rose-400">*</span>
                 </label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Engr. Marlon Ramos"
@@ -1594,8 +1118,8 @@ export default function UsersIndex() {
                   <Mail className="h-3.5 w-3.5 text-amber-400" />
                   Work Email Address <span className="text-rose-400">*</span>
                 </label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   placeholder="operations@intellitrack.com"
@@ -1611,8 +1135,8 @@ export default function UsersIndex() {
                   <Phone className="h-3.5 w-3.5 text-zinc-400" />
                   Direct Phone / Mobile
                 </label>
-                <input 
-                  type="tel" 
+                <input
+                  type="tel"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+63 917 555 0192"
@@ -1636,8 +1160,8 @@ export default function UsersIndex() {
                     Auto Generate
                   </button>
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Min 8 characters or auto-generate"
@@ -1655,10 +1179,8 @@ export default function UsersIndex() {
                 Select IAM Role & Clearance Level <span className="text-rose-400">*</span>
               </label>
 
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                {Object.entries(ROLE_CONFIGS)
-                  .filter(([roleKey]) => (ASSIGNABLE_IAM_ROLE_KEYS as readonly string[]).includes(roleKey))
-                  .map(([roleKey, config]) => {
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {roleOptions.map(([roleKey, config]) => {
                   const Icon = config.icon;
                   const isSelected = formData.role === roleKey;
 
@@ -1669,8 +1191,8 @@ export default function UsersIndex() {
                       onClick={() => setFormData({ ...formData, role: roleKey })}
                       className={clsx(
                         "flex flex-col text-left rounded-xl border p-3 transition-all relative",
-                        isSelected 
-                          ? clsx("bg-zinc-800/90 shadow-md ring-2 ring-amber-400/50", config.border) 
+                        isSelected
+                          ? clsx("bg-zinc-800/90 shadow-md ring-2 ring-amber-400/50", config.border)
                           : "border-border-default bg-surface-input/50 hover:border-zinc-600 hover:bg-surface-input"
                       )}
                     >
@@ -1721,125 +1243,75 @@ export default function UsersIndex() {
       {/* ========================================================================= */}
       {/* EDIT USER MODAL (HIGH-END ENTERPRISE IAM) */}
       {/* ========================================================================= */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} size="3xl" closeButton={false}>
-        <div className="relative overflow-hidden rounded-xl border border-zinc-700/80 bg-gradient-to-b from-[#0f172a] via-[#090d16] to-[#05070c] text-white shadow-2xl">
-          {/* Subtle Top Cyber Accent Glow */}
-          <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-96 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
-
-          {/* High-End Enterprise IAM Header */}
-          <div className="relative flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/80 px-6 py-4 backdrop-blur-md">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                <ShieldCheck className="h-6 w-6 stroke-[2.2]" />
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} size="2xl">
+        <div className="bg-surface-card text-white">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border-subtle p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                <Edit2 className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold tracking-tight text-white sm:text-lg">
-                    Enterprise IAM & Security Governance
-                  </h3>
-                  <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-cyan-300">
-                    <Lock className="h-2.5 w-2.5" /> TLS 1.3 / AES-256
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400">
-                  Zero-Trust Role Clearance • Cryptographic Credentials • Active Audit Trail
+                <h3 className="text-lg font-bold text-white">Edit User Credentials & Access</h3>
+                <p className="text-xs text-content-secondary">
+                  Update role clearance, active account status, or credentials for this profile.
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="hidden lg:inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-1 text-[10px] font-mono font-medium text-emerald-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                SOC-2 TYPE II
-              </span>
-              <button 
-                type="button"
-                onClick={() => setIsEditModalOpen(false)} 
-                className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            <button onClick={() => setIsEditModalOpen(false)} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white">
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           <form onSubmit={submitEdit} className="p-6 space-y-5">
-            {/* Live Profile Header & Security Status Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 shadow-inner">
+            {/* Live Profile Header Preview */}
+            <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
               <div className="flex items-center gap-3.5">
                 <div className={clsx(
-                  "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-lg text-base border",
-                  formData.role === 'administrator' ? "border-purple-500/50 bg-gradient-to-br from-purple-600 to-indigo-900 shadow-purple-500/20" :
-                  formData.role === 'sales_manager' ? "border-amber-500/50 bg-gradient-to-br from-amber-600 to-orange-900 shadow-amber-500/20" :
-                  "border-cyan-500/50 bg-gradient-to-br from-blue-600 to-cyan-900 shadow-cyan-500/20"
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-md text-base",
+                  formData.role === 'operations_technical' ? "bg-gradient-to-br from-emerald-600 to-teal-800" :
+                  formData.role === 'administrator' ? "bg-gradient-to-br from-purple-600 to-indigo-800" :
+                  formData.role === 'sales_manager' ? "bg-gradient-to-br from-amber-600 to-orange-800" :
+                  formData.role === 'sales_business_development' ? "bg-gradient-to-br from-blue-600 to-cyan-800" :
+                  "bg-gradient-to-br from-slate-600 to-zinc-800"
                 )}>
                   {getInitials(formData.name || 'User')}
-                  <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black border border-zinc-700">
-                    <Shield className="h-2.5 w-2.5 text-cyan-400" />
-                  </span>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-white">{formData.name || 'Untitled Identity'}</p>
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 border border-zinc-700">
-                      UID #{selectedUser?.id ? selectedUser.id.toString().padStart(4, '0') : '0000'}
-                    </span>
-                  </div>
-                  <p className="text-xs font-mono text-zinc-400">{formData.email}</p>
+                  <p className="text-sm font-bold text-white">{formData.name}</p>
+                  <p className="text-xs text-zinc-400">{formData.email}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Account State</p>
-                  <p className="text-[11px] font-mono text-zinc-300">
-                    {formData.is_active ? 'Full Access Granted' : 'Access Restricted'}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-zinc-400">Account State:</label>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                   className={clsx(
-                    "flex items-center gap-2 rounded-xl border px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition shadow-sm",
-                    formData.is_active 
-                      ? "border-emerald-500/40 bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 shadow-emerald-950/50" 
-                      : "border-rose-500/40 bg-rose-950/60 text-rose-400 hover:bg-rose-900/60 shadow-rose-950/50"
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider transition",
+                    formData.is_active ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400" : "border-rose-500/40 bg-rose-500/10 text-rose-400"
                   )}
                 >
-                  <span className={clsx("h-2 w-2 rounded-full", formData.is_active ? "bg-emerald-400 animate-pulse" : "bg-rose-400")} />
+                  <span className={clsx("h-1.5 w-1.5 rounded-full", formData.is_active ? "bg-emerald-400" : "bg-rose-400")} />
                   {formData.is_active ? 'ACTIVE' : 'SUSPENDED'}
                 </button>
               </div>
             </div>
 
-            {/* Legacy Role Warning Banner (if user currently has an excluded role) */}
-            {selectedUser && !(ASSIGNABLE_IAM_ROLE_KEYS as readonly string[]).includes(selectedUser.role) && (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3.5 text-amber-200">
-                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-semibold text-amber-300">
-                    Legacy Role Detected: <span className="underline">{ROLE_CONFIGS[selectedUser.role]?.label || selectedUser.role}</span>
-                  </p>
-                  <p className="text-amber-200/80 text-[11px] mt-0.5">
-                    This account is currently configured with an unmanaged tier. Select one of the verified IAM authorization levels below to migrate and enforce enterprise security compliance.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Inputs 3-Column Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Inputs 2-column Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Full Name */}
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                  <UserIcon className="h-3.5 w-3.5 text-cyan-400" />
+                  <UserIcon className="h-3.5 w-3.5 text-blue-400" />
                   Full Name <span className="text-rose-400">*</span>
                 </label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="w-full rounded-lg border border-border-default bg-surface-input p-2.5 text-xs text-white placeholder-zinc-500 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                   required
                 />
                 {errors.name && <p className="mt-1 text-[11px] text-rose-400">{errors.name}</p>}
@@ -1848,156 +1320,69 @@ export default function UsersIndex() {
               {/* Email Address */}
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                  <Mail className="h-3.5 w-3.5 text-cyan-400" />
+                  <Mail className="h-3.5 w-3.5 text-blue-400" />
                   Email Address <span className="text-rose-400">*</span>
                 </label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 text-xs font-mono text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="w-full rounded-lg border border-border-default bg-surface-input p-2.5 text-xs text-white placeholder-zinc-500 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                   required
                 />
                 {errors.email && <p className="mt-1 text-[11px] text-rose-400">{errors.email}</p>}
               </div>
 
-              {/* Phone Number */}
+              {/* Direct Phone Number */}
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-300">
                   <Phone className="h-3.5 w-3.5 text-zinc-400" />
-                  Direct Contact (Phone)
+                  Phone Number
                 </label>
-                <input 
-                  type="tel" 
+                <input
+                  type="tel"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+63 917 555 0192"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="w-full rounded-lg border border-border-default bg-surface-input p-2.5 text-xs text-white placeholder-zinc-500 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
                 {errors.phone && <p className="mt-1 text-[11px] text-rose-400">{errors.phone}</p>}
               </div>
-            </div>
 
-            {/* High-End Cryptographic Password & Access Key Section */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-cyan-400" />
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                    Authentication Key & Credential Rotation (Optional)
+              {/* Optional Password Reset */}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                    <Key className="h-3.5 w-3.5 text-zinc-400" />
+                    Reset Password (Optional)
                   </label>
-                </div>
-                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={generatePassword}
-                    className="flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/60 px-3 py-1.5 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-900/80 hover:text-white transition"
+                    className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 hover:underline"
                   >
-                    <Sparkles className="h-3 w-3 text-cyan-400" />
-                    Generate High-Entropy Key
+                    Generate New
                   </button>
                 </div>
-              </div>
-
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
-                  <Lock className="h-3.5 w-3.5" />
-                </div>
-                <input 
-                  type={showEditPassword ? "text" : "password"} 
+                <input
+                  type="text"
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Leave empty to keep current Bcrypt hash intact"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950/80 py-2.5 pl-9 pr-24 text-xs font-mono text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  placeholder="Leave blank to preserve current password"
+                  className="w-full rounded-lg border border-border-default bg-surface-input p-2.5 text-xs font-mono text-white placeholder-zinc-500 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
-                  {formData.password && (
-                    <button
-                      type="button"
-                      onClick={copyPasswordToClipboard}
-                      title="Copy Key"
-                      className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
-                    >
-                      {copiedPassword ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowEditPassword(!showEditPassword)}
-                    title={showEditPassword ? "Hide key" : "Show key"}
-                    className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
-                  >
-                    {showEditPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
+                {errors.password && <p className="mt-1 text-[11px] text-rose-400">{errors.password}</p>}
               </div>
-              {errors.password && <p className="mt-1 text-[11px] text-rose-400">{errors.password}</p>}
-
-              {/* Real-time Dynamic Password Entropy & Security Policy Meter */}
-              {formData.password ? (
-                <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-2">
-                  {(() => {
-                    const entropy = calculatePasswordEntropy(formData.password);
-                    return (
-                      <>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-zinc-400">Cryptographic Entropy & Strength:</span>
-                          <span className={clsx("font-mono font-bold", entropy.text)}>{entropy.label}</span>
-                        </div>
-                        {/* Segmented meter bar */}
-                        <div className="grid grid-cols-4 gap-1.5 h-1.5">
-                          <div className={clsx("rounded-full transition-all", entropy.score >= 1 ? entropy.color : "bg-zinc-800")} />
-                          <div className={clsx("rounded-full transition-all", entropy.score >= 2 ? entropy.color : "bg-zinc-800")} />
-                          <div className={clsx("rounded-full transition-all", entropy.score >= 3 ? entropy.color : "bg-zinc-800")} />
-                          <div className={clsx("rounded-full transition-all", entropy.score >= 4 ? entropy.color : "bg-zinc-800")} />
-                        </div>
-                        {/* Policy check pills */}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] font-mono">
-                          <span className={clsx("flex items-center gap-1 px-2 py-0.5 rounded border", formData.password.length >= 8 ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-300" : "border-zinc-800 bg-zinc-900 text-zinc-500")}>
-                            <Check className="h-2.5 w-2.5" /> 8+ Characters
-                          </span>
-                          <span className={clsx("flex items-center gap-1 px-2 py-0.5 rounded border", /[A-Z]/.test(formData.password) && /[a-z]/.test(formData.password) ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-300" : "border-zinc-800 bg-zinc-900 text-zinc-500")}>
-                            <Check className="h-2.5 w-2.5" /> Mixed Case
-                          </span>
-                          <span className={clsx("flex items-center gap-1 px-2 py-0.5 rounded border", /[0-9]/.test(formData.password) ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-300" : "border-zinc-800 bg-zinc-900 text-zinc-500")}>
-                            <Check className="h-2.5 w-2.5" /> Digits (0-9)
-                          </span>
-                          <span className={clsx("flex items-center gap-1 px-2 py-0.5 rounded border", /[^A-Za-z0-9]/.test(formData.password) ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-300" : "border-zinc-800 bg-zinc-900 text-zinc-500")}>
-                            <Check className="h-2.5 w-2.5" /> Symbols (!@#$)
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-400/70" />
-                  Existing password is safe and hashed with Bcrypt (12 cost factor). Enter a new value only to rotate.
-                </p>
-              )}
             </div>
 
-            {/* Filtered Assigned IAM Role Cards (Only Superadmin, Sales Manager, Sales BD) */}
+            {/* Interactive Role Selector Cards */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                    Assigned IAM Authorization Level & Clearance Tier <span className="text-rose-400">*</span>
-                  </label>
-                  <p className="text-[11px] text-zinc-400">
-                    Internal management governance and administrative authority only.
-                  </p>
-                </div>
-                <span className="hidden sm:inline-block rounded-md border border-cyan-500/30 bg-cyan-950/50 px-2 py-0.5 font-mono text-[10px] text-cyan-300">
-                  3 Verified IAM Tiers
-                </span>
-              </div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                Assigned Role & Authorization Level <span className="text-rose-400">*</span>
+              </label>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {Object.entries(ROLE_CONFIGS)
-                  .filter(([roleKey]) => (ASSIGNABLE_IAM_ROLE_KEYS as readonly string[]).includes(roleKey))
-                  .map(([roleKey, config]) => {
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {roleOptions.map(([roleKey, config]) => {
                   const Icon = config.icon;
                   const isSelected = formData.role === roleKey;
 
@@ -2007,47 +1392,28 @@ export default function UsersIndex() {
                       type="button"
                       onClick={() => setFormData({ ...formData, role: roleKey })}
                       className={clsx(
-                        "group relative flex flex-col text-left rounded-xl border p-3.5 transition-all duration-150",
-                        isSelected 
-                          ? clsx("bg-zinc-800/90 shadow-xl ring-2 ring-cyan-400/80 border-cyan-400/80 shadow-cyan-950/40") 
-                          : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-600 hover:bg-zinc-900"
+                        "flex flex-col text-left rounded-xl border p-3 transition-all relative",
+                        isSelected
+                          ? clsx("bg-zinc-800/90 shadow-md ring-2 ring-blue-400/50", config.border)
+                          : "border-border-default bg-surface-input/50 hover:border-zinc-600 hover:bg-surface-input"
                       )}
                     >
-                      {/* Clearance Tag */}
-                      <div className="flex items-center justify-between w-full mb-2">
-                        <span className={clsx(
-                          "rounded px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border",
-                          roleKey === 'administrator' ? "border-purple-500/40 bg-purple-950/50 text-purple-300" :
-                          roleKey === 'sales_manager' ? "border-amber-500/40 bg-amber-950/50 text-amber-300" :
-                          "border-blue-500/40 bg-blue-950/50 text-blue-300"
-                        )}>
-                          {roleKey === 'administrator' ? 'TIER 1 • ROOT' :
-                           roleKey === 'sales_manager' ? 'TIER 2 • MGMT' : 'TIER 3 • BD'}
-                        </span>
-
-                        {isSelected ? (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-400 text-black shadow-md shadow-cyan-400/40">
+                      <div className="flex items-center justify-between w-full mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className={clsx("flex h-7 w-7 items-center justify-center rounded-lg border", config.border, config.bg)}>
+                            <Icon className={clsx("h-3.5 w-3.5", config.text)} />
+                          </div>
+                          <span className="text-xs font-bold text-white">{config.shortRole}</span>
+                        </div>
+                        {isSelected && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-400 text-black">
                             <Check className="h-3 w-3 stroke-[3]" />
                           </span>
-                        ) : (
-                          <span className="h-4 w-4 rounded-full border border-zinc-700 group-hover:border-zinc-500" />
                         )}
                       </div>
-
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={clsx("flex h-7 w-7 items-center justify-center rounded-lg border", config.border, config.bg)}>
-                          <Icon className={clsx("h-3.5 w-3.5", config.text)} />
-                        </div>
-                        <span className="text-xs font-bold text-white tracking-wide">{config.shortRole}</span>
-                      </div>
-
-                      <p className="text-[10px] text-zinc-400 line-clamp-3 leading-relaxed mb-2 flex-1">
+                      <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">
                         {config.description}
                       </p>
-
-                      <div className="pt-2 border-t border-zinc-800/80 text-[9px] font-mono text-zinc-500">
-                        Scope: <span className="text-zinc-300">{config.scope.split(',')[0]}</span>
-                      </div>
                     </button>
                   );
                 })}
@@ -2055,103 +1421,21 @@ export default function UsersIndex() {
               {errors.role && <p className="mt-1 text-[11px] text-rose-400">{errors.role}</p>}
             </div>
 
-            {/* Enterprise Hardware Trust, MFA & Active Session Defense */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Widget 1: Multi-Factor Authentication (2FA) */}
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-white">
-                      <Fingerprint className="h-4 w-4 text-emerald-400" />
-                      Two-Factor Authentication (2FA)
-                    </div>
-                    <span className="flex items-center gap-1 font-mono text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      ENFORCED
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Time-based One-Time Password (TOTP) and cryptographic security challenge active on login.
-                  </p>
-                </div>
-                <div className="pt-3 mt-2 border-t border-zinc-800/80 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-zinc-500">Standard: RFC 6238</span>
-                  <button
-                    type="button"
-                    disabled={isResettingMfa || !selectedUser}
-                    onClick={() => selectedUser && handleResetMfa(selectedUser.id, selectedUser.name)}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline disabled:opacity-50"
-                  >
-                    <RefreshCw className={clsx("h-3 w-3", isResettingMfa && "animate-spin")} />
-                    Reset 2FA Challenge
-                  </button>
-                </div>
-              </div>
-
-              {/* Widget 2: Active Session & Threat Revocation */}
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-white">
-                      <Globe className="h-4 w-4 text-cyan-400" />
-                      Session Trust & Device Security
-                    </div>
-                    <span className="font-mono text-[10px] text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
-                      1 Session Active
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Identity verified via desktop browser client. Revoking terminates all active tokens and cookies.
-                  </p>
-                </div>
-                <div className="pt-3 mt-2 border-t border-zinc-800/80 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-zinc-500">Channel: TLS 1.3 / Verified</span>
-                  <button
-                    type="button"
-                    disabled={isRevokingSessions || !selectedUser}
-                    onClick={() => selectedUser && handleRevokeSessions(selectedUser.id, selectedUser.name)}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:underline disabled:opacity-50"
-                  >
-                    <ShieldAlert className="h-3 w-3" />
-                    Revoke All Sessions
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Immutable Audit & Security Stamp */}
-            <div className="flex items-center gap-2.5 rounded-xl border border-zinc-800/90 bg-zinc-950/80 px-4 py-2.5 text-[10px] text-zinc-400">
-              <Terminal className="h-4 w-4 text-cyan-400 shrink-0" />
-              <p className="leading-relaxed">
-                <span className="font-semibold text-zinc-300">Tamper-Evident Security Log:</span> All role adjustments, credential rotations, and session alterations are signed and permanently archived with administrator signature, IP address, and UTC timestamp.
-              </p>
-            </div>
-
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 border-t border-zinc-800/80 pt-4">
+            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="rounded-xl border border-zinc-700 bg-zinc-800/60 px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+                className="rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-content-primary hover:bg-border-subtle"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={processing}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-500 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/35 hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/10 hover:bg-blue-600 disabled:opacity-50"
               >
-                {processing ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Applying Security Changes...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-3.5 w-3.5" />
-                    Save Security Changes
-                  </>
-                )}
+                {processing ? 'Saving Changes...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -2195,104 +1479,6 @@ export default function UsersIndex() {
               {processing ? 'Deleting...' : 'Confirm Delete'}
             </button>
           </div>
-        </div>
-      </Modal>
-
-      {/* ========================================================================= */}
-      {/* GENERATED ONE-TIME PASSWORD RESET LINK MODAL */}
-      {/* ========================================================================= */}
-      <Modal 
-        isOpen={generatedLinkModal.isOpen} 
-        onClose={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))} 
-        size="md"
-      >
-        <div className="bg-surface-card p-6 text-white">
-          <div className="mb-4 flex items-center justify-between border-b border-border-subtle pb-3">
-            <div className="flex items-center gap-2.5 text-amber-400">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <KeyRound className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold">One-Time Reset Link</h3>
-                <p className="text-[11px] text-zinc-400">Single-use security token generated</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))} 
-              className="text-zinc-400 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {generatedLinkModal.request && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border-default bg-surface-input p-3 text-xs">
-                <p className="text-zinc-400 text-[11px]">Authorized Recipient:</p>
-                <p className="font-bold text-white text-sm">
-                  {generatedLinkModal.request.user?.name || generatedLinkModal.request.email}
-                </p>
-                <p className="text-zinc-400 text-xs font-mono">{generatedLinkModal.request.email}</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300 mb-1.5">
-                  Single-Use Reset Link (Valid for 24 hours):
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedLinkModal.resetUrl}
-                    className="w-full rounded-lg border border-amber-500/30 bg-black/60 px-3 py-2 text-xs font-mono text-amber-300 select-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => copyLinkToClipboard(generatedLinkModal.resetUrl)}
-                    className={clsx(
-                      "flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition-all",
-                      generatedLinkModal.copied
-                        ? "bg-emerald-500 text-black"
-                        : "bg-[#ffcc00] text-black hover:bg-[#ffcc00]/90"
-                    )}
-                  >
-                    {generatedLinkModal.copied ? (
-                      <>
-                        <Check className="h-4 w-4 stroke-[3]" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        <span>Copy Link</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Single-use policy notice */}
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-1.5">
-                <div className="flex items-center gap-1.5 font-bold text-amber-300 text-[11px] uppercase tracking-wider">
-                  <ShieldAlert className="h-4 w-4 shrink-0" />
-                  <span>Single-Use Security Enforcement</span>
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  Send this link to the user. Once the user enters their new password, this link will automatically burn and cannot be used again. If they need to reset their password again in the future, they will need to submit a new request.
-                </p>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setGeneratedLinkModal(prev => ({ ...prev, isOpen: false }))}
-                  className="rounded-lg bg-surface-input border border-border-default px-4 py-2 text-xs font-semibold text-white hover:bg-border-subtle"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </Modal>
     </AppLayout>

@@ -19,18 +19,42 @@ class JobOrderController extends Controller
      */
     public function index(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
-        $query = JobOrder::query()->with(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']);
+        Gate::authorize('manage-job-orders');
+
+        $query = JobOrder::query()->with([
+            'customer',
+            'assignedTo',
+            'createdBy',
+            'jobOrderItems.equipment',
+            'feedback',
+        ]);
 
         if ($request->filled('search')) {
             $search = '%' . strtolower($request->input('search')) . '%';
+
             $query->where(function ($q) use ($search) {
-                $q->where(\Illuminate\Support\Facades\DB::raw('LOWER(job_order_number)'), 'like', $search)
-                  ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(description)'), 'like', $search)
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), 'like', $search)
-                         ->orWhere(\Illuminate\Support\Facades\DB::raw('LOWER(company_name)'), 'like', $search);
-                  });
+                $q->where(
+                    \Illuminate\Support\Facades\DB::raw('LOWER(job_order_number)'),
+                    'like',
+                    $search
+                )
+                ->orWhere(
+                    \Illuminate\Support\Facades\DB::raw('LOWER(description)'),
+                    'like',
+                    $search
+                )
+                ->orWhereHas('customer', function ($cq) use ($search) {
+                    $cq->where(
+                        \Illuminate\Support\Facades\DB::raw('LOWER(name)'),
+                        'like',
+                        $search
+                    )
+                    ->orWhere(
+                        \Illuminate\Support\Facades\DB::raw('LOWER(company_name)'),
+                        'like',
+                        $search
+                    );
+                });
             });
         }
 
@@ -42,7 +66,9 @@ class JobOrderController extends Controller
             $query->where('priority', $request->input('priority'));
         }
 
-        $jobOrders = $query->orderByDesc('created_at')->paginate($request->input('per_page', 15));
+        $jobOrders = $query
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 15));
 
         return response()->json($jobOrders);
     }
@@ -53,13 +79,17 @@ class JobOrderController extends Controller
     public function store(Request $request)
     {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'project_id' => ['nullable', 'exists:projects,id'],
             'quotation_id' => ['nullable', 'exists:quotations,id'],
             'description' => ['required', 'string'],
             'service_type' => ['nullable', 'string'],
-            'status' => ['nullable', 'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress'],
+            'status' => [
+                'nullable',
+                'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress',
+            ],
             'priority' => ['nullable', 'in:low,medium,high,urgent'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
@@ -75,22 +105,42 @@ class JobOrderController extends Controller
             'remarks' => ['nullable', 'string'],
         ]);
 
-        $validated['job_order_number'] = 'JO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+        $validated['job_order_number'] =
+            'JO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+
         $validated['created_by'] = auth()->id();
         $validated['status'] = $validated['status'] ?? 'registered';
-        $validated['operational_status'] = $validated['operational_status'] ?? 'Pending Submission to Operations';
+        $validated['operational_status'] =
+            $validated['operational_status'] ?? 'Pending Submission to Operations';
         $validated['dispatch_status'] = 'Unassigned';
-        $validated['operational_equipment_status'] = 'Awaiting Operations Allocation';
+        $validated['operational_equipment_status'] =
+            'Awaiting Operations Allocation';
 
         $jobOrder = JobOrder::create($validated);
 
-        ActivityLogService::log(Auth::user(), 'created', JobOrder::class, $jobOrder->id, "Job Order {$jobOrder->job_order_number} registered in Sales & Commercial.", null, [
-            'status' => $jobOrder->status,
-            'client_id' => $jobOrder->customer_id,
-            'service_type' => $jobOrder->service_type,
-        ]);
+        ActivityLogService::log(
+            Auth::user(),
+            'created',
+            JobOrder::class,
+            $jobOrder->id,
+            "Job Order {$jobOrder->job_order_number} registered in Sales & Commercial.",
+            null,
+            [
+                'status' => $jobOrder->status,
+                'client_id' => $jobOrder->customer_id,
+                'service_type' => $jobOrder->service_type,
+            ]
+        );
 
-        return response()->json($jobOrder->load(['customer', 'project', 'quotation', 'createdBy']), Response::HTTP_CREATED);
+        return response()->json(
+            $jobOrder->load([
+                'customer',
+                'project',
+                'quotation',
+                'createdBy',
+            ]),
+            Response::HTTP_CREATED
+        );
     }
 
     /**
@@ -98,8 +148,19 @@ class JobOrderController extends Controller
      */
     public function show(JobOrder $jobOrder)
     {
-        Gate::authorize('view-core-dashboard');
-        $jobOrder->load(['customer', 'project', 'quotation', 'createdBy', 'assignedTo', 'jobOrderItems.equipment', 'rentals', 'feedback']);
+        Gate::authorize('manage-job-orders');
+
+        $jobOrder->load([
+            'customer',
+            'project',
+            'quotation',
+            'createdBy',
+            'assignedTo',
+            'jobOrderItems.equipment',
+            'rentals',
+            'feedback',
+        ]);
+
         return response()->json($jobOrder);
     }
 
@@ -109,12 +170,16 @@ class JobOrderController extends Controller
     public function update(Request $request, JobOrder $jobOrder)
     {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
             'project_id' => ['nullable', 'exists:projects,id'],
             'quotation_id' => ['nullable', 'exists:quotations,id'],
             'description' => ['sometimes', 'string'],
             'service_type' => ['nullable', 'string'],
-            'status' => ['nullable', 'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress'],
+            'status' => [
+                'nullable',
+                'in:draft,registered,submitted,confirmed,scheduled,ongoing,completed,cancelled,pending,approved,in-progress',
+            ],
             'priority' => ['nullable', 'in:low,medium,high,urgent'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
@@ -133,7 +198,17 @@ class JobOrderController extends Controller
 
         $jobOrder->update($validated);
 
-        return response()->json($jobOrder->load(['customer', 'project', 'quotation', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
+        return response()->json(
+            $jobOrder->load([
+                'customer',
+                'project',
+                'quotation',
+                'assignedTo',
+                'createdBy',
+                'jobOrderItems.equipment',
+                'feedback',
+            ])
+        );
     }
 
     /**
@@ -142,7 +217,9 @@ class JobOrderController extends Controller
     public function destroy(JobOrder $jobOrder)
     {
         Gate::authorize('manage-job-orders');
+
         $jobOrder->delete();
+
         return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 
@@ -152,6 +229,7 @@ class JobOrderController extends Controller
     public function addItem(Request $request, JobOrder $jobOrder)
     {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
             'equipment_id' => ['required', 'exists:equipment,id'],
             'quantity' => ['required', 'integer', 'min:1'],
@@ -160,34 +238,48 @@ class JobOrderController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $validated['total_price'] = ($validated['quantity'] ?? 1) * ($validated['unit_price'] ?? 0);
+        $validated['total_price'] =
+            ($validated['quantity'] ?? 1) *
+            ($validated['unit_price'] ?? 0);
+
         $item = $jobOrder->jobOrderItems()->create($validated);
 
-        // Update equipment count
         $jobOrder->increment('equipment_count');
 
-        // Recalculate total
         $this->recalculateJobOrderTotal($jobOrder);
 
-        // If job order is already in-progress, mark equipment as rented
         if ($jobOrder->status === 'in-progress') {
-            \App\Models\Equipment::where('id', $validated['equipment_id'])->update([
+            \App\Models\Equipment::where(
+                'id',
+                $validated['equipment_id']
+            )->update([
                 'status' => 'rented',
-                'location' => $jobOrder->location ?: \Illuminate\Support\Facades\DB::raw('location'),
+                'location' => $jobOrder->location
+                    ?: \Illuminate\Support\Facades\DB::raw('location'),
             ]);
         }
 
-        return response()->json($item->load('equipment'), Response::HTTP_CREATED);
+        return response()->json(
+            $item->load('equipment'),
+            Response::HTTP_CREATED
+        );
     }
 
     /**
      * Update job order item.
      */
-    public function updateItem(Request $request, JobOrder $jobOrder, JobOrderItem $item)
-    {
+    public function updateItem(
+        Request $request,
+        JobOrder $jobOrder,
+        JobOrderItem $item
+    ) {
         Gate::authorize('manage-job-orders');
+
         if ($item->job_order_id !== $jobOrder->id) {
-            return response()->json(['error' => 'Item not found'], Response::HTTP_NOT_FOUND);
+            return response()->json(
+                ['error' => 'Item not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $validated = $request->validate([
@@ -198,7 +290,11 @@ class JobOrderController extends Controller
         ]);
 
         $qty = $validated['quantity'] ?? $item->quantity;
-        $price = array_key_exists('unit_price', $validated) ? $validated['unit_price'] : $item->unit_price;
+
+        $price = array_key_exists('unit_price', $validated)
+            ? $validated['unit_price']
+            : $item->unit_price;
+
         $validated['total_price'] = $qty * ($price ?? 0);
 
         $item->update($validated);
@@ -211,68 +307,124 @@ class JobOrderController extends Controller
     /**
      * Delete job order item.
      */
-    public function deleteItem(JobOrder $jobOrder, JobOrderItem $item)
-    {
+    public function deleteItem(
+        JobOrder $jobOrder,
+        JobOrderItem $item
+    ) {
         Gate::authorize('manage-job-orders');
+
         if ($item->job_order_id !== $jobOrder->id) {
-            return response()->json(['error' => 'Item not found'], Response::HTTP_NOT_FOUND);
+            return response()->json(
+                ['error' => 'Item not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $equipmentId = $item->equipment_id;
+
         $item->delete();
+
         $jobOrder->decrement('equipment_count');
 
         $this->recalculateJobOrderTotal($jobOrder);
 
-        // Check if equipment is still in other in-progress job orders
-        $stillInUse = JobOrderItem::where('equipment_id', $equipmentId)
-            ->whereHas('jobOrder', fn ($q) => $q->where('status', 'in-progress'))
+        $stillInUse = JobOrderItem::where(
+            'equipment_id',
+            $equipmentId
+        )
+            ->whereHas(
+                'jobOrder',
+                fn ($q) => $q->where('status', 'in-progress')
+            )
             ->exists();
 
         if (!$stillInUse) {
-            \App\Models\Equipment::where('id', $equipmentId)->update(['status' => 'available']);
+            \App\Models\Equipment::where(
+                'id',
+                $equipmentId
+            )->update([
+                'status' => 'available',
+            ]);
         }
 
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+        return response()->json(
+            null,
+            Response::HTTP_NO_CONTENT
+        );
     }
 
     /**
      * Update job order status.
      */
-    public function updateStatus(Request $request, JobOrder $jobOrder)
-    {
+    public function updateStatus(
+        Request $request,
+        JobOrder $jobOrder
+    ) {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
-            'status' => ['required', 'in:draft,pending,approved,pending_dispatch,in-progress,completed,cancelled'],
+            'status' => [
+                'required',
+                'in:draft,pending,approved,pending_dispatch,in-progress,completed,cancelled',
+            ],
         ]);
 
         $oldStatus = $jobOrder->status;
+
         $jobOrder->update($validated);
 
         if ($validated['status'] === 'completed') {
-            $jobOrder->update(['completion_date' => now()]);
+            $jobOrder->update([
+                'completion_date' => now(),
+            ]);
         }
 
-        // Operational sync: automatically sync equipment status
-        $equipmentIds = $jobOrder->jobOrderItems()->pluck('equipment_id')->filter()->unique();
+        $equipmentIds = $jobOrder
+            ->jobOrderItems()
+            ->pluck('equipment_id')
+            ->filter()
+            ->unique();
 
         if ($validated['status'] === 'in-progress') {
             if ($equipmentIds->isNotEmpty()) {
-                \App\Models\Equipment::whereIn('id', $equipmentIds)->update([
+                \App\Models\Equipment::whereIn(
+                    'id',
+                    $equipmentIds
+                )->update([
                     'status' => 'rented',
-                    'location' => $jobOrder->location ?: \Illuminate\Support\Facades\DB::raw('location'),
+                    'location' => $jobOrder->location
+                        ?: \Illuminate\Support\Facades\DB::raw('location'),
                 ]);
             }
-        } elseif (in_array($validated['status'], ['completed', 'cancelled'])) {
-            // Restore equipment to available if not active on other in-progress jobs
+        } elseif (
+            in_array(
+                $validated['status'],
+                ['completed', 'cancelled']
+            )
+        ) {
             foreach ($equipmentIds as $eqId) {
-                $stillUsed = JobOrderItem::where('equipment_id', $eqId)
-                    ->where('job_order_id', '!=', $jobOrder->id)
-                    ->whereHas('jobOrder', fn ($q) => $q->where('status', 'in-progress'))
+                $stillUsed = JobOrderItem::where(
+                    'equipment_id',
+                    $eqId
+                )
+                    ->where(
+                        'job_order_id',
+                        '!=',
+                        $jobOrder->id
+                    )
+                    ->whereHas(
+                        'jobOrder',
+                        fn ($q) => $q->where('status', 'in-progress')
+                    )
                     ->exists();
 
                 if (!$stillUsed) {
-                    \App\Models\Equipment::where('id', $eqId)->update(['status' => 'available']);
+                    \App\Models\Equipment::where(
+                        'id',
+                        $eqId
+                    )->update([
+                        'status' => 'available',
+                    ]);
                 }
             }
         }
@@ -287,41 +439,69 @@ class JobOrderController extends Controller
             ['status' => $validated['status']]
         );
 
-        return response()->json($jobOrder->load(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
+        return response()->json(
+            $jobOrder->load([
+                'customer',
+                'assignedTo',
+                'createdBy',
+                'jobOrderItems.equipment',
+                'feedback',
+            ])
+        );
     }
 
     /**
      * Assign job order to staff.
      */
-    public function assign(Request $request, JobOrder $jobOrder)
-    {
+    public function assign(
+        Request $request,
+        JobOrder $jobOrder
+    ) {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
             'assigned_to' => ['required', 'exists:users,id'],
         ]);
 
         $jobOrder->update($validated);
-        $assignedUser = \App\Models\User::find($validated['assigned_to']);
+
+        $assignedUser = \App\Models\User::find(
+            $validated['assigned_to']
+        );
 
         ActivityLogService::log(
             Auth::user(),
             'assigned',
             JobOrder::class,
             $jobOrder->id,
-            "Job Order {$jobOrder->job_order_number} assigned to " . ($assignedUser?->name ?? 'Staff') . ".",
+            "Job Order {$jobOrder->job_order_number} assigned to " .
+                ($assignedUser?->name ?? 'Staff') . ".",
             null,
-            ['assigned_to' => $validated['assigned_to']]
+            [
+                'assigned_to' => $validated['assigned_to'],
+            ]
         );
 
-        return response()->json($jobOrder->load(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
+        return response()->json(
+            $jobOrder->load([
+                'customer',
+                'assignedTo',
+                'createdBy',
+                'jobOrderItems.equipment',
+                'feedback',
+            ])
+        );
     }
 
     /**
      * Schedule mobilization, start date, and target due date for job order.
      */
-    public function schedule(Request $request, JobOrder $jobOrder)
-    {
+    public function schedule(
+        Request $request,
+        JobOrder $jobOrder
+    ) {
         Gate::authorize('manage-job-orders');
+
         $validated = $request->validate([
             'scheduled_date' => ['nullable', 'date'],
             'start_date' => ['nullable', 'date'],
@@ -330,7 +510,10 @@ class JobOrderController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if (empty($jobOrder->start_date) && ! empty($validated['start_date'])) {
+        if (
+            empty($jobOrder->start_date) &&
+            !empty($validated['start_date'])
+        ) {
             $validated['status'] = 'in-progress';
         }
 
@@ -346,7 +529,15 @@ class JobOrderController extends Controller
             $validated
         );
 
-        return response()->json($jobOrder->load(['customer', 'assignedTo', 'createdBy', 'jobOrderItems.equipment', 'feedback']));
+        return response()->json(
+            $jobOrder->load([
+                'customer',
+                'assignedTo',
+                'createdBy',
+                'jobOrderItems.equipment',
+                'feedback',
+            ])
+        );
     }
 
     /**
@@ -354,7 +545,12 @@ class JobOrderController extends Controller
      */
     private function recalculateJobOrderTotal(JobOrder $jobOrder)
     {
-        $total = $jobOrder->jobOrderItems()->sum('total_price');
-        $jobOrder->update(['total_amount' => $total]);
+        $total = $jobOrder
+            ->jobOrderItems()
+            ->sum('total_price');
+
+        $jobOrder->update([
+            'total_amount' => $total,
+        ]);
     }
 }

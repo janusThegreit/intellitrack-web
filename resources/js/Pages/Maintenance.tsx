@@ -58,7 +58,7 @@ export default function Maintenance({ custom_message }: MaintenanceProps) {
               href="/login"
               className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold transition-colors"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Administrator Sign In
+              <ArrowLeft className="w-3.5 h-3.5" /> Return to Sign In
             </Link>
 
             <Link

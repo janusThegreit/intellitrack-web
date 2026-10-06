@@ -16,8 +16,8 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
-
+        Gate::authorize('view-clients');
+        $query = Customer::query();
         // Automatically purge any records in Recently Deleted that have exceeded the 30-day retention window
         Customer::onlyTrashed()->where('deleted_at', '<=', now()->subDays(30))->forceDelete();
 
@@ -174,7 +174,7 @@ class CustomerController extends Controller
      */
     public function export(Request $request)
     {
-        Gate::authorize('view-core-dashboard');
+        Gate::authorize('view-clients');
 
         $query = Customer::query();
 

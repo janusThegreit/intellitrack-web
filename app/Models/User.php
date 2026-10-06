@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'is_active', 'two_factor_code', 'two_factor_expires_at', 'two_factor_attempts'])]
+#[Fillable(['name', 'email', 'password', 'first_name', 'last_name', 'nickname', 'phone', 'avatar_url', 'role', 'auth_user_id', 'client_id', 'is_active', 'last_login_at', 'two_factor_code', 'two_factor_expires_at', 'two_factor_attempts'])]
 #[Hidden(['password', 'remember_token', 'two_factor_code'])]
 class User extends Authenticatable
 {
@@ -116,7 +116,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the clients assigned to this Sales BD officer
+     * Get the clients assigned to this Sales BD officer.
      */
     public function assignedClients(): HasMany
     {
@@ -124,7 +124,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the clients managed by this Sales Manager
+     * Get the clients managed by this Sales Manager.
      */
     public function managedClients(): HasMany
     {
@@ -132,11 +132,36 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has super admin role
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    public function canonicalRole(): string
+    {
+        return self::canonicalRoleFor($this->role);
+    }
+
+    public static function canonicalRoleFor(string $role): string
+    {
+        return match ($role) {
+            'admin', 'administrator' => 'admin',
+            'sales_manager', 'manager' => 'sales_manager',
+            'sales_business_development', 'sales_bd',
+            'operations_technical', 'operations_staff', 'technical_staff', 'staff' => 'sales_business_development',
+            'client', 'customer' => 'client',
+            default => $role,
+        };
+    }
+
+    /**
      * Check if user has administrator role
      */
     public function isAdministrator(): bool
     {
-        return $this->role === 'administrator' || $this->role === 'admin';
+        return in_array($this->role, ['super_admin', 'admin', 'administrator']);
     }
 
     /**
@@ -172,6 +197,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has client role
+     */
+    public function isClient(): bool
+    {
+        return in_array($this->role, ['client', 'customer']);
+    }
+
+    /**
+     * Check if user has customer role (alias for client)
+     */
+    public function isCustomer(): bool
+    {
+        return $this->isClient();
+    }
+
+    /**
+     * Check if user is an internal enterprise employee
+     */
+    public function isInternalUser(): bool
+    {
+        return !$this->isClient();
+    }
+
+    /**
      * Check if user has operations & technical staff role
      */
     public function isOperationsTechnical(): bool
@@ -193,11 +242,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user has customer role
+     * Associated customer/client record for client users
      */
-    public function isCustomer(): bool
+    public function client(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->role === 'customer';
+        return $this->belongsTo(Customer::class, 'client_id');
     }
 
     /**

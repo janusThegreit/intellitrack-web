@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AuditLogController extends Controller
@@ -200,9 +201,6 @@ class AuditLogController extends Controller
      */
     private function authorizeAdmin(Request $request): void
     {
-        $user = $request->user();
-        if (! $user || $user->role !== 'administrator') {
-            abort(403, 'Access denied. Security audit trails are restricted to system administrators.');
-        }
+        Gate::authorize('manage-users');
     }
 }

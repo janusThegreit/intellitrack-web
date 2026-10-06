@@ -134,4 +134,9 @@ class Customer extends Model
     {
         return $this->belongsTo(User::class, 'sales_manager_id');
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'client_id');
+    }
 }

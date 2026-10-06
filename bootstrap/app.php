@@ -5,10 +5,14 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
+$apiRoutes = env('SERVICE_NAME') === 'auth-service'
+    ? __DIR__.'/../services/auth-service/routes/api.php'
+    : __DIR__.'/../routes/api.php';
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
+        api: $apiRoutes,
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
